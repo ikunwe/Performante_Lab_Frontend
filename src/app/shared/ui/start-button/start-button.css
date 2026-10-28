@@ -1,0 +1,59 @@
+:host {
+  color: #f5f5f5;
+  background: #ffffff0a;
+  box-shadow:
+    inset 0 0 0 1px #ffffff24,
+    0 10px 24px -14px #0008;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font: 400 10px/1 var(--font-display);
+  letter-spacing: 0.015em;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 180ms ease;
+}
+:host(.start-button--light) {
+  min-width: 128px;
+}
+:host(.start-button--red) {
+  min-width: 204px;
+  min-height: 54px;
+  background: #e8432529;
+  box-shadow:
+    inset 0 0 0 1px #ffad8f35,
+    0 10px 32px -14px #e43a2b55;
+}
+:host(:hover) {
+  background: #ffffff12;
+}
+:host(.start-button--red:hover) {
+  background: #e8432540;
+}
+.specular-light {
+  position: absolute;
+  inset: -24px;
+  z-index: 1;
+  display: block;
+  width: calc(100% + 48px);
+  height: calc(100% + 48px);
+  pointer-events: none;
+}
+:host(:focus-visible) {
+  outline: 2px solid #fff;
+  outline-offset: 5px;
+}
+:host(:disabled) {
+  opacity: 0.5;
+}
+@media (max-width: 700px) {
+  :host(.start-button--light) {
+    min-width: 106px;
+    min-height: 44px;
+    padding: 14px;
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    transition: none;
+  }
+}

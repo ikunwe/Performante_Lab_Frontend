@@ -1,0 +1,27 @@
+:host {
+  display: inline-block;
+  color: #f43d29;
+  background: linear-gradient(115deg, #ee3423 35%, #ffc6ab 48%, #fff4e8 50%, #ee3423 63%);
+  background-size: 240% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 7s ease-in-out infinite;
+}
+@keyframes shine {
+  0%,
+  25% {
+    background-position: 100% 0;
+  }
+  65%,
+  100% {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}

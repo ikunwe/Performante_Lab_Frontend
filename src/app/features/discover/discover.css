@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+.nav-active {
+  background: #ffffff0c;
+  border-left-color: #f1432b;
+  color: #fff;
+}
+.filter-active {
+  background: #ce281a;
+  color: #fff;
+  border-color: #ce281a;
+}
+.workspace-dialog {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.workspace-dialog::backdrop {
+  background: rgb(0 0 0 / 72%);
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid #f87171;
+  outline-offset: 3px;
+}

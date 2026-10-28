@@ -1,0 +1,20 @@
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--color-page);
+  color-scheme: dark;
+}
+/* Keep workspace content aligned when a modal locks document scrolling. */
+html:has(app-discover) {
+  scrollbar-gutter: stable;
+}
+html:has(dialog:modal) {
+  overflow: hidden;
+}
+body {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}

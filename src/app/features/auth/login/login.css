@@ -1,0 +1,154 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background: #090909;
+}
+.form-panel {
+  background: radial-gradient(ellipse at 50% 0, #ffffff05, transparent 60%), #151515;
+  border: 1px solid #ffffff07;
+}
+.back-link {
+  text-decoration: none;
+  color: #92908e;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.eyebrow {
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: #9b9691;
+}
+.eyebrow span {
+  width: 22px;
+  height: 1px;
+  background: #e7442c;
+}
+h1 {
+  font: 400 clamp(30px, 3.2vw, 54px)/1.2 var(--font-display);
+  letter-spacing: -0.07em;
+  margin: 0 0 10px;
+}
+.accent {
+  color: #f0442d;
+}
+.subtitle {
+  font: 400 clamp(9px, 0.9vw, 13px)/1.6 var(--font-display);
+  letter-spacing: -0.04em;
+}
+.description {
+  color: #85817e;
+  font-size: 12px;
+}
+label {
+  display: block;
+  font-size: 12px;
+  color: #dcd8d4;
+  margin-bottom: 8px;
+}
+.input-wrap {
+  border: 1px solid #ffffff27;
+  background: #0c0c0c55;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.input-wrap:focus-within {
+  border-color: #ed6f52;
+  box-shadow: 0 0 0 3px #ed6f5212;
+}
+.input-wrap.invalid {
+  border-color: #f66a59;
+}
+input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 14px 0;
+  background: transparent;
+  color: #f4f0ed;
+  font: 13px var(--font-body);
+}
+input::placeholder {
+  color: #686562;
+}
+input:-webkit-autofill {
+  -webkit-text-fill-color: #f4f0ed;
+  box-shadow: 0 0 0 100px #171717 inset;
+}
+.visibility-toggle {
+  border: 0;
+  background: none;
+  color: #aaa29b;
+  font-size: 8px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+}
+.text-button {
+  border: 0;
+  color: #d7a28f;
+  background: none;
+  font-size: 11px;
+  cursor: pointer;
+}
+.divider {
+  color: #7c7773;
+  font-size: 10px;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #ffffff1c;
+}
+.google-button {
+  background: #f2f0ed;
+  border: 1px solid #fff;
+  color: #1b1b1b;
+  cursor: pointer;
+  font: 600 12px var(--font-body);
+  transition: background 0.2s;
+}
+.google-button:hover {
+  background: #fff;
+}
+.status {
+  color: #dbbba9;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.field-error {
+  color: #ff9687;
+  font-size: 11px;
+}
+.form-footer {
+  color: #615d59;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #ff9e82;
+  outline-offset: 4px;
+}
+@media (max-width: 800px) {
+  .form-footer span:last-child {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  h1 {
+    font-size: clamp(32px, 10vw, 46px);
+  }
+  .subtitle {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .input-wrap,
+  .google-button {
+    transition: none;
+  }
+}

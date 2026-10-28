@@ -1,0 +1,7 @@
+<canvas #light class="specular-light" aria-hidden="true"></canvas>
+<span class="specular-label relative z-[2] inline-flex items-center gap-[26px]">
+  <ng-content />
+  @if (showArrow()) {
+    <app-icon name="arrow" class="!w-[21px] !h-[15px]" />
+  }
+</span>

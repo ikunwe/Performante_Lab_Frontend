@@ -1,0 +1,83 @@
+<main
+  class="landing h-full grid grid-rows-[auto_minmax(0,_1fr)_auto] overflow-hidden isolate"
+  aria-labelledby="hero-title"
+>
+  <app-home-header />
+
+  <section class="hero relative min-h-0 overflow-clip">
+    <div class="hero-heading relative z-[2] pt-[4cqh] text-center max-[701px]:pt-[3cqh]">
+      <p class="eyebrow flex justify-center items-center gap-2.5 m-[0_0_2.5cqh] max-[701px]:mb-3">
+        <span></span> YOUR CAR. YOUR RULES.
+      </p>
+      <h1 id="hero-title">Build your best<br /><span appShinyText>cars.</span></h1>
+    </div>
+
+    <dl
+      class="stats absolute z-[2] top-[32%] left-[6%] grid gap-[6cqh] m-0 max-[701px]:top-auto max-[701px]:bottom-[13%] max-[701px]:left-[8%] max-[701px]:w-[84%] max-[701px]:flex max-[701px]:justify-around max-[701px]:gap-4 max-[701px]:text-center"
+      aria-label="ตัวเลือกการแต่งรถ"
+    >
+      <div>
+        <dt>ยี่ห้อรถยนต์</dt>
+        <dd>10<span>+</span></dd>
+      </div>
+      <div>
+        <dt>พาร์ตและชุดแต่ง</dt>
+        <dd>500<span>+</span></dd>
+      </div>
+    </dl>
+
+    <aside
+      class="intro absolute right-[5%] top-[33%] w-[16%] z-[2] max-[701px]:top-auto max-[701px]:bottom-[2%] max-[701px]:right-[9%] max-[701px]:w-[82%] max-[701px]:text-center"
+    >
+      <span class="section-number">BUILT AROUND YOU</span>
+      <h2>รถในฝัน<br />เริ่มต้นที่คุณ</h2>
+      <p>
+        เลือกสเปกและชุดแต่งในสไตล์คุณ ดูภาพจำลอง 2D พร้อมประเมินงบประมาณ
+        ก่อนเปลี่ยนรถในฝันให้เป็นจริง
+      </p>
+    </aside>
+
+    <div
+      class="car-stage absolute w-[min(69%,_130cqh)] h-[50%] left-1/2 top-[29%] pointer-events-none max-[701px]:w-[min(110%,_94cqh)] max-[701px]:h-[34%] max-[701px]:top-[22%]"
+    >
+      <div class="car-glow absolute inset-[15%_5%_0]" aria-hidden="true"></div>
+      <div
+        class="stage-ring absolute w-[92%] h-[24%] bottom-0 left-[4%] rounded-[50%]"
+        aria-hidden="true"
+      ></div>
+      <img
+        class="hero-car absolute block w-full h-full object-cover"
+        src="assets/car_pic.png"
+        alt="รถสปอร์ต Ferrari สีแดง พร้อมชุดแต่ง"
+        width="1280"
+        height="960"
+        fetchpriority="high"
+      />
+    </div>
+
+    <div
+      class="hero-action absolute bottom-[3.5cqh] w-full flex flex-col items-center gap-3 z-[3] max-[701px]:top-[58%] max-[701px]:bottom-auto max-[701px]:gap-2.5"
+    >
+      <button
+        class="cursor-pointer disabled:cursor-not-allowed"
+        appStartButton
+        routerLink="/login"
+        variant="red"
+        [showArrow]="true"
+        type="button"
+      >
+        GET START
+      </button>
+      <p>ออกแบบคันที่ใช่ ในสไตล์ของคุณ</p>
+    </div>
+  </section>
+
+  <footer
+    class="footer min-h-9.5 py-[12px] px-[6%] flex items-center justify-between gap-4 max-[701px]:justify-center max-[701px]:min-h-7 max-[701px]:py-[8px] max-[701px]:px-[4%]"
+  >
+    <span>PERFORMANTE LAB <span class="muted ml-2">/ CUSTOMIZATION STUDIO</span></span>
+    <span class="footer-detail flex items-center gap-2"
+      ><i></i> 2D PREVIEW / ENDLESS POSSIBILITIES</span
+    >
+  </footer>
+</main>

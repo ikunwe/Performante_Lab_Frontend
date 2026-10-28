@@ -1,0 +1,249 @@
+<div class="mx-auto max-w-[1100px]">
+  <div class="mb-9 flex items-center gap-3 border-y border-white/5 py-4 sm:gap-5">
+    <button
+      type="button"
+      aria-label="ยี่ห้อก่อนหน้า"
+      (click)="stepBrand(-1)"
+      [disabled]="brandIndex() === 0"
+      class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/10 text-stone-400 hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-20"
+    >
+      <app-icon name="back" class="!size-3" />
+    </button>
+    <div
+      class="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto p-1"
+      aria-label="เลือกยี่ห้อรถ"
+    >
+      @for (name of brands; track name) {
+        <button
+          type="button"
+          (click)="chooseBrand(name)"
+          [attr.aria-pressed]="brand() === name"
+          [attr.aria-label]="'เลือกยี่ห้อ ' + name"
+          [class.border-red-400]="brand() === name"
+          [class.bg-red-500/10]="brand() === name"
+          class="flex size-[68px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-[#171717] transition-colors hover:border-red-400/50 sm:size-20"
+        >
+          <img
+            [src]="brandLogos[name]"
+            [alt]="'โลโก้ ' + name"
+            width="56"
+            height="56"
+            class="size-12 object-contain sm:size-14"
+            [class.object-cover]="name === 'Ferrari'"
+          />
+        </button>
+      }
+      <span class="ml-3 hidden text-[9px] tracking-[.18em] text-stone-600 sm:block"
+        >SELECT YOUR BRAND</span
+      >
+    </div>
+    <button
+      type="button"
+      aria-label="ยี่ห้อถัดไป"
+      (click)="stepBrand(1)"
+      [disabled]="brandIndex() === brands.length - 1"
+      class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/10 text-stone-400 hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-20"
+    >
+      <app-icon name="arrow" class="!size-3" />
+    </button>
+  </div>
+
+  <div class="mb-7 text-center">
+    <p class="mb-3 text-[8px] tracking-[.3em] text-red-400/80">SIDE BY SIDE. EVERY DETAIL.</p>
+    <h2 class="text-[25px] font-medium tracking-tight sm:text-[30px]">เปรียบเทียบของแต่ง</h2>
+    <p class="mt-2 text-xs leading-relaxed text-stone-500">
+      เลือกพาร์ตสองชิ้นในรุ่นรถและหมวดเดียวกัน แล้วดูรายละเอียดได้ทันที
+    </p>
+  </div>
+
+  <div class="mb-7 grid gap-4 rounded-xl border border-white/5 bg-[#141414] p-4 sm:grid-cols-2">
+    <label class="flex flex-col gap-2 text-[10px] text-stone-400"
+      ><span>รุ่นรถ</span
+      ><select
+        aria-label="รุ่นรถสำหรับเปรียบเทียบ"
+        [value]="car()?.id"
+        (change)="chooseCar($any($event.target).value)"
+        class="min-h-10 w-full cursor-pointer rounded-md border border-white/10 bg-[#202020] px-3 text-xs text-stone-200 focus:outline-2 focus:outline-red-400"
+      >
+        @for (item of cars(); track item.id) {
+          <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select></label
+    >
+    <label class="flex flex-col gap-2 text-[10px] text-stone-400"
+      ><span>หมวดของแต่ง</span
+      ><select
+        aria-label="หมวดของแต่งสำหรับเปรียบเทียบ"
+        [value]="category()"
+        (change)="chooseCategory($any($event.target).value)"
+        class="min-h-10 w-full cursor-pointer rounded-md border border-white/10 bg-[#202020] px-3 text-xs text-stone-200 focus:outline-2 focus:outline-red-400"
+      >
+        @for (item of categories; track item.id) {
+          <option [value]="item.id">{{ item.name }} · {{ item.label }}</option>
+        }
+      </select></label
+    >
+  </div>
+
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <span role="status" class="text-[10px] text-stone-500">{{
+      ready() ? 'แสดงรายละเอียด 2 รายการ' : 'เลือกพาร์ตที่ต้องการเปรียบเทียบ'
+    }}</span>
+    <div class="flex gap-3">
+      <button
+        type="button"
+        (click)="swap()"
+        [disabled]="!selection().left && !selection().right"
+        class="flex min-h-9 cursor-pointer items-center gap-1.5 text-[10px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        <app-icon name="compare" class="!size-3" />สลับฝั่ง
+      </button>
+      <button
+        type="button"
+        (click)="reset()"
+        [disabled]="!selection().left && !selection().right"
+        class="min-h-9 cursor-pointer text-[10px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        ล้างรายการ
+      </button>
+    </div>
+  </div>
+
+  @if (parts().length < 2) {
+    <p
+      role="status"
+      class="mb-5 rounded-lg border border-amber-300/10 bg-amber-300/5 px-4 py-3 text-[11px] leading-relaxed text-amber-200/70"
+    >
+      หมวดนี้มีตัวอย่างเพียง {{ parts().length }} รายการ จึงยังเปรียบเทียบสองชิ้นไม่ได้
+      กรุณาเลือกหมวดอื่น
+    </p>
+  }
+
+  <div class="grid grid-cols-2 gap-3 sm:gap-6">
+    @for (side of sides; track side) {
+      <section
+        [attr.aria-label]="side === 'left' ? 'ของแต่งฝั่งซ้าย' : 'ของแต่งฝั่งขวา'"
+        class="min-w-0"
+      >
+        <label
+          [for]="'part-' + side"
+          class="mb-2 flex items-center gap-2 text-[10px] text-stone-500"
+          ><span
+            class="flex size-5 items-center justify-center rounded border border-white/10 text-[9px]"
+            >{{ side === 'left' ? 'A' : 'B' }}</span
+          >{{ side === 'left' ? 'ของแต่งชิ้นที่ 1' : 'ของแต่งชิ้นที่ 2' }}</label
+        >
+        <select
+          [id]="'part-' + side"
+          [value]="selection()[side]"
+          (change)="choosePart(side, $any($event.target).value)"
+          class="mb-4 min-h-11 w-full cursor-pointer truncate rounded-md border border-white/10 bg-[#292929] px-2 text-[10px] text-stone-200 focus:outline-2 focus:outline-red-400 sm:px-3 sm:text-xs"
+        >
+          <option value="">เลือกของแต่ง...</option>
+          @for (part of parts(); track part.id) {
+            <option
+              [value]="part.id"
+              [disabled]="selection()[side === 'left' ? 'right' : 'left'] === part.id"
+            >
+              {{ part.name }}
+            </option>
+          }
+        </select>
+
+        @if (selectedParts()[side]; as part) {
+          <article
+            class="h-[calc(100%_-_73px)] overflow-hidden rounded-xl border border-white/10 bg-[#151515]"
+          >
+            <div
+              class="relative aspect-[1.65] overflow-hidden bg-[radial-gradient(ellipse,#3c3c3c,#111_80%)]"
+            >
+              @if (part.category === 'wheels' || part.category === 'spoilers') {
+                <div class="flex h-full items-center justify-center text-stone-600">
+                  <app-icon
+                    [name]="part.category === 'wheels' ? 'wheel' : 'parts'"
+                    class="!size-12"
+                  />
+                </div>
+                <span class="absolute inset-x-0 bottom-2 text-center text-[8px] text-stone-500"
+                  >รอภาพชิ้นส่วน</span
+                >
+              } @else {
+                <img
+                  [src]="car()?.image"
+                  [alt]="'ภาพประกอบ ' + part.name"
+                  width="1280"
+                  height="960"
+                  [class]="
+                    part.crop === 'full'
+                      ? 'h-full w-full object-cover'
+                      : part.crop === 'front'
+                        ? 'absolute right-0 top-1/2 w-[230%] max-w-none -translate-y-1/2'
+                        : 'absolute left-0 top-1/2 w-[230%] max-w-none -translate-y-1/2'
+                  "
+                />
+                <span
+                  class="absolute left-2 top-2 rounded bg-black/50 px-2 py-1 text-[7px] tracking-widest text-stone-400"
+                  >CONCEPT PREVIEW</span
+                >
+              }
+            </div>
+            <div class="p-3 sm:p-5">
+              <h3 class="min-h-9 text-xs leading-relaxed text-stone-100 sm:text-sm">
+                {{ part.name }}
+              </h3>
+              <dl class="mt-4 space-y-4 text-[10px] sm:text-xs">
+                <div class="border-t border-white/5 pt-3">
+                  <dt class="mb-1.5 text-[9px] text-stone-600">รถต้นแบบ</dt>
+                  <dd class="text-stone-300">{{ car()?.name }}</dd>
+                </div>
+                <div
+                  class="rounded-md border border-transparent px-2 py-2"
+                  [class.bg-red-400/5]="finishDifferent()"
+                  [class.border-red-400/20]="finishDifferent()"
+                >
+                  <dt class="mb-1.5 text-[9px] text-stone-500">
+                    Finish
+                    @if (finishDifferent()) {
+                      <span class="ml-1 text-red-400">แตกต่างกัน</span>
+                    }
+                  </dt>
+                  <dd class="text-stone-200">{{ part.finish }}</dd>
+                </div>
+                <div>
+                  <dt class="mb-1.5 text-[9px] text-stone-600">รายละเอียด</dt>
+                  <dd class="leading-relaxed text-stone-400">{{ part.description }}</dd>
+                </div>
+                <div class="border-t border-white/5 pt-3">
+                  <dt class="mb-1.5 text-[9px] text-stone-600">ราคาอ้างอิง</dt>
+                  <dd class="text-stone-500">ยังไม่มีข้อมูล</dd>
+                </div>
+                <div>
+                  <dt class="mb-1.5 text-[9px] text-stone-600">เงื่อนไขการติดตั้ง / สมรรถนะ</dt>
+                  <dd class="leading-relaxed text-stone-500">ยังไม่มีข้อมูลที่ตรวจสอบแล้ว</dd>
+                </div>
+              </dl>
+            </div>
+          </article>
+        } @else {
+          <div
+            class="flex aspect-[.85] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[.015] p-3 text-center sm:aspect-[1.1]"
+          >
+            <span
+              class="mb-4 flex size-12 items-center justify-center rounded-full border border-white/5 bg-white/[.02] text-stone-600"
+              ><app-icon name="parts" class="!size-5"
+            /></span>
+            <h3 class="text-xs text-stone-400">
+              เลือกของแต่ง{{ side === 'left' ? 'ชิ้นแรก' : 'อีกชิ้น' }}
+            </h3>
+            <p class="mt-2 text-[10px] leading-relaxed text-stone-600">รายละเอียดจะแสดงตรงนี้</p>
+          </div>
+        }
+      </section>
+    }
+  </div>
+
+  <p class="mt-6 border-t border-white/5 pt-4 text-[10px] leading-relaxed text-stone-600">
+    ข้อมูล Concept จาก Catalog สำหรับสาธิต UI · ภาพครอปจากรถต้นแบบ ไม่ใช่ภาพสินค้าแต่ละชิ้น ·
+    ยังไม่มีราคาและผลสมรรถนะที่ยืนยันแล้ว
+  </p>
+</div>
