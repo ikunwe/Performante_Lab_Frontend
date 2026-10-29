@@ -1,6 +1,10 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
+.env
+.env.*
+!.env.example
+/public/auth-config.json
 /dist
 /tmp
 /out-tsc

@@ -2,6 +2,10 @@
   "name": "performante-lab-frontend",
   "version": "0.0.0",
   "scripts": {
+    "config:auth": "node scripts/write-auth-config.mjs",
+    "prestart": "npm run config:auth",
+    "prebuild": "npm run config:auth",
+    "prewatch": "npm run config:auth",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
@@ -24,6 +28,7 @@
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
     "@fortawesome/free-brands-svg-icons": "^7.3.1",
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
+    "@supabase/supabase-js": "^2.118.0",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"

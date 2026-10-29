@@ -56,14 +56,14 @@
     </p>
   </div>
 
-  <div class="mb-7 grid gap-4 rounded-xl border border-white/5 bg-[#141414] p-4 sm:grid-cols-2">
+  <div class="mb-7 grid gap-4 rounded-lg border border-white/5 bg-[#141414] p-4 sm:grid-cols-2">
     <label class="flex flex-col gap-2 text-[10px] text-stone-400"
       ><span>รุ่นรถ</span
       ><select
         aria-label="รุ่นรถสำหรับเปรียบเทียบ"
         [value]="car()?.id"
         (change)="chooseCar($any($event.target).value)"
-        class="min-h-10 w-full cursor-pointer rounded-md border border-white/10 bg-[#202020] px-3 text-xs text-stone-200 focus:outline-2 focus:outline-red-400"
+        class="min-h-10 w-full cursor-pointer rounded-lg border border-white/10 bg-[#202020] px-3 text-xs text-stone-200 focus:outline-2 focus:outline-red-400"
       >
         @for (item of cars(); track item.id) {
           <option [value]="item.id">{{ item.name }}</option>
@@ -76,7 +76,7 @@
         aria-label="หมวดของแต่งสำหรับเปรียบเทียบ"
         [value]="category()"
         (change)="chooseCategory($any($event.target).value)"
-        class="min-h-10 w-full cursor-pointer rounded-md border border-white/10 bg-[#202020] px-3 text-xs text-stone-200 focus:outline-2 focus:outline-red-400"
+        class="min-h-10 w-full cursor-pointer rounded-lg border border-white/10 bg-[#202020] px-3 text-xs text-stone-200 focus:outline-2 focus:outline-red-400"
       >
         @for (item of categories; track item.id) {
           <option [value]="item.id">{{ item.name }} · {{ item.label }}</option>
@@ -129,7 +129,7 @@
           [for]="'part-' + side"
           class="mb-2 flex items-center gap-2 text-[10px] text-stone-500"
           ><span
-            class="flex size-5 items-center justify-center rounded border border-white/10 text-[9px]"
+            class="flex size-5 items-center justify-center rounded-lg border border-white/10 text-[9px]"
             >{{ side === 'left' ? 'A' : 'B' }}</span
           >{{ side === 'left' ? 'ของแต่งชิ้นที่ 1' : 'ของแต่งชิ้นที่ 2' }}</label
         >
@@ -137,7 +137,7 @@
           [id]="'part-' + side"
           [value]="selection()[side]"
           (change)="choosePart(side, $any($event.target).value)"
-          class="mb-4 min-h-11 w-full cursor-pointer truncate rounded-md border border-white/10 bg-[#292929] px-2 text-[10px] text-stone-200 focus:outline-2 focus:outline-red-400 sm:px-3 sm:text-xs"
+          class="mb-4 min-h-11 w-full cursor-pointer truncate rounded-lg border border-white/10 bg-[#292929] px-2 text-[10px] text-stone-200 focus:outline-2 focus:outline-red-400 sm:px-3 sm:text-xs"
         >
           <option value="">เลือกของแต่ง...</option>
           @for (part of parts(); track part.id) {
@@ -152,7 +152,7 @@
 
         @if (selectedParts()[side]; as part) {
           <article
-            class="h-[calc(100%_-_73px)] overflow-hidden rounded-xl border border-white/10 bg-[#151515]"
+            class="h-[calc(100%_-_73px)] overflow-hidden rounded-lg border border-white/10 bg-[#151515]"
           >
             <div
               class="relative aspect-[1.65] overflow-hidden bg-[radial-gradient(ellipse,#3c3c3c,#111_80%)]"
@@ -182,7 +182,7 @@
                   "
                 />
                 <span
-                  class="absolute left-2 top-2 rounded bg-black/50 px-2 py-1 text-[7px] tracking-widest text-stone-400"
+                  class="absolute left-2 top-2 rounded-lg bg-black/50 px-2 py-1 text-[7px] tracking-widest text-stone-400"
                   >CONCEPT PREVIEW</span
                 >
               }
@@ -197,7 +197,7 @@
                   <dd class="text-stone-300">{{ car()?.name }}</dd>
                 </div>
                 <div
-                  class="rounded-md border border-transparent px-2 py-2"
+                  class="rounded-lg border border-transparent px-2 py-2"
                   [class.bg-red-400/5]="finishDifferent()"
                   [class.border-red-400/20]="finishDifferent()"
                 >
@@ -226,7 +226,7 @@
           </article>
         } @else {
           <div
-            class="flex aspect-[.85] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[.015] p-3 text-center sm:aspect-[1.1]"
+            class="flex aspect-[.85] flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/[.015] p-3 text-center sm:aspect-[1.1]"
           >
             <span
               class="mb-4 flex size-12 items-center justify-center rounded-full border border-white/5 bg-white/[.02] text-stone-600"

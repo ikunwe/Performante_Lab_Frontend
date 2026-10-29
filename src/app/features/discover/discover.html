@@ -1,290 +1,222 @@
 <main class="min-h-dvh bg-[#090909] text-stone-100">
   <header
-    class="sticky top-0 z-30 flex h-[76px] items-center justify-between gap-4 border-b border-white/5 bg-[#151515]/95 px-6 backdrop-blur-xl md:px-10"
-  >
-    <a
-      routerLink="/"
-      aria-label="Performante Lab หน้าหลัก"
-      class="relative block h-10 w-[132px] shrink-0 cursor-pointer"
-      ><img
-        src="assets/Logo_Performante_Lab.png"
-        alt="Performante Lab"
-        width="1920"
-        height="1080"
-        class="absolute -left-[22px] -top-[29px] w-[176px] max-w-none"
-    /></a>
-    <span class="hidden text-[8px] tracking-[.25em] text-stone-600 lg:block"
-      >THE COMMUNITY GARAGE</span
-    >
+    class="sticky top-0 z-30 flex h-[76px] items-center justify-between gap-4 border-b border-white/5 bg-[#151515]/95 px-6 backdrop-blur-xl md:px-10">
+    <a routerLink="/" aria-label="Performante Lab หน้าหลัก"
+      class="relative block h-10 w-[132px] shrink-0 cursor-pointer"><img src="assets/Logo_Performante_Lab.png"
+        alt="Performante Lab" width="1920" height="1080"
+        class="absolute -left-[22px] -top-[29px] w-[176px] max-w-none" /></a>
+    <span class="hidden text-[8px] tracking-[.25em] text-stone-600 lg:block">THE COMMUNITY GARAGE</span>
     <div class="flex items-center gap-3 md:gap-5">
       @if (activeTab() !== 'My Builds' || buildHeading() === 'My Builds') {
-        <button
-          type="button"
-          (click)="openCreate()"
-          class="flex min-h-9 items-center gap-2 rounded-md bg-[#d82c1b] px-3 font-[family-name:var(--font-display)] text-[8px] shadow-[0_5px_20px_#d82c1b25] hover:bg-[#f1422b] md:px-5 md:text-[9px] cursor-pointer disabled:cursor-not-allowed"
-        >
-          <app-icon name="plus" class="!size-3.5" />Create Build
-        </button>
+      <button type="button" (click)="openCreate()"
+        class="flex min-h-9 items-center gap-2 rounded-lg bg-[#d82c1b] px-3 font-[family-name:var(--font-display)] text-[8px] shadow-[0_5px_20px_#d82c1b25] hover:bg-[#f1422b] md:px-5 md:text-[9px] cursor-pointer disabled:cursor-not-allowed">
+        <app-icon name="plus" class="!size-3.5" />Create Build
+      </button>
       }
-      <button
-        type="button"
-        aria-label="การแจ้งเตือน"
-        (click)="notifications()"
-        class="flex size-9 items-center justify-center rounded-full text-stone-400 hover:bg-white/5 hover:text-white cursor-pointer disabled:cursor-not-allowed"
-      >
+      <button type="button" aria-label="การแจ้งเตือน" (click)="notifications()"
+        class="flex size-9 items-center justify-center rounded-full text-stone-400 hover:bg-white/5 hover:text-white cursor-pointer disabled:cursor-not-allowed">
         <app-icon name="bell" />
       </button>
-      <a
-        routerLink="/login"
-        aria-label="เข้าสู่ระบบ"
-        class="flex items-center gap-2 border-l border-white/10 pl-3 text-[11px] text-stone-300 md:pl-5 cursor-pointer"
-        ><span
-          class="flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5"
-          ><app-icon name="user" /></span
-        ><span class="hidden sm:block">Sign in</span></a
-      >
+      @if (auth.user()) {
+      <app-account-menu [name]="auth.displayName()" [email]="auth.user()?.email ?? ''" [busy]="auth.busy()"
+        [avatarUrl]="auth.avatarUrl()" [complete]="auth.accountComplete()" [showStatus]="true" (profile)="showProfile()"
+        (logout)="signOut()" />
+      } @else {
+      <a routerLink="/login" aria-label="เข้าสู่ระบบ"
+        class="flex items-center gap-2 border-l border-white/10 pl-3 text-[11px] text-stone-300 md:pl-5 cursor-pointer"><span
+          class="flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5"><app-icon
+            name="user" /></span><span class="hidden sm:block">Sign in</span></a>
+      }
     </div>
   </header>
 
   <div
-    class="mx-auto grid max-w-[1800px] grid-cols-1 gap-7 px-4 py-5 md:grid-cols-[180px_minmax(0,1fr)] md:px-7 md:py-7 xl:grid-cols-[210px_minmax(0,1fr)] xl:gap-10 xl:px-10"
-  >
+    class="mx-auto grid max-w-[1800px] grid-cols-1 gap-7 px-4 py-5 md:grid-cols-[180px_minmax(0,1fr)] md:px-7 md:py-7 xl:grid-cols-[210px_minmax(0,1fr)] xl:gap-10 xl:px-10">
     <aside class="self-start md:sticky md:top-[104px]">
-      <div
-        class="flex flex-col rounded-xl border border-white/5 bg-[#151515] p-3 md:min-h-[calc(100dvh-132px)]"
-      >
+      <div class="flex flex-col rounded-lg border border-white/5 bg-[#151515] p-3 md:min-h-[calc(100dvh-132px)]">
         <p class="mb-4 hidden px-3 pt-2 text-[8px] tracking-[.24em] text-stone-600 md:block">
           WORKSPACE
         </p>
         <nav aria-label="เมนูหลัก" class="grid grid-cols-4 gap-1 md:grid-cols-1 md:gap-2">
           @for (tab of tabs; track tab.name) {
-            <button
-              type="button"
-              (click)="switchTab(tab.name)"
-              [attr.aria-current]="activeTab() === tab.name ? 'page' : null"
-              [class.nav-active]="activeTab() === tab.name"
-              class="nav-item flex min-h-11 flex-col items-center justify-center gap-2 rounded-md border-l-2 border-transparent px-2 py-3 text-[8px] text-stone-400 transition-colors hover:bg-white/5 hover:text-white md:flex-row md:justify-start md:px-3 md:text-[10px] cursor-pointer disabled:cursor-not-allowed"
-            >
-              <app-icon [name]="tab.icon" />{{ tab.name }}
-            </button>
+          <button type="button" (click)="switchTab(tab.name)"
+            [attr.aria-current]="activeTab() === tab.name ? 'page' : null" [class.nav-active]="activeTab() === tab.name"
+            class="nav-item flex min-h-11 flex-col items-center justify-center gap-2 rounded-lg border-l-2 border-transparent px-2 py-3 text-[8px] text-stone-400 transition-colors hover:bg-white/5 hover:text-white md:flex-row md:justify-start md:px-3 md:text-[10px] cursor-pointer disabled:cursor-not-allowed">
+            <app-icon [name]="tab.icon" />{{ tab.name }}
+          </button>
           }
         </nav>
         <div class="mt-auto hidden pt-10 md:block">
           <div
-            class="rounded-lg border border-dashed border-white/15 bg-gradient-to-b from-white/[.04] to-transparent px-4 py-9 text-center"
-          >
+            class="rounded-lg border border-dashed border-white/15 bg-gradient-to-b from-white/[.04] to-transparent px-4 py-9 text-center">
             <span class="text-[8px] tracking-[.18em] text-stone-600">PARTNER SPACE</span>
             <p class="mb-2 mt-5 text-[13px] text-stone-400">Your brand.<br />Their next build.</p>
             <span class="text-[9px] text-stone-600">พื้นที่สำหรับพาร์ตเนอร์</span>
           </div>
-          <p class="mt-5 px-2 text-[8px] leading-5 text-stone-600">
-            PERFORMANTE LAB<br />IMAGINE IT. BUILD IT.
-          </p>
         </div>
       </div>
     </aside>
 
     <section class="min-w-0 scroll-mt-[100px]" aria-labelledby="page-title">
+      @if (auth.apiError()) {
+      <div role="status"
+        class="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200/80">
+        <span>{{ auth.apiError() }}</span>
+        <button type="button" (click)="auth.refreshBackendProfile()" [disabled]="auth.apiLoading()"
+          [attr.aria-busy]="auth.apiLoading()"
+          class="min-h-8 cursor-pointer rounded-lg border border-amber-400/20 px-3">
+          @if (auth.apiLoading()) {
+          <app-icon name="spinner" class="!size-3 animate-spin motion-reduce:animate-none" />
+          }
+          {{ auth.apiLoading() ? 'กำลังโหลด…' : 'ลองอีกครั้ง' }}
+        </button>
+      </div>
+      }
       <div class="mb-7 flex flex-wrap items-end justify-between gap-5">
         <div>
           <p class="mb-2 text-[8px] tracking-[.24em] text-red-400/80">INSPIRATION STARTS HERE</p>
-          <h1
-            id="page-title"
-            class="font-[family-name:var(--font-display)] text-[25px] tracking-[-.06em] md:text-[29px]"
-          >
+          <h1 id="page-title"
+            class="font-[family-name:var(--font-display)] text-[25px] tracking-[-.06em] md:text-[29px]">
             {{ activeTab() === 'My Builds' ? buildHeading() : activeTab() }}
           </h1>
           <p class="mt-2 text-[12px] text-stone-500">
             {{
-              activeTab() === 'Discover'
-                ? 'ค้นหาแรงบันดาลใจให้ Build คันต่อไปของคุณ'
-                : activeTab() === 'Catalog'
-                  ? 'ค้นหายี่ห้อ รุ่นรถ และพาร์ตแต่งสำหรับคันต่อไปของคุณ'
-                  : activeTab() === 'Compare'
-                    ? 'เปรียบเทียบของแต่งในรถรุ่นเดียวกัน'
-                    : 'เลือกแต่ง บันทึก และจัดการรถในสไตล์ของคุณ'
+            activeTab() === 'Discover'
+            ? 'ค้นหาแรงบันดาลใจให้ Build คันต่อไปของคุณ'
+            : activeTab() === 'Catalog'
+            ? 'ค้นหายี่ห้อ รุ่นรถ และพาร์ตแต่งสำหรับคันต่อไปของคุณ'
+            : activeTab() === 'Compare'
+            ? 'เปรียบเทียบของแต่งในรถรุ่นเดียวกัน'
+            : activeTab() === 'Profile'
+            ? 'ข้อมูลบัญชีของคุณ และการตั้งค่าการเข้าสู่ระบบ'
+            : 'เลือกแต่ง บันทึก และจัดการรถในสไตล์ของคุณ'
             }}
           </p>
         </div>
         @if (activeTab() === 'Discover') {
-          <div class="flex w-full items-center gap-2 sm:w-auto">
-            <label
-              class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-3 sm:w-[210px]"
-              ><app-icon name="search" class="text-stone-500" /><span class="sr-only"
-                >ค้นหา Build</span
-              ><input
-                type="search"
-                placeholder="Search builds..."
-                [value]="query()"
-                (input)="query.set($any($event.target).value)"
-                class="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-stone-600"
-            /></label>
-            <button
-              type="button"
-              (click)="filtersOpen.set(!filtersOpen())"
-              [attr.aria-expanded]="filtersOpen()"
-              aria-controls="build-filters"
-              class="flex min-h-10 items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <app-icon name="filter" class="!size-3.5" />Filters
-            </button>
-          </div>
+        <div class="flex w-full items-center gap-2 sm:w-auto">
+          <label
+            class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-3 sm:w-[210px]"><app-icon
+              name="search" class="text-stone-500" /><span class="sr-only">ค้นหา Build</span><input type="search"
+              placeholder="Search builds..." [value]="query()" (input)="query.set($any($event.target).value)"
+              class="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-stone-600" /></label>
+          <button type="button" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()"
+            aria-controls="build-filters"
+            class="flex min-h-10 items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 cursor-pointer disabled:cursor-not-allowed">
+            <app-icon name="filter" class="!size-3.5" />Filters
+          </button>
+        </div>
         }
       </div>
 
       @if (filtersOpen() && activeTab() === 'Discover') {
-        <div
-          id="build-filters"
-          class="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#151515] p-3"
-        >
-          @for (item of categories; track item) {
-            <button
-              type="button"
-              (click)="category.set(item)"
-              [attr.aria-pressed]="category() === item"
-              [class.filter-active]="category() === item"
-              class="rounded-full border border-white/10 px-4 py-2 text-[10px] text-stone-400 hover:text-white cursor-pointer disabled:cursor-not-allowed"
-            >
-              {{ item }}
-            </button>
-          }
-          <label class="ml-auto flex cursor-pointer items-center gap-2 text-[11px] text-stone-400"
-            ><input
-              type="checkbox"
-              [checked]="savedOnly()"
-              (change)="savedOnly.set($any($event.target).checked)"
-              class="accent-red-500 cursor-pointer disabled:cursor-not-allowed"
-            />เฉพาะที่บันทึก</label
-          >
-        </div>
+      <div id="build-filters"
+        class="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#151515] p-3">
+        @for (item of categories; track item) {
+        <button type="button" (click)="category.set(item)" [attr.aria-pressed]="category() === item"
+          [class.filter-active]="category() === item"
+          class="rounded-lg border border-white/10 px-4 py-2 text-[10px] text-stone-400 hover:text-white cursor-pointer disabled:cursor-not-allowed">
+          {{ item }}
+        </button>
+        }
+        <label class="ml-auto flex cursor-pointer items-center gap-2 text-[11px] text-stone-400"><input type="checkbox"
+            [checked]="savedOnly()" (change)="savedOnly.set($any($event.target).checked)"
+            class="accent-red-500 cursor-pointer disabled:cursor-not-allowed" />เฉพาะที่บันทึก</label>
+      </div>
       }
 
       <p role="status" class="mb-4 text-[11px] text-amber-200/70">{{ status() }}</p>
 
       @if (activeTab() === 'Discover') {
-        <div
-          class="mb-4 flex items-center justify-between border-b border-white/[.06] pb-3 text-[10px] text-stone-600"
-        >
-          <span>{{ visibleBuilds().length }} BUILDS</span
-          ><span>{{
-            activeTab() === 'Discover'
-              ? 'ตัวอย่าง Build · ข้อมูลและราคาเพื่อสาธิต'
-              : 'ฉบับร่างชั่วคราว · ยังไม่บันทึกลงบัญชี'
+      <div class="mb-4 flex items-center justify-between border-b border-white/[.06] pb-3 text-[10px] text-stone-600">
+        <span>{{ visibleBuilds().length }} BUILDS</span><span>{{
+          activeTab() === 'Discover'
+          ? 'ตัวอย่าง Build · ข้อมูลและราคาเพื่อสาธิต'
+          : 'ฉบับร่างชั่วคราว · ยังไม่บันทึกลงบัญชี'
           }}</span>
+      </div>
+      <div class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        @for (build of visibleBuilds(); track build.id) {
+        <app-build-card [build]="build" [saved]="saved().includes(build.id)" (save)="toggleSaved($event)"
+          (details)="showDetails($event)" (copy)="openCreate($event)" />
+        } @empty {
+        <div class="col-span-full rounded-lg border border-dashed border-white/10 px-5 py-20 text-center">
+          <app-icon name="builds" class="!size-8 text-stone-600" />
+          <h2 class="mt-4 text-lg">ยังไม่มี Build ในรายการนี้</h2>
+          <p class="mt-2 text-sm text-stone-500">ลองเปลี่ยนคำค้นหาหรือสร้าง Build แรกของคุณ</p>
+          <button type="button" (click)="openCreate()"
+            class="mt-5 rounded-lg bg-[#ce281a] px-5 py-3 text-xs cursor-pointer disabled:cursor-not-allowed">
+            Create Build
+          </button>
         </div>
-        <div class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          @for (build of visibleBuilds(); track build.id) {
-            <app-build-card
-              [build]="build"
-              [saved]="saved().includes(build.id)"
-              (save)="toggleSaved($event)"
-              (details)="showDetails($event)"
-              (copy)="openCreate($event)"
-            />
-          } @empty {
-            <div
-              class="col-span-full rounded-xl border border-dashed border-white/10 px-5 py-20 text-center"
-            >
-              <app-icon name="builds" class="!size-8 text-stone-600" />
-              <h2 class="mt-4 text-lg">ยังไม่มี Build ในรายการนี้</h2>
-              <p class="mt-2 text-sm text-stone-500">ลองเปลี่ยนคำค้นหาหรือสร้าง Build แรกของคุณ</p>
-              <button
-                type="button"
-                (click)="openCreate()"
-                class="mt-5 rounded-md bg-[#ce281a] px-5 py-3 text-xs cursor-pointer disabled:cursor-not-allowed"
-              >
-                Create Build
-              </button>
-            </div>
-          }
-        </div>
+        }
+      </div>
       }
 
       @if (activeTab() === 'My Builds') {
-        <app-my-builds
-          [createRequest]="createRequest()"
-          [sourceCarId]="sourceCarId()"
-          (headingChange)="onBuildHeading($event)"
-        />
+      <app-my-builds [createRequest]="createRequest()" [sourceCarId]="sourceCarId()"
+        (headingChange)="onBuildHeading($event)" />
       }
 
       @if (activeTab() === 'Catalog') {
-        <app-catalog />
+      <app-catalog />
       }
 
       @if (activeTab() === 'Compare') {
-        <app-compare />
+      <app-compare />
+      }
+      @if (activeTab() === 'Profile') {
+      <app-profile />
       }
     </section>
   </div>
 
-  <dialog
-    aria-labelledby="workspace-modal-title"
-    #dialog
-    class="workspace-dialog fixed inset-0 m-auto w-[calc(100%_-_32px)] max-w-lg rounded-2xl border border-white/15 bg-[#171717] p-0 text-stone-100"
-    (click)="$event.target === dialog && close()"
-  >
+  <dialog aria-labelledby="workspace-modal-title" #dialog
+    class="workspace-dialog fixed inset-0 m-auto w-[calc(100%_-_32px)] max-w-lg rounded-lg border border-white/15 bg-[#171717] p-0 text-stone-100"
+    (click)="$event.target === dialog && close()">
     <div class="p-6">
       <div class="mb-5 flex items-center justify-between gap-4">
-        <h2
-          id="workspace-modal-title"
-          tabindex="-1"
-          autofocus
-          class="font-[family-name:var(--font-display)] text-sm outline-none"
-        >
+        <h2 id="workspace-modal-title" tabindex="-1" autofocus
+          class="font-[family-name:var(--font-display)] text-sm outline-none">
           {{ modal() === 'details' ? 'Build details' : 'Notifications' }}
         </h2>
-        <button
-          type="button"
-          aria-label="ปิดหน้าต่าง"
-          (click)="close()"
-          class="flex size-8 items-center justify-center rounded-full hover:bg-white/10 cursor-pointer disabled:cursor-not-allowed"
-        >
+        <button type="button" aria-label="ปิดหน้าต่าง" (click)="close()"
+          class="flex size-8 items-center justify-center rounded-full hover:bg-white/10 cursor-pointer disabled:cursor-not-allowed">
           <app-icon name="close" />
         </button>
       </div>
       @if (modal() === 'notifications') {
-        <p class="py-10 text-center text-sm text-stone-400">
-          ยังไม่มีการแจ้งเตือน<br /><span class="text-xs text-stone-600"
-            >เข้าสู่ระบบเพื่อรับการแจ้งเตือนของคุณ</span
-          >
-        </p>
+      <p class="py-10 text-center text-sm text-stone-400">
+        ยังไม่มีการแจ้งเตือน<br /><span class="text-xs text-stone-600">เข้าสู่ระบบเพื่อรับการแจ้งเตือนของคุณ</span>
+      </p>
       }
       @if (modal() === 'details') {
-        @if (selected(); as build) {
-          <img
-            [src]="build.image"
-            [alt]="build.car"
-            width="1280"
-            height="960"
-            class="aspect-[1.9] w-full rounded-lg bg-[radial-gradient(ellipse,#444,#111)] object-cover"
-          />
-          <h3 class="mt-5 text-xl">{{ build.title }}</h3>
-          <p class="mt-2 text-xs text-stone-500">
-            {{ build.car }} · {{ build.category }} · by {{ build.author }}
-          </p>
-          <ul class="my-5 space-y-2 text-sm text-stone-300">
-            @for (part of build.parts; track part) {
-              <li class="border-b border-white/5 pb-2">{{ part }}</li>
-            }
-          </ul>
-          <p class="text-lg text-red-400">
-            ฿{{ build.budget | number }}
-            <span class="text-[10px] text-stone-500">งบประมาณตัวอย่าง ไม่รวมค่าแรง</span>
-          </p>
-          <p class="my-4 text-[11px] leading-relaxed text-stone-500">
-            รายการสาธิต ยังไม่มีข้อมูลความเข้ากันได้หรือสมรรถนะ และภาพยังไม่แสดงการเปลี่ยนชิ้นส่วน
-          </p>
-          <div class="flex flex-wrap gap-3">
-            <button
-              type="button"
-              (click)="openCreate(build)"
-              class="rounded-md bg-[#ce281a] px-4 py-3 text-xs cursor-pointer disabled:cursor-not-allowed"
-            >
-              ใช้เป็นต้นแบบ Build
-            </button>
-          </div>
+      @if (selected(); as build) {
+      <img [src]="build.image" [alt]="build.car" width="1280" height="960"
+        class="aspect-[1.9] w-full rounded-lg bg-[radial-gradient(ellipse,#444,#111)] object-cover" />
+      <h3 class="mt-5 text-xl">{{ build.title }}</h3>
+      <p class="mt-2 text-xs text-stone-500">
+        {{ build.car }} · {{ build.category }} · by {{ build.author }}
+      </p>
+      <ul class="my-5 space-y-2 text-sm text-stone-300">
+        @for (part of build.parts; track part) {
+        <li class="border-b border-white/5 pb-2">{{ part }}</li>
         }
+      </ul>
+      <p class="text-lg text-red-400">
+        ฿{{ build.budget | number }}
+        <span class="text-[10px] text-stone-500">งบประมาณตัวอย่าง ไม่รวมค่าแรง</span>
+      </p>
+      <p class="my-4 text-[11px] leading-relaxed text-stone-500">
+        รายการสาธิต ยังไม่มีข้อมูลความเข้ากันได้หรือสมรรถนะ และภาพยังไม่แสดงการเปลี่ยนชิ้นส่วน
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <button type="button" (click)="openCreate(build)"
+          class="rounded-lg bg-[#ce281a] px-4 py-3 text-xs cursor-pointer disabled:cursor-not-allowed">
+          ใช้เป็นต้นแบบ Build
+        </button>
+      </div>
+      }
       }
     </div>
   </dialog>

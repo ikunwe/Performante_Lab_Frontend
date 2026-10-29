@@ -17,7 +17,7 @@ import { mountSpecularButton } from '../../react-bits/specular-button/specular-b
   styleUrl: './start-button.css',
   host: {
     class:
-      'relative isolate inline-flex items-center justify-center min-h-12 px-[26px] py-4 border-0 rounded-xl cursor-pointer disabled:cursor-not-allowed',
+      'relative isolate inline-flex items-center justify-center min-h-12 px-[26px] py-4 border-0 rounded-lg cursor-pointer disabled:cursor-not-allowed',
     '[class.start-button--light]': "variant() === 'light'",
     '[class.start-button--red]': "variant() === 'red'",
   },

@@ -3,10 +3,17 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Discover } from './discover';
 import { showcaseBuilds } from './discover.data';
+import { AUTH_CLIENT } from '../../core/auth/auth-client';
 
 describe('Discover workspace', () => {
   beforeEach(() =>
-    TestBed.configureTestingModule({ imports: [Discover], providers: [provideRouter([])] }),
+    TestBed.configureTestingModule({
+      imports: [Discover],
+      providers: [
+        provideRouter([{ path: 'login', component: Discover }]),
+        { provide: AUTH_CLIENT, useValue: async () => null },
+      ],
+    }),
   );
 
   it('filters builds by search, category and saved state', () => {
@@ -26,8 +33,8 @@ describe('Discover workspace', () => {
     const page = TestBed.createComponent(Discover).componentInstance;
     page.query.set('Track');
     page.category.set('Show');
-    page.switchTab('My Builds');
-    expect(page.activeTab()).toBe('My Builds');
+    page.switchTab('Catalog');
+    expect(page.activeTab()).toBe('Catalog');
     expect(page.query()).toBe('');
     expect(page.category()).toBe('All');
     page.switchTab('Discover');

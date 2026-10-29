@@ -24,6 +24,11 @@ import {
   faLock,
   faEye,
   faEyeSlash,
+  faChevronDown,
+  faArrowRightFromBracket,
+  faCheck,
+  faExclamation,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 
@@ -51,6 +56,11 @@ const icons: Record<string, IconDefinition> = {
   eye: faEye,
   'eye-off': faEyeSlash,
   google: faGoogle,
+  'chevron-down': faChevronDown,
+  logout: faArrowRightFromBracket,
+  check: faCheck,
+  exclamation: faExclamation,
+  spinner: faSpinner,
 };
 
 @Component({

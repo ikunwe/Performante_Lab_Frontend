@@ -1,5 +1,5 @@
 <article
-  class="group flex h-full flex-col overflow-hidden rounded-xl border border-white/[.06] bg-[#171717] transition-colors hover:border-white/20"
+  class="group flex h-full flex-col overflow-hidden rounded-lg border border-white/[.06] bg-[#171717] transition-colors hover:border-white/20"
 >
   <button
     type="button"
@@ -16,7 +16,7 @@
       class="h-full w-full object-cover"
     />
     <span
-      class="absolute left-3 top-3 rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[8px] tracking-widest text-white/80 backdrop-blur"
+      class="absolute left-3 top-3 rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[8px] tracking-widest text-white/80 backdrop-blur"
       >{{ build().category.toUpperCase() }}</span
     >
     <span
@@ -32,7 +32,7 @@
       <span class="min-w-0 flex-1 truncate text-[10px] text-stone-400">{{ build().author }}</span>
       <button
         type="button"
-        class="flex size-7 items-center justify-center rounded-md text-stone-500 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 cursor-pointer disabled:cursor-not-allowed"
+        class="flex size-7 items-center justify-center rounded-lg text-stone-500 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 cursor-pointer disabled:cursor-not-allowed"
         [class.text-red-400]="saved()"
         [attr.aria-pressed]="saved()"
         [attr.aria-label]="saved() ? 'เลิกบันทึก ' + build().title : 'บันทึก ' + build().title"
@@ -51,7 +51,7 @@
     </div>
     <button
       type="button"
-      class="flex min-h-9 items-center justify-between rounded-md bg-[#ce281a] px-3 text-[9px] text-white transition-colors hover:bg-[#ef402b] focus-visible:outline-2 focus-visible:outline-red-300 cursor-pointer disabled:cursor-not-allowed"
+      class="flex min-h-9 items-center justify-between rounded-lg bg-[#ce281a] px-3 text-[9px] text-white transition-colors hover:bg-[#ef402b] focus-visible:outline-2 focus-visible:outline-red-300 cursor-pointer disabled:cursor-not-allowed"
       (click)="details.emit(build())"
     >
       <span class="font-[family-name:var(--font-display)]">SEE DETAILS</span

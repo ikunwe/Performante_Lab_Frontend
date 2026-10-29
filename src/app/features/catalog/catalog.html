@@ -44,7 +44,7 @@
 @if (filtersOpen()) {
   <div
     id="catalog-filters"
-    class="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#151515] p-3"
+    class="mb-6 flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#151515] p-3"
   >
     @if (selectedCar()) {
       <label for="part-category" class="text-[11px] text-stone-400">หมวดพาร์ต</label>
@@ -52,7 +52,7 @@
         id="part-category"
         [value]="category()"
         (change)="category.set($any($event.target).value)"
-        class="min-h-9 cursor-pointer rounded-md border border-white/15 bg-[#111] px-3 text-[11px]"
+        class="min-h-9 cursor-pointer rounded-lg border border-white/15 bg-[#111] px-3 text-[11px]"
       >
         <option value="All">ทุกหมวด</option>
         @for (item of categories; track item.id) {
@@ -65,7 +65,7 @@
         id="brand-filter"
         [value]="brand()"
         (change)="brand.set($any($event.target).value)"
-        class="min-h-9 cursor-pointer rounded-md border border-white/15 bg-[#111] px-3 text-[11px]"
+        class="min-h-9 cursor-pointer rounded-lg border border-white/15 bg-[#111] px-3 text-[11px]"
       >
         <option value="All">ทุกยี่ห้อ</option>
         @for (item of brands; track item) {
@@ -98,7 +98,7 @@
       />
       <span class="text-[10px] text-stone-300">{{ car.brand }}</span>
     </div>
-    <div class="overflow-hidden rounded-xl border border-white/10 bg-[#171717]">
+    <div class="overflow-hidden rounded-lg border border-white/10 bg-[#171717]">
       <div
         class="relative flex aspect-[3] items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_50%,#424242,#111_75%)] sm:aspect-[3.5]"
       >
@@ -110,7 +110,7 @@
           class="h-full w-full object-cover sm:w-[75%]"
         />
         <span
-          class="absolute left-4 top-4 rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[8px] tracking-widest text-stone-300 backdrop-blur"
+          class="absolute left-4 top-4 rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[8px] tracking-widest text-stone-300 backdrop-blur"
           >MODEL PREVIEW</span
         >
       </div>
@@ -141,7 +141,7 @@
     @for (section of sections(); track section.id) {
       <section class="mb-8" [attr.aria-labelledby]="'category-' + section.id">
         <div
-          class="mb-3 flex items-center justify-between rounded-md border-l-2 border-[#e83d27] bg-[#171717] px-4 py-3"
+          class="mb-3 flex items-center justify-between rounded-lg border-l-2 border-[#e83d27] bg-[#171717] px-4 py-3"
         >
           <h3
             [id]="'category-' + section.id"
@@ -180,7 +180,7 @@
                     "
                   />
                   <span
-                    class="absolute left-2 top-2 rounded bg-black/50 px-1.5 py-1 text-[7px] tracking-widest text-stone-400"
+                    class="absolute left-2 top-2 rounded-lg bg-black/50 px-1.5 py-1 text-[7px] tracking-widest text-stone-400"
                     >CONCEPT</span
                   >
                 }
@@ -206,7 +206,7 @@
         </div>
       </section>
     } @empty {
-      <div class="rounded-xl border border-dashed border-white/10 py-16 text-center">
+      <div class="rounded-lg border border-dashed border-white/10 py-16 text-center">
         <app-icon name="search" class="!size-7 text-stone-600" />
         <h3 class="mt-3 text-sm">ไม่พบพาร์ตที่ค้นหา</h3>
         <button
@@ -281,7 +281,7 @@
       </div>
     </section>
   } @empty {
-    <div class="rounded-xl border border-dashed border-white/10 py-20 text-center">
+    <div class="rounded-lg border border-dashed border-white/10 py-20 text-center">
       <app-icon name="search" class="!size-8 text-stone-600" />
       <h2 class="mt-4 text-sm">ไม่พบยี่ห้อหรือรุ่นรถ</h2>
       <button

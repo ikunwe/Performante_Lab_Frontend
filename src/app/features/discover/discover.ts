@@ -17,15 +17,29 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Icon } from '../../shared/ui/icon/icon';
 import { BuildCard } from './components/build-card/build-card';
 import { ShowcaseBuild, showcaseBuilds } from './discover.data';
+import { AuthService } from '../../core/auth/auth.service';
+import { AccountMenu } from '../../shared/ui/account-menu/account-menu';
+import { Profile } from '../profile/profile';
 
-type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds';
+type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile';
 @Component({
   selector: 'app-discover',
-  imports: [RouterLink, Icon, BuildCard, DecimalPipe, Catalog, Compare, MyBuilds],
+  imports: [
+    RouterLink,
+    Icon,
+    BuildCard,
+    DecimalPipe,
+    Catalog,
+    Compare,
+    MyBuilds,
+    AccountMenu,
+    Profile,
+  ],
   templateUrl: './discover.html',
   styleUrl: './discover.css',
 })
 export class Discover {
+  readonly auth = inject(AuthService);
   private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -65,7 +79,17 @@ export class Discover {
     );
   });
 
+  constructor() {
+    afterNextRender(() => {
+      void this.auth.initialize();
+    });
+  }
+
   switchTab(tab: Tab): void {
+    if (tab === 'My Builds' && !this.auth.user()) {
+      void this.router.navigate(['/login'], { queryParams: { next: '/my-builds' } });
+      return;
+    }
     const workspace = this.buildsWorkspace();
     if (this.activeTab() === 'My Builds' && workspace?.editing()) {
       if (tab === 'My Builds') workspace.requestBack();
@@ -78,12 +102,17 @@ export class Discover {
     this.createRequest.set(0);
     this.sourceCarId.set(null);
     this.buildHeading.set('My Builds');
-    if (this.route.snapshot.data['builder']) {
+    if (
+      this.route.snapshot.data['builder'] ||
+      this.route.snapshot.data['tab'] === 'Profile' ||
+      tab === 'Profile'
+    ) {
       const urls: Record<Tab, string> = {
         Discover: '/discover',
         Catalog: '/catalog',
         Compare: '/compare',
         'My Builds': '/my-builds',
+        Profile: '/profile',
       };
       void this.router.navigateByUrl(urls[tab]);
     }
@@ -108,6 +137,19 @@ export class Discover {
     const car = catalogCars.find((car) => car.name === build?.car);
     void this.router.navigate(['/build/new'], { queryParams: car ? { car: car.id } : {} });
   }
+
+  signOut(): void {
+    const leave = async () => {
+      if (await this.auth.signOut()) await this.router.navigateByUrl('/login');
+      else this.status.set(this.auth.error());
+    };
+    const workspace = this.buildsWorkspace();
+    if (workspace?.editing())
+      workspace.requestLeave(() => {
+        void leave();
+      });
+    else void leave();
+  }
   onBuildHeading(heading: string): void {
     this.buildHeading.set(heading);
     if (heading === 'My Builds' && this.route.snapshot.data['builder']) {
@@ -117,6 +159,12 @@ export class Discover {
   notifications(): void {
     this.modal.set('notifications');
     this.openModal();
+  }
+  showProfile(): void {
+    const workspace = this.buildsWorkspace();
+    const open = () => this.applyTab('Profile');
+    if (workspace?.editing()) workspace.requestLeave(open);
+    else open();
   }
   private openModal(): void {
     if (this.dialog().nativeElement.open) return;

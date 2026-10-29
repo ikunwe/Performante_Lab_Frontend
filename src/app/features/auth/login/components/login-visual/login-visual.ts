@@ -6,4 +6,4 @@ import { RouterLink } from '@angular/router';
   templateUrl: './login-visual.html',
   styleUrl: './login-visual.css',
 })
-export class LoginVisual {}
+export class LoginVisual { }

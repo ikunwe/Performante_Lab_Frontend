@@ -1,7 +1,7 @@
 :host {
   position: relative;
   min-height: 100%;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   isolation: isolate;
   background: #200600;

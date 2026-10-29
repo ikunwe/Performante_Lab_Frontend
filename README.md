@@ -182,3 +182,7 @@ UI อยู่ใน features/compare/ ใช้ Tailwind และ Font Awesom
 - เมื่อเลือกชุดเต็ม พาร์ตแยกถูก disabled และใช้ cursor-not-allowed; ถอดชุดเต็มแล้วเลือกแยกได้อีกครั้ง
 - BuildsStore ตรวจซ้ำก่อน Save เพื่อไม่ให้บันทึกชุดเต็มผสมพาร์ตแยก
 - Build เก่าที่เคยเลือกผสมยังไม่ถูกเขียนทับอัตโนมัติ เมื่อเปิดแก้ไขจะใช้เฉพาะชุดเต็มและแจ้งให้ตรวจสอบก่อน Save
+
+## Google Login ผ่าน Supabase
+
+ระบบ Login เปลี่ยนจาก UI preview เป็น Supabase OAuth แล้ว ดูขั้นตอน env, Supabase และ Google Cloud Console ที่ [docs/google-login-setup.md](docs/google-login-setup.md) โดยใช้ npm start/npm run build เพื่อสร้าง browser config อัตโนมัติ ปุ่ม Sign In เดิมไม่ข้าม auth แล้ว My Builds/Create Build ต้องเข้าสู่ระบบก่อน ส่วน Builds ยังเก็บ localStorage ตามเบราว์เซอร์เช่นเดิม

@@ -1,14 +1,36 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
+    path: 'forgot-password',
+    title: 'Forgot Password | Performante Lab',
+    loadComponent: () =>
+      import('./features/auth/recovery/forgot-password').then((m) => m.ForgotPassword),
+  },
+  {
+    path: 'reset-password',
+    title: 'Reset Password | Performante Lab',
+    loadComponent: () =>
+      import('./features/auth/recovery/reset-password').then((m) => m.ResetPassword),
+  },
+  {
+    path: 'profile',
+    canActivate: [authGuard],
+    title: 'Profile | Performante Lab',
+    data: { tab: 'Profile' },
+    loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
+  },
+  {
     path: 'my-builds',
+    canActivate: [authGuard],
     title: 'My Builds | Performante Lab',
     data: { tab: 'My Builds' },
     loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
   },
   {
     path: 'build/new',
+    canActivate: [authGuard],
     title: 'Create Build | Performante Lab',
     data: { tab: 'My Builds', builder: true },
     loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
@@ -29,6 +51,12 @@ export const routes: Routes = [
     path: 'discover',
     title: 'Discover | Performante Lab',
     loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
+  },
+  {
+    path: 'auth/callback',
+    title: 'Signing in | Performante Lab',
+    loadComponent: () =>
+      import('./features/auth/callback/auth-callback').then((m) => m.AuthCallback),
   },
   {
     path: 'login',

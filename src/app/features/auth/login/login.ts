@@ -1,8 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { LoginVisual } from './components/login-visual/login-visual';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/auth/auth.service';
+import { loginDestination } from '../../../core/auth/auth-client';
 import { StartButton } from '../../../shared/ui/start-button/start-button';
 
 @Component({
@@ -13,6 +15,10 @@ import { StartButton } from '../../../shared/ui/start-button/start-button';
 })
 export class Login {
   private readonly router = inject(Router);
+  readonly auth = inject(AuthService);
+  private readonly next = loginDestination(
+    inject(ActivatedRoute).snapshot.queryParamMap.get('next'),
+  );
   readonly showPassword = signal(false);
   readonly message = signal('');
   readonly form = new FormGroup({
@@ -20,17 +26,38 @@ export class Login {
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
 
-  submit(): void {
-    this.message.set('');
-    // Temporary UI preview: navigate without creating an authenticated session.
-    void this.router.navigateByUrl('/discover');
+  constructor() {
+    afterNextRender(() => {
+      void this.auth.initialize();
+    });
+    effect(() => {
+      if (this.auth.ready() && this.auth.user()) {
+        void this.router.navigateByUrl(this.next, { replaceUrl: true });
+      }
+    });
   }
 
-  googleSignIn(): void {
-    this.message.set('การเข้าสู่ระบบด้วย Google ยังไม่เปิดใช้งาน');
+  async submit(): Promise<void> {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    this.message.set('');
+    const result = await this.auth.signInWithPassword(
+      this.form.controls.username.value,
+      this.form.controls.password.value,
+    );
+    if (!result.ok) this.message.set(result.error);
+    else {
+      this.form.controls.password.reset();
+      await this.router.navigateByUrl(this.next, { replaceUrl: true });
+    }
+  }
+
+  async googleSignIn(): Promise<void> {
+    this.message.set('');
+    await this.auth.signInWithGoogle(this.next);
   }
 
   forgotPassword(): void {
-    this.message.set('ระบบกู้คืนรหัสผ่านยังไม่เปิดใช้งาน');
+    void this.router.navigateByUrl('/forgot-password');
   }
 }

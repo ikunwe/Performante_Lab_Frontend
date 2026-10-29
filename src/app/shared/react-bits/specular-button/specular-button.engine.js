@@ -168,7 +168,7 @@ const link = (gl) => {
 export function mountSpecularButton(button, canvas, options) {
   const settingsRef = {
     current: {
-      radius: 12,
+      radius: 8,
       lineColor: options.lineColor,
       baseColor: '#525252',
       intensity: 1.25,

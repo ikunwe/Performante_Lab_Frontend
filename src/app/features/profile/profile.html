@@ -1,0 +1,256 @@
+<div class="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+  <aside class="rounded-lg border border-white/10 bg-[#151515] p-6 xl:sticky xl:top-[104px]">
+    <p class="text-[9px] tracking-[.2em] text-stone-500">YOUR DRIVER ID</p>
+    <div class="mt-7 flex flex-col items-center text-center">
+      <app-account-avatar
+        [url]="auth.avatarUrl()"
+        [name]="fullName()"
+        [showStatus]="false"
+        class="!size-24"
+      />
+      <h2 class="mt-5 break-words text-xl text-stone-100">{{ fullName() }}</h2>
+      <p class="mt-2 break-all text-xs text-stone-500">{{ auth.user()?.email }}</p>
+      <span
+        class="mt-5 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px]"
+        [class.border-sky-400/20]="auth.accountComplete() === true"
+        [class.bg-sky-400/5]="auth.accountComplete() === true"
+        [class.text-sky-400]="auth.accountComplete() === true"
+        [class.border-amber-400/20]="auth.accountComplete() !== true"
+        [class.bg-amber-400/5]="auth.accountComplete() !== true"
+        [class.text-amber-300]="auth.accountComplete() !== true"
+      >
+        <app-icon
+          [name]="auth.accountComplete() === true ? 'check' : 'exclamation'"
+          class="!size-3"
+        />
+        {{
+          auth.accountComplete() === true
+            ? 'ตั้งค่าบัญชีครบแล้ว'
+            : auth.accountComplete() === false
+              ? 'ตั้งค่าบัญชีให้ครบเพื่อใช้รหัสผ่าน'
+              : loading()
+                ? 'กำลังตรวจสอบสถานะบัญชี'
+                : 'ยังตรวจสอบสถานะไม่ได้'
+        }}
+      </span>
+    </div>
+    <dl class="mt-7 space-y-4 border-t border-white/10 pt-5 text-xs">
+      <div>
+        <dt class="text-stone-500">Username</dt>
+        <dd class="mt-1 text-stone-200">{{ auth.account()?.username || 'ยังไม่ได้ตั้งค่า' }}</dd>
+      </div>
+      <div>
+        <dt class="text-stone-500">บัญชีที่เชื่อมต่อ</dt>
+        <dd class="mt-1 text-stone-200">{{ providers() || '—' }}</dd>
+      </div>
+      <div>
+        <dt class="text-stone-500">เข้าร่วมเมื่อ</dt>
+        <dd class="mt-1 text-stone-200">
+          {{ (auth.user()?.created_at | date: 'dd MMM yyyy') || '—' }}
+        </dd>
+      </div>
+    </dl>
+  </aside>
+
+  <div class="min-w-0 space-y-6">
+    @if (auth.accountError()) {
+      <div
+        role="status"
+        class="rounded-lg border border-amber-400/20 bg-amber-400/5 p-4 text-xs leading-relaxed text-amber-200"
+      >
+        <p>{{ auth.accountError() }}</p>
+        <button
+          type="button"
+          (click)="reload()"
+          [disabled]="loading()"
+          [attr.aria-busy]="loading()"
+          class="mt-3 min-h-9 cursor-pointer rounded-lg border border-amber-400/20 px-3 disabled:cursor-not-allowed"
+        >
+          @if (loading()) {
+            <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />
+          }
+          {{ loading() ? 'กำลังโหลด…' : 'ลองอีกครั้ง' }}
+        </button>
+      </div>
+    }
+    <section
+      class="rounded-lg border border-white/10 bg-[#151515] p-5 sm:p-7"
+      aria-labelledby="username-title"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="username-title" class="flex items-center gap-3 text-base">
+          <app-icon name="user" class="text-stone-500" />Username
+        </h2>
+        <span
+          class="text-[11px]"
+          [class.text-sky-400]="!!auth.account()?.username"
+          [class.text-amber-300]="!auth.account()?.username"
+          >{{
+            auth.account()
+              ? auth.account()?.username
+                ? 'ตั้งค่าแล้ว'
+                : 'ยังไม่ได้ตั้งค่า'
+              : 'ยังตรวจสอบไม่ได้'
+          }}</span
+        >
+      </div>
+      <p class="mt-3 text-xs leading-relaxed text-stone-500">
+        ชื่อบัญชีของคุณ ใช้เข้าสู่ระบบร่วมกับรหัสผ่านได้ และต้องไม่ซ้ำกับผู้อื่น
+      </p>
+      <form [formGroup]="usernameForm" (ngSubmit)="saveUsername()" class="mt-6">
+        <label for="profile-username" class="block text-xs text-stone-300">Username</label>
+        <input
+          id="profile-username"
+          formControlName="username"
+          autocomplete="username"
+          maxlength="64"
+          spellcheck="false"
+          placeholder="เช่น performante_driver"
+          aria-describedby="username-help"
+          class="mt-2 min-h-12 w-full rounded-lg border border-white/10 bg-[#0e0e0e] px-4 text-sm outline-none placeholder:text-stone-700 focus:border-red-400/60"
+        />
+        <p id="username-help" class="mt-2 text-[11px] text-stone-600">
+          เริ่มต้นจากชื่อ Google ของคุณ เปลี่ยนได้ 1–64 ตัวอักษร รองรับภาษาไทยและเว้นวรรค ห้ามใช้ @
+        </p>
+        @if (usernameForm.controls.username.touched && usernameForm.invalid) {
+          <p class="mt-2 text-xs text-red-400">กรุณากรอก Username ให้ตรงตามรูปแบบ</p>
+        }
+        <button
+          type="submit"
+          [disabled]="!!saving() || loading() || !auth.account()"
+          [attr.aria-busy]="saving() === 'username'"
+          class="mt-5 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-[#ce281a] px-5 text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <app-icon
+            [name]="saving() === 'username' ? 'spinner' : 'builds'"
+            class="!size-3 motion-reduce:animate-none"
+            [class.animate-spin]="saving() === 'username'"
+          />{{ saving() === 'username' ? 'กำลังบันทึก…' : 'บันทึก Username' }}
+        </button>
+        @if (usernameMessage()) {
+          <p
+            role="status"
+            class="mt-3 text-xs"
+            [class.text-red-400]="usernameFailed()"
+            [class.text-sky-400]="!usernameFailed()"
+          >
+            {{ usernameMessage() }}
+          </p>
+        }
+      </form>
+    </section>
+
+    <section
+      class="rounded-lg border border-white/10 bg-[#151515] p-5 sm:p-7"
+      aria-labelledby="password-title"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="password-title" class="flex items-center gap-3 text-base">
+          <app-icon name="lock" class="text-stone-500" />{{
+            auth.account()?.hasPassword ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งค่ารหัสผ่าน'
+          }}
+        </h2>
+        <span
+          class="text-[11px]"
+          [class.text-sky-400]="auth.account()?.hasPassword"
+          [class.text-amber-300]="!auth.account()?.hasPassword"
+          >{{
+            auth.account()
+              ? auth.account()?.hasPassword
+                ? 'ตั้งค่าแล้ว'
+                : 'ยังไม่ได้ตั้งค่า'
+              : 'ยังตรวจสอบไม่ได้'
+          }}</span
+        >
+      </div>
+      <p class="mt-3 text-xs leading-relaxed text-stone-500">
+        สร้างรหัสผ่านสำหรับ Performante Lab บัญชีเดิม คุณยังเข้าสู่ระบบผ่าน Google ได้ตามปกติ
+      </p>
+      <form [formGroup]="passwordForm" (ngSubmit)="savePassword()" class="mt-6 space-y-5">
+        <input
+          type="text"
+          autocomplete="username"
+          [value]="auth.user()?.email"
+          class="sr-only"
+          tabindex="-1"
+          aria-label="บัญชีสำหรับรหัสผ่าน"
+          readonly
+        />
+        <div>
+          <label for="profile-password" class="block text-xs text-stone-300">รหัสผ่านใหม่</label>
+          <div
+            class="mt-2 flex min-h-12 items-center rounded-lg border border-white/10 bg-[#0e0e0e] focus-within:border-red-400/60"
+          >
+            <input
+              id="profile-password"
+              formControlName="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              autocomplete="new-password"
+              maxlength="128"
+              placeholder="อย่างน้อย 8 ตัวอักษร"
+              aria-describedby="password-help"
+              class="min-h-12 min-w-0 flex-1 bg-transparent px-4 text-sm outline-none placeholder:text-stone-700"
+            />
+            <button
+              type="button"
+              (click)="showPassword.set(!showPassword())"
+              [attr.aria-label]="showPassword() ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'"
+              [attr.aria-pressed]="showPassword()"
+              class="flex size-11 cursor-pointer items-center justify-center text-stone-500 hover:text-white"
+            >
+              <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" class="!size-4" />
+            </button>
+          </div>
+          <p id="password-help" class="mt-2 text-[11px] text-stone-600">
+            8–128 ตัวอักษร ควรใช้รหัสผ่านที่ไม่ซ้ำกับเว็บไซต์อื่น
+          </p>
+          @if (passwordForm.controls.password.touched && passwordForm.controls.password.invalid) {
+            <p class="mt-2 text-xs text-red-400">รหัสผ่านต้องยาว 8–128 ตัวอักษร</p>
+          }
+        </div>
+        <div>
+          <label for="profile-confirm-password" class="block text-xs text-stone-300"
+            >ยืนยันรหัสผ่านใหม่</label
+          >
+          <input
+            id="profile-confirm-password"
+            formControlName="confirmPassword"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="new-password"
+            maxlength="128"
+            placeholder="กรอกรหัสผ่านอีกครั้ง"
+            class="mt-2 min-h-12 w-full rounded-lg border border-white/10 bg-[#0e0e0e] px-4 text-sm outline-none placeholder:text-stone-700 focus:border-red-400/60"
+          />
+          @if (
+            passwordForm.controls.confirmPassword.touched &&
+            (passwordForm.hasError('mismatch') || passwordForm.controls.confirmPassword.invalid)
+          ) {
+            <p class="mt-2 text-xs text-red-400">รหัสผ่านทั้งสองช่องต้องตรงกัน</p>
+          }
+        </div>
+        <button
+          type="submit"
+          [disabled]="!!saving() || loading() || !auth.account()"
+          [attr.aria-busy]="saving() === 'password'"
+          class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-[#ce281a] px-5 text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <app-icon
+            [name]="saving() === 'password' ? 'spinner' : 'lock'"
+            class="!size-3 motion-reduce:animate-none"
+            [class.animate-spin]="saving() === 'password'"
+          />{{ saving() === 'password' ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่าน' }}
+        </button>
+        @if (passwordMessage()) {
+          <p
+            role="status"
+            class="text-xs leading-relaxed"
+            [class.text-red-400]="passwordFailed()"
+            [class.text-sky-400]="!passwordFailed()"
+          >
+            {{ passwordMessage() }}
+          </p>
+        }
+      </form>
+    </section>
+  </div>
+</div>
