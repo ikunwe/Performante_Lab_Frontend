@@ -211,6 +211,14 @@ export class AuthService {
     }
   }
 
+  async apiSession(): Promise<{ userId: string; accessToken: string }> {
+    await this.initialize();
+    if (!this.client) throw new Error('AUTH_REQUIRED');
+    const { data, error } = await this.client.auth.getSession();
+    if (error || !data.session) throw new Error('AUTH_REQUIRED');
+    return { userId: data.session.user.id, accessToken: data.session.access_token };
+  }
+
   async refreshAccount(): Promise<void> {
     if (!this.client || !this.user()) return;
     const userId = this.user()!.id;

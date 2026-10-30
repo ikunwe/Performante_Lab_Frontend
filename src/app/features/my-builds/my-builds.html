@@ -1,507 +1,492 @@
 @if (!editing()) {
-  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-    <p class="text-[11px] text-stone-500">Build ของคุณ · บันทึกในเบราว์เซอร์เครื่องนี้</p>
-    <label
-      class="flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-[#151515] px-3"
-      ><app-icon name="search" class="!size-3.5 text-stone-500" /><span class="sr-only"
-        >ค้นหา My Builds</span
-      ><input
-        type="search"
-        placeholder="Search my builds..."
-        [value]="query()"
-        (input)="query.set($any($event.target).value)"
-        class="min-w-0 bg-transparent text-xs outline-none"
-    /></label>
-  </div>
-  @if (store.error()) {
-    <p role="alert" class="mb-5 text-xs text-amber-200/70">{{ store.error() }}</p>
-  }
-  <p role="status" class="mb-4 text-xs text-stone-400">{{ message() }}</p>
-  @if (!store.loaded()) {
-    <p class="py-8 text-xs text-stone-500">กำลังโหลด Build...</p>
-  }
-  <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-    @for (build of visibleBuilds(); track build.id) {
-      <article class="overflow-hidden rounded-lg border border-white/10 bg-[#171717]">
-        <button
-          type="button"
-          (click)="editBuild(build)"
-          [attr.aria-label]="'เปิด Build ' + build.name"
-          class="block aspect-[1.7] w-full cursor-pointer bg-[radial-gradient(ellipse,#444,#111)]"
-        >
-          <img
-            [src]="carFor(build)?.image"
-            [alt]="carFor(build)?.name"
-            width="1280"
-            height="960"
-            class="h-full w-full object-cover"
-          />
-        </button>
-        <div class="p-3.5">
-          <h2 class="truncate text-sm">{{ build.name }}</h2>
-          <p class="mt-1 text-[10px] text-stone-500">{{ carFor(build)?.name }}</p>
-          <p class="mt-2 text-[9px] text-stone-600">
-            {{ build.partIds.length }} พาร์ต · {{ build.updatedAt | date: 'dd/MM/yyyy' }}
-          </p>
-          <button
-            type="button"
-            (click)="editBuild(build)"
-            class="mt-4 flex min-h-9 w-full cursor-pointer items-center justify-between rounded-lg bg-[#ce281a] px-3 text-[10px] hover:bg-red-500"
-          >
-            Open Build<app-icon name="arrow" class="!size-3" /></button
-          ><button
-            type="button"
-            (click)="requestDelete(build)"
-            [attr.aria-label]="'ลบ Build ' + build.name"
-            class="mt-2 min-h-8 w-full cursor-pointer text-[10px] text-stone-500 hover:text-red-400"
-          >
-            ลบ Build
-          </button>
-        </div>
-      </article>
-    }
-    <button
-      type="button"
-      (click)="startNew()"
-      aria-label="สร้าง Build ใหม่"
-      class="flex min-h-[240px] cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-white/15 bg-[#151515] text-stone-500 transition-colors hover:border-red-400/50 hover:text-red-400"
-    >
-      <span class="flex size-10 items-center justify-center rounded-full border border-current"
-        ><app-icon name="plus" /></span
-      ><span class="text-xs">Create your next build</span>
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+  <p class="text-[11px] text-stone-500">Build ของคุณ · บันทึกในบัญชีผู้ใช้</p>
+  <label class="flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-[#151515] px-3"><app-icon
+      name="search" class="!size-3.5 text-stone-500" /><span class="sr-only">ค้นหา My Builds</span><input type="search"
+      placeholder="Search my builds..." [value]="query()" (input)="query.set($any($event.target).value)"
+      class="min-w-0 bg-transparent text-xs outline-none" /></label>
+</div>
+@if (store.error()) {
+<p role="alert" class="mb-5 text-xs text-amber-200/70">{{ store.error() }}</p>
+<button type="button" (click)="store.load()" [disabled]="store.loading()" class="mb-4 min-h-9 cursor-pointer rounded-lg border border-white/15 px-4 text-xs disabled:cursor-wait">ลองโหลดอีกครั้ง</button>
+}
+<p role="status" class="mb-4 text-xs text-stone-400">{{ message() }}</p>
+@if (store.loading() || !store.loaded()) {
+<p class="py-8 text-xs text-stone-500">กำลังโหลด Build...</p>
+}
+<div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+  @for (build of visibleBuilds(); track build.id) {
+  <article class="overflow-hidden rounded-lg border border-white/10 bg-[#171717]">
+    <button type="button" (click)="editBuild(build)" [attr.aria-label]="'เปิด Build ' + build.name"
+      class="block aspect-[1.7] w-full cursor-pointer overflow-hidden bg-[radial-gradient(ellipse,#444,#111)]">
+      @if (buildImage(build); as image) { <img [src]="image" [alt]="carFor(build)?.name" width="1280" height="960"
+        class="h-full w-full object-contain object-center p-3" />
+      } @else { <app-icon name="car" class="!size-12 text-stone-600" /> }
     </button>
-  </div>
-  @if (store.loaded() && !visibleBuilds().length) {
-    <p class="mt-5 text-xs text-stone-500">
-      {{
-        query()
-          ? 'ไม่พบ Build ที่ค้นหา ลองเปลี่ยนคำค้นหา'
-          : 'ยังไม่มี Build เริ่มแต่งรถคันแรกของคุณได้เลย'
-      }}
-    </p>
-  }
-} @else {
-  <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-    <button
-      type="button"
-      (click)="requestBack()"
-      class="flex min-h-10 cursor-pointer items-center gap-2 text-xs text-stone-400 hover:text-white"
-    >
-      <app-icon name="back" class="!size-3" />My Builds
-    </button>
-    <div class="flex flex-wrap items-center gap-4">
-      <button
-        type="button"
-        (click)="jumpTo('build-summary')"
-        class="cursor-pointer text-[10px] text-stone-400 hover:text-white"
-      >
-        {{ selectedParts().length }} พาร์ตที่เลือก
-      </button>
-      <span class="text-[10px] text-stone-500">{{
-        dirty()
-          ? 'มีการเปลี่ยนแปลงที่ยังไม่บันทึก'
-          : editingId()
-            ? 'บันทึกแล้ว'
-            : 'เลือกยี่ห้อและรุ่นรถเพื่อเริ่มต้น'
-      }}</span
-      ><button
-        type="button"
-        (click)="requestSave()"
-        [disabled]="!car()"
-        class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-[#ce281a] px-5 text-[10px] hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-      >
-        <app-icon name="builds" class="!size-3.5" />Save Build
+    <div class="p-3.5">
+      <h2 class="truncate text-sm">{{ build.name }}</h2>
+      <p class="mt-1 text-[10px] text-stone-500">{{ carFor(build)?.name }}</p>
+      <p class="mt-2 text-[9px] text-stone-600">
+        {{ build.partIds.length }} พาร์ต · {{ build.updatedAt | date: 'dd/MM/yyyy' }}
+      </p>
+      <button type="button" (click)="editBuild(build)"
+        class="mt-4 flex min-h-9 w-full cursor-pointer items-center justify-between rounded-lg bg-[#ce281a] px-3 text-[10px] hover:bg-red-500">
+        Open Build<app-icon name="arrow" class="!size-3" /></button><button type="button" (click)="requestDelete(build)"
+        [attr.aria-label]="'ลบ Build ' + build.name"
+        class="mt-2 min-h-8 w-full cursor-pointer text-[10px] text-stone-500 hover:text-red-400">
+        ลบ Build
       </button>
     </div>
+  </article>
+  }
+  <button type="button" (click)="startNew()" aria-label="สร้าง Build ใหม่"
+    class="flex min-h-[240px] cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-white/15 bg-[#151515] text-stone-500 transition-colors hover:border-red-400/50 hover:text-red-400">
+    <span class="flex size-10 items-center justify-center rounded-full border border-current"><app-icon
+        name="plus" /></span><span class="text-xs">Create your next build</span>
+  </button>
+</div>
+@if (store.loaded() && !store.loading() && !store.error() && !visibleBuilds().length) {
+<p class="mt-5 text-xs text-stone-500">
+  {{
+  query()
+  ? 'ไม่พบ Build ที่ค้นหา ลองเปลี่ยนคำค้นหา'
+  : 'ยังไม่มี Build เริ่มแต่งรถคันแรกของคุณได้เลย'
+  }}
+</p>
+}
+} @else {
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <button type="button" (click)="requestBack()"
+    class="flex min-h-10 cursor-pointer items-center gap-2 text-xs text-stone-400 hover:text-white">
+    <app-icon name="back" class="!size-3" />My Builds
+  </button>
+  <div class="flex flex-wrap items-center gap-4">
+    <button type="button" (click)="jumpTo('build-summary')"
+      class="cursor-pointer text-[10px] text-stone-400 hover:text-white">
+      {{ selectedParts().length }} พาร์ตที่เลือก
+    </button>
+    <span class="text-[10px] text-stone-500">{{
+      dirty()
+      ? 'มีการเปลี่ยนแปลงที่ยังไม่บันทึก'
+      : editingId()
+      ? 'บันทึกแล้ว'
+      : 'เลือกยี่ห้อและรุ่นรถเพื่อเริ่มต้น'
+      }}</span><button type="button" (click)="requestSave()" [disabled]="!car() || store.saving() || store.deleting()"
+      class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-[#ce281a] px-5 text-[10px] hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-30">
+      <app-icon name="builds" class="!size-3.5" />Save Build
+    </button>
   </div>
-  <p role="status" class="mb-4 text-xs leading-relaxed text-amber-200/70">{{ message() }}</p>
-  <div
-    class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_270px] xl:grid-cols-[minmax(0,1fr)_300px]"
-  >
-    <div class="min-w-0">
-      @if (!car() || section() === 'car') {
-        <section
-          aria-label="เลือกรถต้นแบบ"
-          class="mb-7 rounded-lg border border-white/5 bg-[#131313] p-4"
-        >
-          <div class="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 class="text-base">
-                {{ brand() ? 'เลือกรุ่นรถ · ' + brand() : 'เลือกยี่ห้อรถ' }}
-              </h2>
-              <p class="mt-2 text-xs text-stone-500">
-                เลือกรถที่ชอบ แล้วเลื่อนดูของแต่งแต่ละหมวดด้านล่าง
-              </p>
-            </div>
-            @if (car()) {
-              <button
-                type="button"
-                (click)="section.set('bodykits')"
-                class="min-h-9 cursor-pointer text-xs text-stone-500 hover:text-white"
-              >
-                ยกเลิก
-              </button>
-            }
-          </div>
-          @if (brand()) {
-            <button
-              type="button"
-              (click)="brand.set(null)"
-              class="mb-5 flex min-h-8 cursor-pointer items-center gap-2 text-[11px] text-stone-400 hover:text-white"
-            >
-              <app-icon name="back" class="!size-3" />ทุกยี่ห้อ
-            </button>
-          }
-          <div
-            [class]="brand() ? 'grid grid-cols-2 gap-4 sm:grid-cols-3' : 'grid grid-cols-[repeat(auto-fill,112px)] gap-3'"
-          >
-            @if (!brand()) {
-              @for (item of brands; track item) {
-                <button
-                  type="button"
-                  (click)="brand.set(item)"
-                  [attr.aria-label]="'เลือกยี่ห้อ ' + item"
-                  class="flex size-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-white/10 bg-gradient-to-br from-[#30130f] to-[#151515] p-3 hover:border-red-400/50"
-                >
-                  <img
-                    [src]="logos[item]"
-                    [alt]="'โลโก้ ' + item"
-                    width="48"
-                    height="48"
-                    class="size-12 object-contain"
-                    [class.object-cover]="item === 'Ferrari'"
-                  /><span class="text-[10px]">{{ item }}</span>
-                </button>
-              }
-            } @else {
-              @for (item of brandCars(); track item.id) {
-                <button
-                  type="button"
-                  (click)="chooseCar(item)"
-                  [attr.aria-pressed]="carId() === item.id"
-                  class="cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-[#171717] text-left hover:border-red-400/50"
-                >
-                  <img
-                    [src]="item.image"
-                    [alt]="item.name"
-                    width="1280"
-                    height="960"
-                    class="aspect-[1.5] w-full bg-[radial-gradient(ellipse,#444,#111)] object-cover"
-                  />
-                  <div class="p-3">
-                    <h3 class="text-[11px]">{{ item.name }}</h3>
-                    <p class="mt-2 text-[9px] text-stone-500">{{ item.body }}</p>
-                  </div>
-                </button>
-              }
-            }
-          </div>
-        </section>
-      }
-
-      @if (car(); as currentCar) {
-        <div class="mb-7 overflow-hidden rounded-lg border border-white/10 bg-[#151515]">
-          <div
-            class="relative aspect-[2.8] overflow-hidden bg-[radial-gradient(ellipse,#444,#111_75%)]"
-          >
-            <img
-              [src]="currentCar.image"
-              [alt]="currentCar.name"
-              width="1280"
-              height="960"
-              class="h-full w-full object-cover"
-            /><span
-              class="absolute left-3 top-3 rounded-lg bg-black/40 px-2 py-1 text-[8px] text-stone-400"
-              >BASE CAR PREVIEW</span
-            >
-          </div>
-          <div
-            class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-3"
-          >
-            <h2 class="text-xs">{{ currentCar.name }}</h2>
-            <button
-              type="button"
-              (click)="section.set('car'); brand.set(currentCar.brand)"
-              class="flex min-h-8 cursor-pointer items-center gap-2 text-[10px] text-stone-400 hover:text-white"
-            >
-              <app-icon name="car" class="!size-3" />เปลี่ยนรถ
-            </button>
-          </div>
+</div>
+<p role="status" class="mb-4 text-xs leading-relaxed text-amber-200/70">{{ message() }}</p>
+<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_270px] xl:grid-cols-[minmax(0,1fr)_300px]">
+  <div class="min-w-0">
+    @if (!car() || section() === 'car') {
+    <section aria-label="เลือกรถต้นแบบ" class="mb-7 rounded-lg border border-white/5 bg-[#131313] p-4">
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base">
+            {{ brand() ? 'เลือกรุ่นรถ · ' + brand() : 'เลือกยี่ห้อรถ' }}
+          </h2>
+          <p class="mt-2 text-xs text-stone-500">
+            เลือกรถที่ชอบ แล้วเลื่อนดูของแต่งแต่ละหมวดด้านล่าง
+          </p>
         </div>
-
-        <div class="mb-6 flex flex-wrap gap-2" aria-label="ไปยังหมวดของแต่ง">
-          @for (category of categories; track category.id) {
-            <button
-              type="button"
-              (click)="jumpTo('build-category-' + category.id)"
-              class="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#151515] px-3 text-[10px] text-stone-400 hover:border-white/25 hover:text-white"
-            >
-              <app-icon [name]="category.icon" class="!size-3" />{{ category.name }}
-            </button>
-          }
-        </div>
-
-        @if (fullBodyKit()) {
-          <div
-            role="status"
-            class="mb-7 flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-400/5 p-4 text-xs leading-relaxed text-stone-300"
-          >
-            <app-icon name="lock" class="mt-0.5 !size-4 text-red-400" />
-            <p>
-              กำลังใช้ Full Body Kit แบบชุดเต็ม จึงเลือกพาร์ตแยกเพิ่มไม่ได้ หากต้องการแต่งแยกชิ้น
-              ให้ถอดชุดเต็มจากรายการที่เลือกก่อน
-            </p>
-          </div>
+        @if (car()) {
+        <button type="button" (click)="section.set('bodykits')"
+          class="min-h-9 cursor-pointer text-xs text-stone-500 hover:text-white">
+          ยกเลิก
+        </button>
         }
+      </div>
+      @if (brand()) {
+      <button type="button" (click)="brand.set(null)"
+        class="mb-5 flex min-h-8 cursor-pointer items-center gap-2 text-[11px] text-stone-400 hover:text-white">
+        <app-icon name="back" class="!size-3" />ทุกยี่ห้อ
+      </button>
+      }
+      @if (!brand()) {
+      <div class="mb-5 flex flex-wrap items-center gap-3">
+        <label
+          class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#0e0e0e] px-3">
+          <app-icon name="search" class="!size-3.5 text-stone-500" />
+          <span class="sr-only">ค้นหายี่ห้อรถ</span>
+          <input type="search" placeholder="ค้นหายี่ห้อรถ…" [value]="brandQuery()"
+            (input)="brandQuery.set($any($event.target).value)"
+            class="min-w-0 flex-1 bg-transparent text-xs outline-none" />
+        </label>
+        <button type="button" (click)="brandDirectory.load(brandDirectory.scope(), true)"
+          [disabled]="brandDirectory.loading()" [attr.aria-busy]="brandDirectory.loading()"
+          class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[11px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
+          @if (brandDirectory.loading()) {
+          <app-icon name="spinner" class="!size-3 animate-spin motion-reduce:animate-none" />
+          }
+          {{ brandDirectory.loading() ? 'กำลังโหลด…' : 'โหลดรายการใหม่' }}
+        </button>
+      </div>
+      @if (brandDirectory.error()) {
+      <p role="status" class="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">
+        {{ brandDirectory.error() }}
+      </p>
+      }
+      <p class="mb-4 text-[10px] leading-relaxed text-stone-500">
+        {{ brands().length }} ยี่ห้อ · เลือกยี่ห้อเพื่อดูรุ่นรถ
+        <span>· คัดเลือกแบรนด์สำหรับโปรเจกต์ รถที่ใช้ในไทย รถจีน และรถสปอร์ต</span>
+      </p>
+      }
+      <div [class]="
+              brand()
+                ? 'grid grid-cols-2 gap-4 sm:grid-cols-3'
+                : 'grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4'
+            ">
+        @if (!brand()) {
+        @for (item of brands(); track item.id) {
+        <button type="button" (click)="brand.set(item.name)" [attr.aria-label]="'เลือกยี่ห้อ ' + item.name"
+          [title]="item.name"
+          class="group flex min-h-48 cursor-pointer flex-col items-center justify-center gap-3 rounded-none border border-white/10 bg-[#151515] p-3 transition-colors hover:border-red-400/50 hover:bg-[#1b1b1b]">
+          <span
+            class="flex h-24 w-full max-w-28 shrink-0 items-center justify-center rounded-none border border-white/15 bg-[#737373] p-2 shadow-[inset_0_1px_0_#ffffff18,0_3px_10px_#0003] transition-colors group-hover:border-white/30">
+            @if (brandLogo(item); as logo) {
+            <img [src]="logo" [appLogoBackdrop]="logo" crossorigin="anonymous" [alt]="'โลโก้ ' + item.name"
+              loading="lazy" (error)="markBrandLogoBroken(item.id)" width="80" height="80"
+              class="size-20 max-w-full object-contain drop-shadow-[0_2px_3px_#0005]"
+              [class.object-cover]="item.id === 'ferrari'" />
+            } @else {
+            <app-icon name="car" class="!size-12 text-white/60" />
+            }
+          </span>
+          <span class="line-clamp-2 text-center text-xs leading-5 text-stone-100 sm:text-[13px]">{{ item.name }}</span>
+          <span class="text-[10px] text-stone-500">ดูรุ่นรถจากฐานข้อมูล</span>
+        </button>
+        } @empty {
+        @if (brandDirectory.loading()) {
+        <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">
+          กำลังโหลดรายการยี่ห้อรถ…
+        </p>
+        } @else if (!brandDirectory.error()) {
+        <p class="col-span-full py-8 text-center text-xs text-stone-500">
+          ไม่พบยี่ห้อรถที่ค้นหา
+        </p>
+        }
+        }
+        } @else {
+        @if (selectedBrand(); as activeBrand) {
+        <div class="col-span-full">
+          <div class="mb-4 flex flex-wrap items-center gap-3">
+            <label
+              class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
+              <app-icon name="search" class="!size-3 text-stone-500" /><span class="sr-only">ค้นหารุ่นรถ</span>
+              <input type="search" placeholder="ค้นหารุ่นรถ" [value]="modelQuery()"
+                (input)="modelQuery.set($any($event.target).value); selectedModelId.set(null)"
+                class="min-w-0 flex-1 bg-transparent text-xs outline-none" />
+            </label>
+            <button type="button" (click)="modelDirectory.load(activeBrand.id, true)"
+              [disabled]="modelDirectory.loading()" [attr.aria-busy]="modelDirectory.loading()"
+              class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[11px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
+              @if (modelDirectory.loading()) { <app-icon name="spinner" class="!size-3 animate-spin" /> }
+              {{ modelDirectory.loading() ? 'กำลังโหลด…' : 'โหลดรุ่นใหม่' }}
+            </button>
+          </div>
+          @if (modelDirectory.error()) { <p role="status"
+            class="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{{
+            modelDirectory.error() }}</p> }
+          <p class="mb-4 text-[10px] leading-5 text-stone-500">{{ modelList().length }} รุ่น · ข้อมูลหลายตลาด
+            ยังไม่ยืนยันการติดตั้งพาร์ตในไทย · ช่องที่ขาดจะระบุว่ายังไม่มีข้อมูล</p>
 
-        @for (category of categories; track category.id) {
-          <section
-            [id]="'build-category-' + category.id"
-            [attr.aria-labelledby]="'build-category-title-' + category.id"
-            class="mb-9 scroll-mt-[100px]"
-          >
-            <div
-              class="mb-4 flex flex-wrap items-center justify-between gap-2 border-l-2 border-[#e6442b] bg-[#151515] px-4 py-3"
-            >
-              <h2
-                [id]="'build-category-title-' + category.id"
-                class="flex items-center gap-2 text-sm"
-              >
-                <app-icon [name]="category.icon" class="!size-4 text-stone-400" />{{
-                  category.name
-                }}
-              </h2>
-              <span class="flex items-center gap-1.5 text-[10px] text-stone-500">
-                @if (fullBodyKit() && category.id !== 'bodykits') {
-                  <app-icon name="lock" class="!size-3" />ล็อกเมื่อใช้ชุดเต็ม
-                } @else {
-                  {{
-                    category.id === 'bodykits'
-                      ? 'ชุดสำเร็จ · ใช้แทนพาร์ตแยกทั้งหมด'
-                      : 'เลือกได้ 1 รายการ · กดซ้ำเพื่อถอด'
-                  }}
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            @for (model of modelList(); track model.id) {
+            <button type="button" (click)="chooseModel(model)" [title]="model.name"
+              class="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-white/10 bg-[#171717] text-left transition-colors hover:border-red-400/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
+              <span class="relative block aspect-[1.5] w-full overflow-hidden bg-[radial-gradient(ellipse,#444,#111)]">
+                @if (modelImage(model.brandId, model.name); as image) {
+                <img [src]="image" [alt]="activeBrand.name + ' ' + model.name" loading="lazy" decoding="async"
+                  width="1280" height="960" class="absolute inset-0 h-full w-full object-contain object-center p-3" />
                 }
               </span>
+              <span class="flex min-h-12 w-full flex-1 flex-col items-start p-3">
+                <span class="line-clamp-2 text-[11px] leading-5 text-stone-100">{{ model.name }}</span>
+
+              </span>
+            </button>
+            } @empty { <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">{{
+              modelDirectory.loading() ? 'กำลังโหลดรายการรุ่นรถ…' : modelDirectory.error() ?
+              'กดโหลดรุ่นใหม่เพื่อลองอีกครั้ง' : 'ไม่พบรุ่นรถที่ค้นหา' }}</p> }
+          </div>
+
+          <p class="mt-5 text-[9px] leading-5 text-stone-600">ข้อมูลดัดแปลงจาก <a
+              href="https://github.com/gor3a/vehicle-makes-models" target="_blank" rel="noopener noreferrer"
+              class="cursor-pointer underline hover:text-stone-300">vehicle-makes-models</a> และ autoevolution.com
+            เสริมจากผู้ผลิต · ODbL 1.0
+            @if (modelDirectory.exportUrl()) { · <a [href]="modelDirectory.exportUrl()"
+              class="cursor-pointer underline hover:text-stone-300">ดาวน์โหลดชุดข้อมูลที่ดัดแปลง</a> }
+          </p>
+        </div>
+        }
+        }
+      </div>
+    </section>
+    }
+
+    @if (car(); as currentCar) {
+    <div class="mb-7 overflow-hidden rounded-lg border border-white/10 bg-[#151515]">
+      <div class="relative aspect-[2.8] overflow-hidden bg-[radial-gradient(ellipse,#444,#111_75%)]">
+        @if (previewImage(); as image) { <img [src]="image" [alt]="currentCar.name + (hasPreparedPreview() ? ' พร้อมพาร์ทที่เลือก' : ' รถเดิม')" width="1280" height="960"
+          class="h-full w-full object-contain object-center p-4" /> } @else { <div
+          class="flex h-full items-center justify-center"><app-icon name="car" class="!size-16 text-stone-600" /></div>
+        }<span class="absolute left-3 top-3 rounded-lg bg-black/40 px-2 py-1 text-[8px] text-stone-400">{{ hasPreparedPreview() ? 'SELECTED PART PREVIEW' : 'BASE CAR PREVIEW' }}</span>
+        @if (currentCar.reference; as reference) { <div
+          class="absolute bottom-3 left-3 right-3 text-[10px] leading-5 text-stone-400">{{ reference.modelName }} ·
+          {{ availableParts().length ? availableParts().length + ' ตัวเลือกพาร์ท' : 'ยังไม่มีพาร์ตของรุ่นนี้' }}</div> }
+      </div>
+      @if (carViews().length) {
+      <div class="border-t border-white/5 px-4 py-3">
+        <div class="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="เลือกมุมมองรถ">
+          @for (view of carViews(); track view.view) {
+          <button type="button" (click)="selectView(view.view)" [attr.aria-pressed]="activeView()?.view === view.view"
+            [attr.aria-label]="'มุมมอง ' + view.label"
+            class="min-w-[88px] shrink-0 cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-black/20 p-2 text-[10px] text-stone-400 hover:border-white/30 aria-pressed:border-red-400/70 aria-pressed:bg-red-500/10 aria-pressed:text-white">
+            <img [src]="viewImage(view.view)" alt="" width="120" height="60" loading="lazy" decoding="async" class="mb-2 h-10 w-full object-contain" />
+            {{ view.label }}
+          </button>
+          }
+        </div>
+        @if (missingPartView()) {
+        <p role="status" class="mt-3 text-[10px] leading-5 text-amber-200/80">ภาพมุมนี้ยังแสดงรายการแต่งได้ไม่ครบ · ยังไม่มีภาพของชุดที่เลือก รายการแต่งยังเลือกไว้อยู่</p>
+        } @else if (activeView(); as view) {
+        <p class="mt-3 text-[10px] text-stone-500">{{ view.label }} · {{ hasPreparedPreview() ? 'ภาพพร้อมพาร์ทที่เลือก' : 'ภาพรถเดิม' }}</p>
+        }
+      </div>
+      }
+      <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-3">
+        <h2 class="text-xs">{{ currentCar.name }}</h2>
+        <button type="button" (click)="section.set('car'); brand.set(currentCar.brand)"
+          class="flex min-h-8 cursor-pointer items-center gap-2 text-[10px] text-stone-400 hover:text-white">
+          <app-icon name="car" class="!size-3" />เปลี่ยนรถ
+        </button>
+      </div>
+    </div>
+
+    <div class="mb-6 flex flex-wrap gap-2" aria-label="ไปยังหมวดของแต่ง">
+      @for (category of categories; track category.id) {
+      <button type="button" (click)="jumpTo('build-category-' + category.id)"
+        class="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#151515] px-3 text-[10px] text-stone-400 hover:border-white/25 hover:text-white">
+        <app-icon [name]="category.icon" class="!size-3" />{{ category.name }}
+      </button>
+      }
+    </div>
+
+    @if (fullBodyKit()) {
+    <div role="status"
+      class="mb-7 flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-400/5 p-4 text-xs leading-relaxed text-stone-300">
+      <app-icon name="lock" class="mt-0.5 !size-4 text-red-400" />
+      <p>
+        กำลังใช้ Full Body Kit แบบชุดเต็ม จึงเลือกพาร์ตแยกเพิ่มไม่ได้ หากต้องการแต่งแยกชิ้น
+        ให้ถอดชุดเต็มจากรายการที่เลือกก่อน
+      </p>
+    </div>
+    }
+
+    @for (category of categories; track category.id) {
+    <section [id]="'build-category-' + category.id" [attr.aria-labelledby]="'build-category-title-' + category.id"
+      class="mb-9 scroll-mt-[100px]">
+      <div
+        class="mb-4 flex flex-wrap items-center justify-between gap-2 border-l-2 border-[#e6442b] bg-[#151515] px-4 py-3">
+        <h2 [id]="'build-category-title-' + category.id" class="flex items-center gap-2 text-sm">
+          <app-icon [name]="category.icon" class="!size-4 text-stone-400" />{{
+          category.name
+          }}
+        </h2>
+        <span class="flex items-center gap-1.5 text-[10px] text-stone-500">
+          @if (fullBodyKit() && category.id !== 'bodykits') {
+          <app-icon name="lock" class="!size-3" />ล็อกเมื่อใช้ชุดเต็ม
+          } @else {
+          {{
+          category.id === 'bodykits'
+          ? 'ชุดสำเร็จ · ใช้แทนพาร์ตแยกทั้งหมด'
+          : 'เลือกได้ 1 รายการ · กดซ้ำเพื่อถอด'
+          }}
+          }
+        </span>
+      </div>
+      <div class="grid grid-cols-2 gap-3 xl:grid-cols-3">
+        @for (part of partsFor(category.id); track part.id) {
+        <button type="button" (click)="togglePart(part)" [disabled]="!!fullBodyKit() && category.id !== 'bodykits'"
+          [attr.aria-pressed]="partIds().includes(part.id)"
+          class="cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-[#171717] text-left aria-pressed:border-red-400/70 aria-pressed:bg-red-500/5 enabled:hover:border-red-400/40 disabled:cursor-not-allowed disabled:opacity-35">
+          <div class="relative aspect-[1.6] overflow-hidden bg-[radial-gradient(ellipse,#303030,#111)]">
+            @if (part.previewImage) {
+            <img [src]="part.previewImage" [alt]="part.name" loading="lazy" decoding="async" width="1280" height="640"
+              [class]="part.category === 'front'
+                ? 'absolute right-0 top-1/2 w-[230%] max-w-none -translate-y-[60%]'
+                : part.category === 'rear'
+                  ? 'absolute left-0 top-1/2 w-[230%] max-w-none -translate-y-[60%]'
+                  : part.category === 'wheels'
+                    ? 'absolute left-1/2 top-1/2 w-[300%] max-w-none -translate-x-[48%] -translate-y-[73%]'
+                    : part.category === 'spoilers'
+                      ? 'absolute left-1/2 top-1/2 w-[250%] max-w-none -translate-x-[25%] -translate-y-[27%]'
+                      : 'h-full w-full object-contain p-2'" />
+            } @else if (part.category === 'wheels' || part.category === 'spoilers') {
+            <div class="flex h-full items-center justify-center text-stone-500">
+              <app-icon [name]="category.icon" class="!size-9" />
             </div>
-            <div class="grid grid-cols-2 gap-3 xl:grid-cols-3">
-              @for (part of partsFor(category.id); track part.id) {
-                <button
-                  type="button"
-                  (click)="togglePart(part)"
-                  [disabled]="!!fullBodyKit() && category.id !== 'bodykits'"
-                  [attr.aria-pressed]="partIds().includes(part.id)"
-                  class="cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-[#171717] text-left aria-pressed:border-red-400/70 aria-pressed:bg-red-500/5 enabled:hover:border-red-400/40 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <div
-                    class="relative aspect-[1.6] overflow-hidden bg-[radial-gradient(ellipse,#303030,#111)]"
-                  >
-                    @if (part.category === 'wheels' || part.category === 'spoilers') {
-                      <div class="flex h-full items-center justify-center text-stone-500">
-                        <app-icon [name]="category.icon" class="!size-9" />
-                      </div>
-                    } @else {
-                      <img
-                        [src]="currentCar.image"
-                        [alt]="'ภาพประกอบ ' + part.name"
-                        width="1280"
-                        height="960"
-                        [class]="
+            } @else {
+            <img [src]="currentCar.image" [alt]="'ภาพประกอบ ' + part.name" width="1280" height="960" [class]="
                           part.crop === 'full'
                             ? 'h-full w-full object-cover'
                             : part.crop === 'front'
                               ? 'absolute right-0 top-1/2 w-[230%] max-w-none -translate-y-1/2'
                               : 'absolute left-0 top-1/2 w-[230%] max-w-none -translate-y-1/2'
-                        "
-                      />
-                    }
-                    @if (partIds().includes(part.id)) {
-                      <span class="absolute right-2 top-2 rounded-lg bg-red-500 px-2 py-1 text-[8px]"
-                        >SELECTED</span
-                      >
-                    }
-                  </div>
-                  <div class="p-3">
-                    <h3 class="text-[11px]">{{ part.name }}</h3>
-                    <p class="mt-1 text-[9px] text-stone-500">{{ part.finish }}</p>
-                  </div>
-                </button>
-              }
-            </div>
-          </section>
+                        " />
+            }
+            @if (partIds().includes(part.id)) {
+            <span class="absolute right-2 top-2 rounded-lg bg-red-500 px-2 py-1 text-[8px]">SELECTED</span>
+            }
+          </div>
+          <div class="p-3">
+            <h3 class="text-[11px]">{{ part.name }}</h3>
+            <p class="mt-1 text-[9px] text-stone-500">{{ part.finish }}</p>
+          </div>
+        </button>
         }
-      }
-      <p class="mt-5 text-[10px] leading-relaxed text-stone-600">
-        ข้อมูลพาร์ตตัวอย่าง · ภาพรถยังไม่เปลี่ยนตามพาร์ต เนื่องจากยังไม่มีภาพ Layer ·
-        ยังไม่ตรวจสอบเงื่อนไขติดตั้งจริงระหว่างพาร์ต
+      </div>
+    </section>
+    }
+    }
+    <p class="mt-5 text-[10px] leading-relaxed text-stone-600">
+      ภาพด้านหน้าเปลี่ยนตาม Front Bumper และภาพด้านหลังเปลี่ยนตาม Rear Bumper
+      ล้อเปลี่ยนภาพเฉียงหน้าและเฉียงหลัง 45° ตามชุดภาพที่เตรียมไว้
+      สปอยเลอร์เปลี่ยนภาพเฉียงหน้า เฉียงหลัง และหลังตรง
+      มุมที่ยังไม่มีภาพครบจะแสดงภาพที่มีพร้อมแจ้งกำกับ · ภาพจำลองยังไม่ยืนยันเงื่อนไขติดตั้งจริง
+    </p>
+  </div>
+
+  <aside id="build-summary" aria-label="สรุปรายการแต่ง"
+    class="scroll-mt-[100px] rounded-lg border border-white/10 bg-[#151515] p-4 lg:sticky lg:top-[100px] lg:max-h-[calc(100dvh_-_125px)] lg:overflow-y-auto">
+    <div class="mb-5 flex items-center justify-between gap-2">
+      <h2 class="text-sm">รายการที่เลือก</h2>
+      <span class="rounded-lg bg-white/5 px-2 py-1 text-[10px] text-stone-400">{{
+        selectedParts().length
+        }}</span>
+    </div>
+    @if (car(); as selectedCar) {
+    <div class="mb-4 flex items-center gap-3 rounded-lg border border-white/5 bg-black/15 px-3 py-3">
+      @if (logos[selectedCar.brand]) { <img [src]="logos[selectedCar.brand]" [alt]="'โลโก้ ' + selectedCar.brand"
+        width="40" height="40" class="size-9 shrink-0 object-contain"
+        [class.object-cover]="selectedCar.brand === 'Ferrari'" /> } @else { <app-icon name="car"
+        class="!size-6 text-stone-600" /> }
+      <div>
+        <p class="text-[11px]">{{ selectedCar.name }}</p>
+        <p class="mt-1 text-[9px] text-stone-600">
+          {{ fullBodyKit() ? 'FULL BODY KIT' : 'CUSTOM PARTS' }}
+        </p>
+      </div>
+    </div>
+    @for (part of selectedParts(); track part.id) {
+    <div class="flex items-start justify-between gap-2 border-b border-white/5 py-3">
+      <div class="min-w-0">
+        <p class="text-[8px] text-stone-600">{{ categoryLabel(part.category) }}</p>
+        <p class="mt-1 text-[11px] leading-relaxed text-stone-200">{{ part.name }}</p>
+        <p class="mt-1 text-[9px] text-stone-500">{{ part.finish }}</p>
+      </div>
+      <button type="button" (click)="removePart(part.id)" [attr.aria-label]="'ถอด ' + part.name"
+        class="flex size-8 shrink-0 cursor-pointer items-center justify-center text-stone-500 hover:text-red-400">
+        <app-icon name="close" class="!size-3" />
+      </button>
+    </div>
+    } @empty {
+    <p class="py-5 text-center text-[11px] leading-relaxed text-stone-600">
+      ยังไม่มีรายการแต่ง<br />เลือกจากหมวดด้านซ้ายได้เลย
+    </p>
+    }
+    @if (fullBodyKit()) {
+    <p class="mt-4 flex items-start gap-2 text-[10px] leading-relaxed text-red-300/70">
+      <app-icon name="lock" class="mt-0.5 !size-3" />ชุดแต่งสำเร็จ ไม่ใช้ร่วมกับพาร์ตแยก
+    </p>
+    }
+    <div class="my-5 border-t border-white/10 pt-4">
+      <p class="text-[10px] text-stone-500">งบประมาณรวม</p>
+      <p class="mt-2 text-xs">
+        {{ selectedParts().length ? 'รอข้อมูลราคาอ้างอิง' : 'ยังไม่มีรายการแต่ง' }}
       </p>
     </div>
-
-    <aside
-      id="build-summary"
-      aria-label="สรุปรายการแต่ง"
-      class="scroll-mt-[100px] rounded-lg border border-white/10 bg-[#151515] p-4 lg:sticky lg:top-[100px] lg:max-h-[calc(100dvh_-_125px)] lg:overflow-y-auto"
-    >
-      <div class="mb-5 flex items-center justify-between gap-2">
-        <h2 class="text-sm">รายการที่เลือก</h2>
-        <span class="rounded-lg bg-white/5 px-2 py-1 text-[10px] text-stone-400">{{
-          selectedParts().length
-        }}</span>
-      </div>
-      @if (car(); as selectedCar) {
-        <div
-          class="mb-4 flex items-center gap-3 rounded-lg border border-white/5 bg-black/15 px-3 py-3"
-        >
-          <img
-            [src]="logos[selectedCar.brand]"
-            [alt]="'โลโก้ ' + selectedCar.brand"
-            width="40"
-            height="40"
-            class="size-9 shrink-0 object-contain"
-            [class.object-cover]="selectedCar.brand === 'Ferrari'"
-          />
-          <div>
-            <p class="text-[11px]">{{ selectedCar.name }}</p>
-            <p class="mt-1 text-[9px] text-stone-600">
-              {{ fullBodyKit() ? 'FULL BODY KIT' : 'CUSTOM PARTS' }}
-            </p>
-          </div>
-        </div>
-        @for (part of selectedParts(); track part.id) {
-          <div class="flex items-start justify-between gap-2 border-b border-white/5 py-3">
-            <div class="min-w-0">
-              <p class="text-[8px] text-stone-600">{{ categoryLabel(part.category) }}</p>
-              <p class="mt-1 text-[11px] leading-relaxed text-stone-200">{{ part.name }}</p>
-              <p class="mt-1 text-[9px] text-stone-500">{{ part.finish }}</p>
-            </div>
-            <button
-              type="button"
-              (click)="removePart(part.id)"
-              [attr.aria-label]="'ถอด ' + part.name"
-              class="flex size-8 shrink-0 cursor-pointer items-center justify-center text-stone-500 hover:text-red-400"
-            >
-              <app-icon name="close" class="!size-3" />
-            </button>
-          </div>
-        } @empty {
-          <p class="py-5 text-center text-[11px] leading-relaxed text-stone-600">
-            ยังไม่มีรายการแต่ง<br />เลือกจากหมวดด้านซ้ายได้เลย
-          </p>
-        }
-        @if (fullBodyKit()) {
-          <p class="mt-4 flex items-start gap-2 text-[10px] leading-relaxed text-red-300/70">
-            <app-icon name="lock" class="mt-0.5 !size-3" />ชุดแต่งสำเร็จ ไม่ใช้ร่วมกับพาร์ตแยก
-          </p>
-        }
-        <div class="my-5 border-t border-white/10 pt-4">
-          <p class="text-[10px] text-stone-500">งบประมาณรวม</p>
-          <p class="mt-2 text-xs">
-            {{ selectedParts().length ? 'รอข้อมูลราคาอ้างอิง' : 'ยังไม่มีรายการแต่ง' }}
-          </p>
-        </div>
-        <button
-          type="button"
-          (click)="requestSave()"
-          class="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#ce281a] text-[11px] hover:bg-red-500"
-        >
-          <app-icon name="builds" class="!size-3.5" />บันทึก Build
-        </button>
-        <p class="mt-3 text-center text-[9px] text-stone-600">ตั้งชื่อในขั้นตอนบันทึก</p>
-      } @else {
-        <div class="py-9 text-center text-stone-600">
-          <app-icon name="parts" class="!size-8" />
-          <p class="mt-4 text-[11px] leading-relaxed">
-            เลือกรถก่อน แล้วรายการแต่ง<br />จะแสดงตรงนี้
-          </p>
-        </div>
-      }
-    </aside>
-  </div>
+    <button type="button" (click)="requestSave()"
+      class="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#ce281a] text-[11px] hover:bg-red-500">
+      <app-icon name="builds" class="!size-3.5" />บันทึก Build
+    </button>
+    <p class="mt-3 text-center text-[9px] text-stone-600">ตั้งชื่อในขั้นตอนบันทึก</p>
+    } @else {
+    <div class="py-9 text-center text-stone-600">
+      <app-icon name="parts" class="!size-8" />
+      <p class="mt-4 text-[11px] leading-relaxed">
+        เลือกรถก่อน แล้วรายการแต่ง<br />จะแสดงตรงนี้
+      </p>
+    </div>
+    }
+  </aside>
+</div>
 }
 
-<dialog
-  #buildDialog
-  aria-labelledby="build-dialog-title"
+
+<dialog #buildDialog aria-labelledby="build-dialog-title"
   class="fixed inset-0 m-auto max-h-[calc(100dvh_-_48px)] w-[calc(100%_-_32px)] max-w-md overflow-auto overscroll-contain rounded-lg border border-white/15 bg-[#171717] p-6 text-stone-100 backdrop:bg-black/75"
-  (click)="$event.target === buildDialog && closeDialog()"
->
+  (click)="onDialogClick($event)"
+  (cancel)="onDialogCancel($event)">
   <div class="mb-5 flex items-center justify-between gap-4">
     <h2 id="build-dialog-title" tabindex="-1" autofocus class="text-base outline-none">
       {{
-        modalKind() === 'save'
-          ? 'บันทึก Build ของคุณ'
-          : modalKind() === 'delete'
-            ? 'ลบ Build นี้?'
-            : modalKind() === 'replace-kit'
-              ? 'ใช้ Full Body Kit แทนพาร์ตแยก?'
-              : modalKind() === 'change-car'
-                ? 'เปลี่ยนรถต้นแบบ?'
-                : 'ออกจากการแต่งรถ?'
+      modalKind() === 'save'
+      ? 'บันทึก Build ของคุณ'
+      : modalKind() === 'delete'
+      ? 'ลบ Build นี้?'
+      : modalKind() === 'replace-kit'
+      ? 'ใช้ Full Body Kit แทนพาร์ตแยก?'
+      : modalKind() === 'change-car'
+      ? 'เปลี่ยนรถต้นแบบ?'
+      : 'ออกจากการแต่งรถ?'
       }}
     </h2>
-    <button
-      type="button"
-      aria-label="ปิดหน้าต่าง"
-      (click)="closeDialog()"
-      class="flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-white/10"
-    >
+    <button type="button" aria-label="ปิดหน้าต่าง" (click)="closeDialog()" [disabled]="store.saving() || store.deleting()"
+      class="flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-white/10">
       <app-icon name="close" />
     </button>
   </div>
   @if (modalKind() === 'save') {
-    <p class="mb-5 text-xs leading-relaxed text-stone-400">
-      แต่งเสร็จแล้ว ตั้งชื่อเพื่อเก็บรถและรายการพาร์ตไว้ใน My Builds
+  <p class="mb-5 text-xs leading-relaxed text-stone-400">
+    แต่งเสร็จแล้ว ตั้งชื่อเพื่อเก็บรถและรายการพาร์ตไว้ใน My Builds
+  </p>
+  <form (submit)="$event.preventDefault(); save()">
+    <label for="saved-build-name" class="mb-2 block text-xs">ชื่อ Build</label><input id="saved-build-name" type="text"
+      required maxlength="80" [value]="name()" [disabled]="store.saving()" (input)="name.set($any($event.target).value)"
+      placeholder="เช่น My weekend Ferrari"
+      class="min-h-11 w-full rounded-lg border border-white/15 bg-[#111] px-3 text-sm outline-none focus:border-red-400" />
+    <p class="my-4 text-[11px] text-stone-500">
+      {{ car()?.name }} · {{ selectedParts().length }} พาร์ต
     </p>
-    <form (submit)="$event.preventDefault(); save()">
-      <label for="saved-build-name" class="mb-2 block text-xs">ชื่อ Build</label
-      ><input
-        id="saved-build-name"
-        type="text"
-        required
-        maxlength="80"
-        [value]="name()"
-        (input)="name.set($any($event.target).value)"
-        placeholder="เช่น My weekend Ferrari"
-        class="min-h-11 w-full rounded-lg border border-white/15 bg-[#111] px-3 text-sm outline-none focus:border-red-400"
-      />
-      <p class="my-4 text-[11px] text-stone-500">
-        {{ car()?.name }} · {{ selectedParts().length }} พาร์ต
-      </p>
-      <p class="mb-5 text-[10px] leading-relaxed text-stone-500">
-        บันทึกในเบราว์เซอร์เครื่องนี้ ยังไม่ซิงก์กับบัญชีผู้ใช้
-      </p>
-      <p role="alert" class="mb-4 text-xs text-red-300">{{ formError() }}</p>
-      <button
-        type="submit"
-        (click)="$event.preventDefault(); save()"
-        [disabled]="!name().trim()"
-        class="min-h-11 w-full cursor-pointer rounded-lg bg-[#ce281a] px-5 text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-      >
-        Save Build
-      </button>
-    </form>
-  } @else {
-    <p class="mb-6 text-xs leading-relaxed text-stone-400">
-      {{
-        modalKind() === 'delete'
-          ? 'ยืนยันลบ “' + pendingDelete()?.name + '” ออกจากเบราว์เซอร์เครื่องนี้หรือไม่?'
-          : modalKind() === 'replace-kit'
-            ? 'การใช้ชุดเต็มจะนำพาร์ตแยกที่เลือกไว้ออกทั้งหมด และล็อกการเลือกพาร์ตแยกจนกว่าจะถอด Full Body Kit'
-            : modalKind() === 'change-car'
-              ? 'การเปลี่ยนรถจะล้างรายการพาร์ตที่เลือกไว้สำหรับรถคันเดิม'
-              : 'รายการแต่งที่ยังไม่ได้บันทึกจะหายไป ต้องการกลับไป My Builds หรือไม่?'
-      }}
+    <p class="mb-5 text-[10px] leading-relaxed text-stone-500">
+      บันทึกในบัญชีของคุณ เปิดดูได้จากอุปกรณ์อื่นเมื่อเข้าสู่ระบบบัญชีเดียวกัน
     </p>
     <p role="alert" class="mb-4 text-xs text-red-300">{{ formError() }}</p>
-    <div class="flex gap-3">
-      <button
-        type="button"
-        (click)="closeDialog()"
-        class="min-h-10 flex-1 cursor-pointer rounded-lg border border-white/15 text-xs"
-      >
-        ยกเลิก</button
-      ><button
-        type="button"
-        (click)="
+    <button type="submit" [disabled]="!name().trim() || store.saving()" [attr.aria-busy]="store.saving()"
+      class="min-h-11 w-full cursor-pointer rounded-lg bg-[#ce281a] px-5 text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-30">
+      @if (store.saving()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังบันทึก… } @else { Save Build }
+    </button>
+  </form>
+  } @else {
+  <p class="mb-6 text-xs leading-relaxed text-stone-400">
+    {{
+    modalKind() === 'delete'
+    ? 'ยืนยันลบ “' + pendingDelete()?.name + '” ออกจาก My Builds ของคุณหรือไม่?'
+    : modalKind() === 'replace-kit'
+    ? 'การใช้ชุดเต็มจะนำพาร์ตแยกที่เลือกไว้ออกทั้งหมด และล็อกการเลือกพาร์ตแยกจนกว่าจะถอด Full Body Kit'
+    : modalKind() === 'change-car'
+    ? 'การเปลี่ยนรถจะล้างรายการพาร์ตที่เลือกไว้สำหรับรถคันเดิม'
+    : 'รายการแต่งที่ยังไม่ได้บันทึกจะหายไป ต้องการกลับไป My Builds หรือไม่?'
+    }}
+  </p>
+  <p role="alert" class="mb-4 text-xs text-red-300">{{ formError() }}</p>
+  <div class="flex gap-3">
+    <button type="button" (click)="closeDialog()" [disabled]="store.deleting()"
+      class="min-h-10 flex-1 cursor-pointer rounded-lg border border-white/15 text-xs">
+      ยกเลิก</button><button type="button" (click)="
           modalKind() === 'delete'
             ? confirmDelete()
             : modalKind() === 'replace-kit'
@@ -509,11 +494,9 @@
               : modalKind() === 'change-car'
                 ? confirmCarChange()
                 : confirmDiscard()
-        "
-        class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs"
-      >
-        {{ modalKind() === 'delete' ? 'ยืนยันลบ' : 'ยืนยัน' }}
-      </button>
-    </div>
+        " [disabled]="store.deleting()" [attr.aria-busy]="store.deleting()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs disabled:cursor-wait disabled:opacity-50">
+      @if (store.deleting()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังลบ… } @else { {{ modalKind() === 'delete' ? 'ยืนยันลบ' : 'ยืนยัน' }} }
+    </button>
+  </div>
   }
 </dialog>

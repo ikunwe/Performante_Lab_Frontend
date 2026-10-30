@@ -9,6 +9,11 @@ export interface CatalogCar {
   name: string;
   image: string;
   body: string;
+  reference?: {
+    brandId: string; modelId: string; generationId: string | null;
+    modelName: string; generationName: string | null; chassisCodes: string[];
+    yearStart: number | null; yearEnd: number | null; sourceUrl: string;
+  };
 }
 export interface PartCategory {
   id: string;
@@ -17,6 +22,7 @@ export interface PartCategory {
   icon: string;
 }
 export interface CatalogPart {
+  previewImage?: string;
   description: string;
   id: string;
   carId: string;

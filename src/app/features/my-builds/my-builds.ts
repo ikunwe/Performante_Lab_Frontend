@@ -17,21 +17,64 @@ import { Icon } from '../../shared/ui/icon/icon';
 import {
   catalogBrandLogos,
   catalogCars,
-  catalogParts,
   partCategories,
   CatalogCar,
   CatalogPart,
 } from '../catalog/catalog.data';
 import { BuildsStore, SavedBuild } from './builds.store';
+import { BrandDirectory, CarBrand } from '../../core/catalog/brand-directory';
+import { LogoBackdrop } from '../../shared/ui/brand-logo/logo-backdrop';
+import { supplementalBrandLogos } from '../../core/catalog/supplemental-brand-logos';
+import { modelImage } from '../../core/catalog/car-images';
+import { partsForCar, preparedPreview, preparedViewState } from '../../core/catalog/prepared-parts';
+import { viewsForCar } from '../../core/catalog/car-views';
+import { CarViewId } from '../../core/catalog/car-view-manifest';
+import {
+  ModelDirectory,
+  VehicleModel,
+  VehicleGeneration,
+} from '../../core/catalog/model-directory';
 
 @Component({
   selector: 'app-my-builds',
-  imports: [Icon, DatePipe],
+  imports: [Icon, DatePipe, LogoBackdrop],
   templateUrl: './my-builds.html',
   host: { class: 'block' },
 })
 export class MyBuilds {
   readonly store = inject(BuildsStore);
+  readonly brandDirectory = inject(BrandDirectory);
+  readonly modelDirectory = inject(ModelDirectory);
+  readonly modelQuery = signal('');
+  readonly selectedModelId = signal<string | null>(null);
+  readonly referenceCar = signal<CatalogCar | null>(null);
+  readonly selectedBrand = computed(
+    () =>
+      this.brandDirectory
+        .brands()
+        .find((item) => this.brandKey(item.name) === this.brandKey(this.brand() ?? '')) ?? null,
+  );
+  readonly modelList = computed(() => {
+    const query = this.modelQuery().trim().toLowerCase();
+    return this.modelDirectory
+      .models()
+      .filter(
+        (model) =>
+          !query ||
+          [
+            model.name,
+            ...model.generations.flatMap((generation) => [
+              generation.name,
+              ...generation.chassisCodes,
+            ]),
+          ].some((name) => name.toLowerCase().includes(query)),
+      );
+  });
+  readonly selectedModel = computed(
+    () => this.modelDirectory.models().find((model) => model.id === this.selectedModelId()) ?? null,
+  );
+  readonly brandQuery = signal('');
+  readonly brokenBrandLogos = signal<string[]>([]);
   private readonly host = inject(ElementRef<HTMLElement>);
   private pendingLeave: (() => void) | null = null;
   private readonly injector = inject(Injector);
@@ -54,19 +97,109 @@ export class MyBuilds {
   readonly pendingKit = signal<CatalogPart | null>(null);
   readonly baseline = signal('');
   readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('buildDialog');
-  readonly brands = Object.keys(catalogBrandLogos);
+  readonly brands = computed(() => {
+    const query = this.brandQuery().trim().toLowerCase();
+    return this.brandDirectory
+      .brands()
+      .filter(
+        (brand) =>
+          !query ||
+          [brand.name, ...brand.aliases].some((name) => name.toLowerCase().includes(query)),
+      );
+  });
   readonly logos = catalogBrandLogos;
   readonly categories = partCategories;
-  readonly car = computed(() => catalogCars.find((car) => car.id === this.carId()) ?? null);
-  readonly brandCars = computed(() => catalogCars.filter((car) => car.brand === this.brand()));
+  readonly car = computed(() =>
+    this.referenceCar()?.id === this.carId()
+      ? this.referenceCar()
+      : (catalogCars.find((car) => car.id === this.carId()) ?? null),
+  );
+  readonly brandCars = computed(() =>
+    catalogCars.filter((car) => this.brandKey(car.brand) === this.brandKey(this.brand() ?? '')),
+  );
+  private brandKey(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  brandLogo(brand: CarBrand): string | null {
+    if (this.brokenBrandLogos().includes(brand.id)) return null;
+    const local = Object.keys(this.logos).find(
+      (name) => this.brandKey(name) === this.brandKey(brand.name),
+    );
+    return local ? this.logos[local] : (supplementalBrandLogos[brand.id] ?? brand.logoUrl);
+  }
+  hasDemoCars(brand: CarBrand): boolean {
+    return catalogCars.some((car) => this.brandKey(car.brand) === this.brandKey(brand.name));
+  }
+  yearLabel(start: number | null, end: number | null): string {
+    if (start === null && end === null) return 'ยังไม่มีข้อมูลปี';
+    return `${start ?? 'ไม่ระบุ'} – ${end ?? 'ไม่ระบุปีสิ้นสุด'}`;
+  }
+  readonly modelImage = modelImage;
+  readonly availableParts = computed(() => partsForCar(this.car()));
+  readonly selectedView = signal<CarViewId>('front45');
+  readonly carViews = computed(() => viewsForCar(this.car()));
+  readonly activeView = computed(() => this.carViews().find(view => view.view === this.selectedView()) ?? this.carViews()[0] ?? null);
+  readonly previewState = computed(() => preparedViewState(this.car(), this.partIds(), this.activeView()?.view ?? 'front45'));
+  readonly hasPreparedPreview = computed(() => !!this.previewState().image);
+  readonly missingPartView = computed(() => this.previewState().missing.length > 0);
+  readonly previewImage = computed(() => this.previewState().image ?? this.activeView()?.url ?? this.carImage(this.car()));
+  viewImage(view: CarViewId): string | null {
+    return preparedPreview(this.car(), this.partIds(), view) ?? this.carViews().find(item => item.view === view)?.url ?? null;
+  }
+  selectView(view: CarViewId): void {
+    if (this.carViews().some(item => item.view === view)) this.selectedView.set(view);
+  }
+  buildImage(build: SavedBuild): string | null {
+    const car = this.carFor(build);
+    return preparedPreview(car, build.partIds) ?? preparedPreview(car, build.partIds, 'rear45') ?? this.carImage(car);
+  }
+  carImage(car: CatalogCar | null | undefined): string | null {
+    if (!car) return null;
+    const ref = car.reference;
+    return ref ? (viewsForCar(car)[0]?.url ?? modelImage(ref.brandId, ref.modelName, ref.generationName ? { name: ref.generationName, yearStart: ref.yearStart } : undefined)) : car.image || null;
+  }
+  chooseModel(model: VehicleModel): void {
+    if (model.brandId !== this.selectedBrand()?.id) return;
+    this.chooseReference(model, null);
+  }
+  chooseReference(model: VehicleModel, generation: VehicleGeneration | null): void {
+    const brand = this.selectedBrand();
+    if (
+      !brand ||
+      model.brandId !== brand.id ||
+      (generation && !model.generations.some((item) => item.id === generation.id))
+    )
+      return;
+    this.chooseCar({
+      id: 'ref:' + (generation?.id ?? model.id),
+      brand: brand.name,
+      name: `${brand.name} ${model.name}`,
+      image: '',
+      body: generation?.name ?? 'ยังไม่มีข้อมูลเจเนอเรชัน',
+      reference: {
+        brandId: brand.id,
+        modelId: model.id,
+        generationId: generation?.id ?? null,
+        modelName: model.name,
+        generationName: generation?.name ?? null,
+        chassisCodes: generation?.chassisCodes ?? [],
+        yearStart: generation ? generation.yearStart : model.yearStart,
+        yearEnd: generation ? generation.yearEnd : model.yearEnd,
+        sourceUrl: model.sourceUrl,
+      },
+    });
+  }
+  markBrandLogoBroken(id: string): void {
+    this.brokenBrandLogos.update((ids) => (ids.includes(id) ? ids : [...ids, id]));
+  }
   readonly selectedParts = computed(() =>
-    catalogParts.filter((part) => this.partIds().includes(part.id)),
+    this.availableParts().filter((part) => this.partIds().includes(part.id)),
   );
   readonly fullBodyKit = computed(
     () => this.selectedParts().find((part) => part.category === 'bodykits') ?? null,
   );
   partsFor(category: string): CatalogPart[] {
-    return catalogParts.filter((part) => part.carId === this.carId() && part.category === category);
+    return this.availableParts().filter((part) => part.category === category);
   }
   jumpTo(id: string): void {
     const target: HTMLElement | null = this.host.nativeElement.querySelector('#' + id);
@@ -87,6 +220,21 @@ export class MyBuilds {
 
   constructor() {
     effect(() => {
+      const brand = this.selectedBrand();
+      if (this.editing() && this.section() === 'car' && brand)
+        untracked(() => {
+          this.selectedModelId.set(null);
+          this.modelQuery.set('');
+          void this.modelDirectory.load(brand.id);
+        });
+    });
+    effect(() => {
+      if (this.editing() && this.section() === 'car')
+        untracked(() => {
+          void this.brandDirectory.load();
+        });
+    });
+    effect(() => {
       const request = this.createRequest();
       const source = this.sourceCarId();
       if (request > 0) untracked(() => this.startNew(source));
@@ -96,7 +244,7 @@ export class MyBuilds {
     return JSON.stringify([this.carId(), [...this.partIds()].sort()]);
   }
   carFor(build: SavedBuild): CatalogCar | undefined {
-    return catalogCars.find((car) => car.id === build.carId);
+    return build.carSnapshot ?? catalogCars.find((car) => car.id === build.carId);
   }
   startNew(sourceId: string | null = null): void {
     if (this.editing() && this.dirty()) {
@@ -106,6 +254,8 @@ export class MyBuilds {
     this.beginNew(sourceId);
   }
   private beginNew(sourceId: string | null): void {
+    this.selectedView.set('front45');
+    this.referenceCar.set(null);
     const car = catalogCars.find((car) => car.id === sourceId);
     this.editingId.set(null);
     this.carId.set(car?.id ?? null);
@@ -119,10 +269,12 @@ export class MyBuilds {
     this.headingChange.emit('Create Build');
   }
   editBuild(build: SavedBuild): void {
+    this.selectedView.set('front45');
+    this.referenceCar.set(build.carSnapshot ?? null);
     this.editingId.set(build.id);
     this.carId.set(build.carId);
     this.brand.set(this.carFor(build)?.brand ?? null);
-    const kit = catalogParts.find(
+    const kit = partsForCar(this.carFor(build)).find(
       (part) => build.partIds.includes(part.id) && part.category === 'bodykits',
     );
     const legacyConflict = !!kit && build.partIds.length > 1;
@@ -154,6 +306,8 @@ export class MyBuilds {
     this.applyCar(car);
   }
   private applyCar(car: CatalogCar): void {
+    this.selectedView.set('front45');
+    this.referenceCar.set(car.reference ? car : null);
     this.carId.set(car.id);
     this.brand.set(car.brand);
     this.partIds.set([]);
@@ -166,6 +320,19 @@ export class MyBuilds {
       return;
     }
     if (part.category !== 'bodykits' && this.fullBodyKit()) return;
+    if (part.previewImage) {
+      const currentView = this.activeView()?.view ?? this.selectedView();
+      if (part.category === 'wheels') {
+        if (currentView !== 'front45' && currentView !== 'rear45') this.selectedView.set('front45');
+      } else if (part.category === 'spoilers') {
+        if (!['front45', 'rear45', 'rear'].includes(currentView)) this.selectedView.set('rear45');
+      } else {
+      const rear = part.category === 'rear';
+      const sameSide = rear ? ['rear', 'rear45'] : ['front', 'front45'];
+      if (!sameSide.includes(currentView))
+        this.selectedView.set(rear ? 'rear45' : 'front45');
+      }
+    }
     if (part.category === 'bodykits') {
       if (this.selectedParts().some((item) => item.category !== 'bodykits')) {
         this.pendingKit.set(part);
@@ -179,7 +346,7 @@ export class MyBuilds {
     }
     this.partIds.update((ids) => [
       ...ids.filter(
-        (id) => catalogParts.find((item) => item.id === id)?.category !== part.category,
+        (id) => this.availableParts().find((item) => item.id === id)?.category !== part.category,
       ),
       part.id,
     ]);
@@ -199,21 +366,22 @@ export class MyBuilds {
     this.modalKind.set('save');
     this.openDialog();
   }
-  save(): void {
-    if (!this.carId()) return;
-    const result = this.store.save({
+  async save(): Promise<void> {
+    if (!this.carId() || this.store.saving() || this.store.deleting()) return;
+    const result = await this.store.save({
+      carSnapshot: this.car()?.reference ? this.car()! : undefined,
       id: this.editingId() ?? undefined,
       name: this.name(),
       carId: this.carId()!,
       partIds: this.partIds(),
     });
-    if (!result.ok) {
+    if (result.ok === false) {
       this.formError.set(result.error);
       return;
     }
     this.closeDialog();
     this.showList();
-    this.message.set('บันทึก Build ในเบราว์เซอร์เครื่องนี้แล้ว');
+    this.message.set('บันทึก Build ในบัญชีของคุณแล้ว');
   }
   requestDelete(build: SavedBuild): void {
     this.pendingDelete.set(build);
@@ -221,11 +389,11 @@ export class MyBuilds {
     this.modalKind.set('delete');
     this.openDialog();
   }
-  confirmDelete(): void {
+  async confirmDelete(): Promise<void> {
     const build = this.pendingDelete();
-    if (!build) return;
-    const result = this.store.remove(build.id);
-    if (!result.ok) {
+    if (!build || this.store.deleting() || this.store.saving()) return;
+    const result = await this.store.remove(build.id);
+    if (result.ok === false) {
       this.formError.set(result.error);
       return;
     }
@@ -264,7 +432,14 @@ export class MyBuilds {
     if (this.dialog().nativeElement.open) return;
     afterNextRender(() => this.dialog().nativeElement.showModal(), { injector: this.injector });
   }
+  onDialogClick(event: MouseEvent): void {
+    if (event.target === this.dialog().nativeElement) this.closeDialog();
+  }
+  onDialogCancel(event: Event): void {
+    if (this.store.saving() || this.store.deleting()) event.preventDefault();
+  }
   closeDialog(): void {
+    if (this.store.saving() || this.store.deleting()) return;
     this.pendingLeave = null;
     this.dialog().nativeElement.close();
   }
