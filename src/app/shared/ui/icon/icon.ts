@@ -29,6 +29,10 @@ import {
   faCheck,
   faExclamation,
   faSpinner,
+  faEnvelope,
+  faThumbsUp,
+  faTrash,
+  faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 
@@ -61,6 +65,13 @@ const icons: Record<string, IconDefinition> = {
   check: faCheck,
   exclamation: faExclamation,
   spinner: faSpinner,
+  requests: faEnvelope,
+  envelope: faEnvelope,
+  like: faThumbsUp,
+  'thumbs-up': faThumbsUp,
+  delete: faTrash,
+  trash: faTrash,
+  shield: faShieldHalved,
 };
 
 @Component({

@@ -1,0 +1,280 @@
+<div class="space-y-7">
+  <!-- Page Header -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <!-- Title & Subtitle -->
+    <div>
+      <h1 class="font-[family-name:var(--font-display)] text-3xl font-extrabold text-white tracking-tight">Requests</h1>
+      <p class="text-xs text-stone-400 mt-1.5">ชิ้นส่วนที่ User ร้องขอ</p>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="flex items-center gap-3">
+      <!-- Search Box with Icon (h-9, w-56 sm:w-64) -->
+      <div class="relative flex items-center">
+        <app-icon name="search" class="!size-3.5 text-stone-400 absolute left-3 pointer-events-none" />
+        <input
+          type="text"
+          [ngModel]="admin.requestsSearch()"
+          (ngModelChange)="admin.requestsSearch.set($event)"
+          placeholder="ค้นหาคำขอ, พาร์ต, ผู้ใช้..."
+          class="h-9 w-56 sm:w-64 border border-white/10 bg-[#181818] rounded-lg pl-9 pr-3 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
+        />
+        @if (admin.requestsSearch()) {
+          <button
+            type="button"
+            (click)="admin.requestsSearch.set('')"
+            class="absolute right-2.5 text-stone-500 hover:text-white cursor-pointer"
+          >
+            <app-icon name="close" class="!size-3" />
+          </button>
+        }
+      </div>
+
+      <!-- Filters Button & Popover (h-9) -->
+      <div class="relative">
+        <button
+          type="button"
+          (click)="toggleFilters()"
+          class="h-9 px-3.5 rounded-lg border border-white/10 bg-[#181818] text-xs font-medium text-white hover:border-white/25 transition-colors flex items-center gap-2 cursor-pointer"
+        >
+          <app-icon name="filter" class="!size-3.5 text-stone-400" />
+          <span>Filters</span>
+          @if (admin.requestsStatusFilter() !== 'All') {
+            <span class="size-1.5 rounded-full bg-[#ce281a]"></span>
+          }
+        </button>
+
+        @if (filtersOpen()) {
+          <div class="absolute right-0 mt-2 w-48 rounded-xl bg-[#181818] border border-white/10 shadow-2xl p-2 z-30 animate-in fade-in duration-100">
+            <p class="text-[10px] font-semibold text-stone-400 px-3 py-1.5 uppercase tracking-wider">สถานะคำขอ</p>
+            @for (st of statuses; track st) {
+              <button
+                type="button"
+                (click)="setStatusFilter(st)"
+                class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer"
+                [class]="admin.requestsStatusFilter() === st ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
+              >
+                <span>{{ st }}</span>
+                @if (admin.requestsStatusFilter() === st) {
+                  <app-icon name="check" class="!size-3" />
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  @if (toastMessage()) {
+    <div class="rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-4 py-2.5 text-xs flex items-center justify-between animate-in fade-in duration-200">
+      <div class="flex items-center gap-2">
+        <app-icon name="check" class="!size-3.5" />
+        <span>{{ toastMessage() }}</span>
+      </div>
+      <button type="button" (click)="toastMessage.set('')" class="text-stone-400 hover:text-white">
+        <app-icon name="close" class="!size-3" />
+      </button>
+    </div>
+  }
+
+  <!-- Global Admin Service Error Alert -->
+  @if (admin.error()) {
+    <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400 flex items-center justify-between animate-in fade-in duration-200">
+      <div class="flex items-center gap-2">
+        <app-icon name="close" class="!size-4" />
+        <span>{{ admin.error() }}</span>
+      </div>
+      <button type="button" (click)="admin.error.set(null)" class="text-stone-400 hover:text-white cursor-pointer">
+        <app-icon name="close" class="!size-3" />
+      </button>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (admin.loading()) {
+    <div class="flex flex-col items-center justify-center py-24 text-stone-500 space-y-3">
+      <app-icon name="spinner" class="!size-7 animate-spin text-[#ce281a]" />
+      <span class="animate-pulse text-sm">กำลังโหลดข้อมูลจากฐานข้อมูล...</span>
+    </div>
+  } @else {
+    <!-- 4-Column Grid of Part Requests (Matching Discover 1:1) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      @for (req of admin.filteredRequests(); track req.id) {
+        <div class="group flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#171717] transition-all hover:border-white/20 relative">
+          <!-- Status Pill Badge -->
+          <div class="absolute top-2.5 right-2.5 z-10">
+            @if (req.status === 'Accepted') {
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Accepted
+              </span>
+            } @else if (req.status === 'Rejected') {
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                Rejected
+              </span>
+            } @else {
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                Pending
+              </span>
+            }
+          </div>
+
+          <!-- Car / Part Image Banner (aspect-[16/10]) -->
+          <div class="relative aspect-[16/10] w-full overflow-hidden bg-[#1f1f1f]">
+            <img
+              [src]="req.image"
+              [alt]="req.title"
+              class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#171717] via-transparent to-transparent"></div>
+          </div>
+
+          <!-- Card Body -->
+          <div class="flex flex-1 flex-col p-3.5 pb-4">
+            <!-- Author Info & Meta -->
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <!-- Author Red Avatar -->
+                <div class="size-6 rounded-full bg-[#ce281a] flex items-center justify-center text-white shrink-0">
+                  <app-icon name="user" class="!size-3.5" />
+                </div>
+                <span class="text-xs text-stone-300 truncate font-medium">{{ req.author }}</span>
+              </div>
+
+              <!-- Like Count & Bookmark -->
+              <div class="flex items-center gap-3 shrink-0 text-stone-400">
+                <div class="flex items-center gap-1 text-[11px] font-semibold text-stone-300">
+                  <app-icon name="like" class="!size-3 text-stone-400" />
+                  <span>{{ req.likes }}</span>
+                </div>
+                <app-icon name="bookmark" class="!size-3.5 text-stone-400" />
+              </div>
+            </div>
+
+            <!-- Request Title -->
+            <h2 class="text-xs font-semibold text-white truncate font-[family-name:var(--font-body)] mb-1" [title]="req.title">
+              {{ req.title }}
+            </h2>
+
+            <!-- Car Model & Tag Info -->
+            <div class="flex items-center justify-between text-[10px] text-stone-400 mb-3">
+              <span>Car : {{ req.car }}</span>
+              <span>Tag: {{ req.tag }}</span>
+            </div>
+
+            <!-- Actions: See Details + Accept / Reject Dual Buttons -->
+            <div class="mt-auto space-y-2 pt-2 border-t border-white/5">
+              <!-- Upper Action: See Details (h-8 solid red) -->
+              <button
+                type="button"
+                (click)="openDetails(req)"
+                class="h-8 w-full bg-[#ce281a] hover:bg-red-600 text-white text-xs font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+              >
+                See Details
+              </button>
+
+              <!-- Lower Action: Dual Buttons (Accept emerald / Reject rose) -->
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  (click)="handleAccept(req, $event)"
+                  class="h-7 flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  (click)="handleReject(req, $event)"
+                  class="h-7 flex-1 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      } @empty {
+        <div class="col-span-full py-20 text-center">
+          <app-icon name="requests" class="!size-10 text-stone-600 mx-auto mb-3" />
+          <p class="text-stone-300 font-medium">ไม่พบรายการคำขอชิ้นส่วน</p>
+          <p class="text-stone-500 text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Request Details Modal -->
+  @if (detailsModalRequest(); as req) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150" (click)="closeDetails()">
+      <div class="w-full max-w-lg rounded-2xl bg-[#161616] border border-white/10 shadow-2xl p-6 text-white space-y-5" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-stone-300 uppercase tracking-wider">
+                {{ req.category }}
+              </span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded"
+                [class]="req.status === 'Accepted' ? 'bg-emerald-500/20 text-emerald-400' : req.status === 'Rejected' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'">
+                {{ req.status }}
+              </span>
+            </div>
+            <h2 class="text-xl font-bold text-white mt-1.5">{{ req.title }}</h2>
+            <p class="text-xs text-stone-400">สำหรับรถ {{ req.car }} · Tag: {{ req.tag }}</p>
+          </div>
+          <button type="button" (click)="closeDetails()" class="p-1 text-stone-400 hover:text-white rounded-lg hover:bg-white/5 cursor-pointer">
+            <app-icon name="close" class="!size-5" />
+          </button>
+        </div>
+
+        <!-- Description Box -->
+        <div class="p-4 rounded-xl bg-white/[.03] border border-white/5 space-y-2">
+          <p class="text-xs font-semibold text-stone-300">รายละเอียดคำขอจากผู้ใช้:</p>
+          <p class="text-xs text-stone-400 leading-relaxed">{{ req.description }}</p>
+        </div>
+
+        <!-- Meta Info -->
+        <div class="space-y-2 text-xs border-t border-white/10 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="text-stone-400">ผู้ส่งคำขอ</span>
+            <span class="font-semibold text-white">{{ req.author }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-stone-400">วันที่ส่งคำขอ</span>
+            <span class="text-stone-300">{{ req.requestedAt }}</span>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="pt-4 flex items-center justify-between border-t border-white/10">
+          <button
+            type="button"
+            (click)="closeDetails()"
+            class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition-colors cursor-pointer"
+          >
+            ปิด
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              (click)="handleAccept(req); closeDetails()"
+              class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Accept คำขอ
+            </button>
+            <button
+              type="button"
+              (click)="handleReject(req); closeDetails()"
+              class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Reject คำขอ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

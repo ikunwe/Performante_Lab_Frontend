@@ -9,7 +9,15 @@ export const authGuard: CanActivateFn = async (_route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
   await auth.initialize();
-  return auth.user()
-    ? true
-    : router.createUrlTree(['/login'], { queryParams: { next: state.url } });
+
+  if (!auth.user()) {
+    return router.createUrlTree(['/login'], { queryParams: { next: state.url } });
+  }
+
+  // Prevent suspended users from accessing protected features
+  if (!auth.isActive()) {
+    return router.createUrlTree(['/login'], { queryParams: { error: 'suspended' } });
+  }
+
+  return true;
 };
