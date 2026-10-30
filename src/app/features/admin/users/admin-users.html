@@ -15,14 +15,14 @@
         <input
           type="text"
           [ngModel]="admin.usersSearch()"
-          (ngModelChange)="admin.usersSearch.set($event)"
+          (ngModelChange)="onSearchChange($event)"
           placeholder="ค้นหา Username, Email..."
           class="h-9 w-56 sm:w-64 border border-white/10 bg-[#181818] rounded-lg pl-9 pr-3 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
         />
         @if (admin.usersSearch()) {
           <button
             type="button"
-            (click)="admin.usersSearch.set('')"
+            (click)="onSearchChange('')"
             class="absolute right-2.5 text-stone-500 hover:text-white cursor-pointer"
           >
             <app-icon name="close" class="!size-3" />
@@ -94,9 +94,9 @@
         </p>
         <p class="text-[10px] text-stone-400">
           @if (auth.isSuperAdmin()) {
-            คุณมีสิทธิ์เต็มในการเปลี่ยน Role ของผู้ใช้ และจัดการสถานะบัญชี
+            คุณมีสิทธิ์เต็มในการเปลี่ยน Role ของผู้ใช้ และจัดการสถานะบัญชี (Admin & User)
           } @else {
-            Role Badge เป็น Read-only (สิทธิ์ Admin ทั่วไปไม่สามารถแก้ไข Role ของ User ได้ตามข้อกำหนด RBAC)
+            Role Badge เป็น Read-only และสามารถจัดการได้เฉพาะบัญชี User เท่านั้น (สิทธิ์ Admin ทั่วไป)
           }
         </p>
       </div>
@@ -141,7 +141,7 @@
   } @else {
     <!-- Horizontal User Cards List (Matching Admin(Users).png, h-20 min-h-[80px]) -->
     <div class="space-y-3.5">
-      @for (user of admin.filteredUsers(); track user.id) {
+      @for (user of pagedUsers(); track user.id) {
         <div class="min-h-[80px] rounded-xl bg-[#191919] border border-white/10 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-white/20">
           <!-- Left Section: Avatar (size-12 48px) + Username/Email & Badges -->
           <div class="flex items-center gap-4 sm:gap-5 min-w-0">
@@ -158,66 +158,70 @@
                   {{ user.username }}
                 </span>
 
-                <!-- Role Badge (rounded-md px-2 py-0.5 text-[10px] font-bold text-white bg-[#ce281a]) -->
-                <div class="relative">
-                  <button
-                    type="button"
-                    [disabled]="!auth.isSuperAdmin()"
-                    (click)="toggleRoleEditor(user.id, $event)"
-                    class="rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#ce281a] text-white flex items-center gap-1 transition-all"
-                    [class.cursor-pointer]="auth.isSuperAdmin()"
-                    [class.hover:bg-red-600]="auth.isSuperAdmin()"
-                    [class.cursor-default]="!auth.isSuperAdmin()"
-                    [title]="auth.isSuperAdmin() ? 'คลิกเพื่อเปลี่ยน Role (สิทธิ์ SuperAdmin)' : 'Read-only (ไม่มีสิทธิ์เปลี่ยน Role)'"
-                  >
-                    <span>{{ getRoleBadgeText(user.role) }}</span>
-                    @if (auth.isSuperAdmin()) {
-                      <app-icon name="chevron-down" class="!size-2 opacity-80" />
-                    }
-                  </button>
-
-                  <!-- Role Selector Popover (SuperAdmin Only) -->
-                  @if (editingUserRole() === user.id) {
-                    <div
-                      class="absolute left-0 mt-2 w-44 rounded-xl bg-[#1c1c1c] border border-white/15 shadow-2xl p-2 z-40 animate-in fade-in duration-100"
-                      (click)="$event.stopPropagation()"
+                <!-- Role Badge: Interactive for SuperAdmin, Read-only for Admin/User -->
+                @if (auth.isSuperAdmin()) {
+                  <div class="relative">
+                    <button
+                      type="button"
+                      (click)="toggleRoleEditor(user.id, $event)"
+                      class="rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#ce281a] text-white flex items-center gap-1 transition-all cursor-pointer hover:bg-red-600"
+                      title="คลิกเพื่อเปลี่ยน Role (สิทธิ์ SuperAdmin)"
                     >
-                      <p class="text-[10px] font-bold text-stone-400 px-2 py-1 uppercase tracking-wider">เลือก Role ใหม่</p>
-                      <button
-                        type="button"
-                        (click)="changeUserRole(user, 'User', $event)"
-                        class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer"
-                        [class]="user.role === 'User' ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
+                      <span>{{ getRoleBadgeText(user.role) }}</span>
+                      <app-icon name="chevron-down" class="!size-2 opacity-80" />
+                    </button>
+
+                    <!-- Role Selector Popover (SuperAdmin Only) -->
+                    @if (editingUserRole() === user.id) {
+                      <div
+                        class="absolute left-0 mt-2 w-44 rounded-xl bg-[#1c1c1c] border border-white/15 shadow-2xl p-2 z-40 animate-in fade-in duration-100"
+                        (click)="$event.stopPropagation()"
                       >
-                        <span>User</span>
-                        @if (user.role === 'User') { <app-icon name="check" class="!size-3" /> }
-                      </button>
-                      <button
-                        type="button"
-                        (click)="changeUserRole(user, 'Admin', $event)"
-                        class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer"
-                        [class]="user.role === 'Admin' ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
-                      >
-                        <span>Admin</span>
-                        @if (user.role === 'Admin') { <app-icon name="check" class="!size-3" /> }
-                      </button>
-                      <button
-                        type="button"
-                        (click)="changeUserRole(user, 'SuperAdmin', $event)"
-                        class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer"
-                        [class]="user.role === 'SuperAdmin' ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
-                      >
-                        <span>SuperAdmin (SpAdmin)</span>
-                        @if (user.role === 'SuperAdmin') { <app-icon name="check" class="!size-3" /> }
-                      </button>
-                    </div>
-                  }
-                </div>
+                        <p class="text-[10px] font-bold text-stone-400 px-2 py-1 uppercase tracking-wider">เลือก Role ใหม่</p>
+                        <button
+                          type="button"
+                          (click)="changeUserRole(user, 'User', $event)"
+                          class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer"
+                          [class]="user.role === 'User' ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
+                        >
+                          <span>User</span>
+                          @if (user.role === 'User') { <app-icon name="check" class="!size-3" /> }
+                        </button>
+                        <button
+                          type="button"
+                          (click)="changeUserRole(user, 'Admin', $event)"
+                          class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer"
+                          [class]="user.role === 'Admin' ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
+                        >
+                          <span>Admin</span>
+                          @if (user.role === 'Admin') { <app-icon name="check" class="!size-3" /> }
+                        </button>
+                        <button
+                          type="button"
+                          (click)="changeUserRole(user, 'SuperAdmin', $event)"
+                          class="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer"
+                          [class]="user.role === 'SuperAdmin' ? 'bg-[#ce281a] text-white' : 'text-stone-300 hover:bg-white/5'"
+                        >
+                          <span>SuperAdmin (SpAdmin)</span>
+                          @if (user.role === 'SuperAdmin') { <app-icon name="check" class="!size-3" /> }
+                        </button>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <!-- Read-only Role Badge -->
+                  <span
+                    class="rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#ce281a] text-white cursor-default select-none"
+                    title="Read-only (ไม่มีสิทธิ์เปลี่ยน Role)"
+                  >
+                    {{ getRoleBadgeText(user.role) }}
+                  </span>
+                }
               </div>
 
               <!-- Row 2: Email + Status Badge -->
               <div class="flex items-center gap-3">
-                <span class="text-xs text-stone-300 underline underline-offset-2 truncate">
+                <span class="text-xs text-stone-300 underline underline-offset-2 truncate" [title]="user.email">
                   {{ user.email }}
                 </span>
 
@@ -234,7 +238,7 @@
 
           <!-- Right Section: Action Button (h-9 px-6 rounded-lg font-semibold text-xs) -->
           <div class="flex items-center justify-end shrink-0">
-            @if (user.role !== 'SuperAdmin') {
+            @if (admin.canSuspendUser(user)) {
               @if (user.status === 'Active') {
                 <!-- Suspend Button (bg-[#ce281a] hover:bg-red-600) -->
                 <button
@@ -254,16 +258,90 @@
                   Active
                 </button>
               }
+            } @else {
+              <!-- Disabled / Protected Action Button with Tooltip -->
+              @if (user.role === 'SuperAdmin') {
+                <span
+                  class="h-9 px-4 rounded-lg bg-white/5 text-stone-500 font-medium text-xs flex items-center justify-center border border-white/5 cursor-not-allowed select-none"
+                  title="ไม่สามารถระงับบัญชี SuperAdmin ได้"
+                >
+                  Protected
+                </span>
+              } @else if (user.role === 'Admin') {
+                <button
+                  type="button"
+                  disabled
+                  class="h-9 px-6 rounded-lg bg-stone-800 text-stone-500 font-semibold text-xs tracking-wide opacity-40 cursor-not-allowed flex items-center justify-center border border-white/5 select-none"
+                  title="เฉพาะ SuperAdmin เท่านั้นที่จัดการ Admin ได้"
+                >
+                  {{ user.status === 'Active' ? 'Suspend' : 'Active' }}
+                </button>
+              }
             }
           </div>
         </div>
       } @empty {
         <div class="py-20 text-center bg-[#191919] rounded-xl border border-white/5">
           <app-icon name="user" class="!size-10 text-stone-600 mx-auto mb-3" />
-          <p class="text-stone-300 font-medium">ไม่พบบัญชีผู้ใช้ที่ค้นหา</p>
+          <p class="text-stone-300 font-medium">ไม่พบบัญชีผู้ใช้ในระบบ</p>
           <p class="text-stone-500 text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
         </div>
       }
     </div>
+
+    <!-- Pagination Controls (แสดงเมื่อมีข้อมูล) -->
+    @if (!admin.loading() && totalUsers() > 0) {
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5 text-xs text-stone-400">
+        <!-- Left: Summary Info -->
+        <div>
+          แสดง <span class="font-bold text-white">{{ displayRange().start }}</span> - 
+          <span class="font-bold text-white">{{ displayRange().end }}</span> จากทั้งหมด 
+          <span class="font-bold text-white">{{ displayRange().total }}</span> บัญชี
+        </div>
+
+        <!-- Right: Page Controls -->
+        <div class="flex items-center gap-1.5">
+          <!-- Previous Button -->
+          <button
+            type="button"
+            (click)="prevPage()"
+            [disabled]="currentPage() === 1"
+            class="h-8 px-2.5 rounded-lg border border-white/10 bg-[#181818] text-white hover:border-white/25 disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer"
+            title="หน้าก่อนหน้า"
+          >
+            <app-icon name="back" class="!size-3" />
+            <span class="hidden sm:inline">ก่อนหน้า</span>
+          </button>
+
+          <!-- Page Numbers -->
+          <div class="flex items-center gap-1">
+            @for (p of pageNumbers(); track p) {
+              <button
+                type="button"
+                (click)="goToPage(p)"
+                class="size-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer"
+                [class]="currentPage() === p 
+                  ? 'bg-[#ce281a] text-white shadow-md shadow-[#ce281a]/30 font-bold' 
+                  : 'bg-[#181818] border border-white/10 text-stone-300 hover:border-white/25'"
+              >
+                {{ p }}
+              </button>
+            }
+          </div>
+
+          <!-- Next Button -->
+          <button
+            type="button"
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()"
+            class="h-8 px-2.5 rounded-lg border border-white/10 bg-[#181818] text-white hover:border-white/25 disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer"
+            title="หน้าถัดไป"
+          >
+            <span class="hidden sm:inline">ถัดไป</span>
+            <app-icon name="arrow" class="!size-3" />
+          </button>
+        </div>
+      </div>
+    }
   }
 </div>

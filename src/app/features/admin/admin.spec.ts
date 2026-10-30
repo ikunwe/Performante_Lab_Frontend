@@ -4,9 +4,18 @@ import { AdminLayout } from './layout/admin-layout';
 import { AdminDiscover } from './discover/admin-discover';
 import { AdminRequests } from './requests/admin-requests';
 import { AdminUsers } from './users/admin-users';
-import { AdminService } from './services/admin.service';
-import { AuthService } from '../../core/auth/auth.service';
-import { AUTH_CLIENT } from '../../core/auth/auth-client';
+import { AdminEditData } from './edit-data/admin-edit-data';
+import { CatalogStorageHelper } from '../../core/storage/catalog-storage';
+import {
+  AdminService,
+  AdminUserItem,
+  INITIAL_USERS,
+  mapBrand,
+  mapCarModel,
+  mapPart,
+} from './services/admin.service';
+import { AuthService, UserRole } from '../../core/auth/auth.service';
+import { AUTH_CLIENT, AUTH_CONFIG } from '../../core/auth/auth-client';
 import { signal } from '@angular/core';
 
 describe('Admin Portal Features', () => {
@@ -26,11 +35,19 @@ describe('Admin Portal Features', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [AdminLayout, AdminDiscover, AdminRequests, AdminUsers],
+      imports: [AdminLayout, AdminDiscover, AdminRequests, AdminUsers, AdminEditData],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: mockAuth },
         { provide: AUTH_CLIENT, useValue: vi.fn().mockResolvedValue(null) },
+        {
+          provide: AUTH_CONFIG,
+          useValue: vi.fn().mockResolvedValue({
+            supabaseUrl: 'https://test.supabase.co',
+            supabasePublishableKey: 'test-key',
+            apiBaseUrl: 'http://localhost:3000',
+          }),
+        },
       ],
     }).compileComponents();
   });
@@ -42,6 +59,7 @@ describe('Admin Portal Features', () => {
 
     expect(compiled.textContent).toContain('Discover');
     expect(compiled.textContent).toContain('Requests');
+    expect(compiled.textContent).toContain('Edit Data');
     expect(compiled.textContent).toContain('Users');
     expect(compiled.textContent).toContain('Web Ads Space');
     expect(compiled.textContent).toContain('300x400');
@@ -86,6 +104,7 @@ describe('Admin Portal Features', () => {
   it('renders AdminUsers with user rows, role badges, and Suspend buttons', () => {
     const adminService = TestBed.inject(AdminService);
     adminService.loading.set(false);
+    adminService.users.set([...INITIAL_USERS]);
     const fixture = TestBed.createComponent(AdminUsers);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -94,5 +113,421 @@ describe('Admin Portal Features', () => {
     expect(compiled.textContent).toContain('จัดการบัญชีของ User');
     expect(compiled.textContent).toContain('Suspend');
     expect(compiled.textContent).toContain('Active');
+  });
+
+  it('renders disabled action button and read-only badge when actor is regular Admin', () => {
+    mockAuth.isSuperAdmin.set(false);
+    mockAuth.isAdmin.set(true);
+    mockAuth.userRole.set('Admin');
+
+    const adminService = TestBed.inject(AdminService);
+    adminService.loading.set(false);
+    adminService.users.set([...INITIAL_USERS]);
+    const fixture = TestBed.createComponent(AdminUsers);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // Title attribute for disabled admin button
+    expect(compiled.innerHTML).toContain('เฉพาะ SuperAdmin เท่านั้นที่จัดการ Admin ได้');
+    // Read-only role title
+    expect(compiled.innerHTML).toContain('Read-only (ไม่มีสิทธิ์เปลี่ยน Role)');
+  });
+
+  it('renders empty state when users list is empty', () => {
+    const adminService = TestBed.inject(AdminService);
+    adminService.loading.set(false);
+    adminService.users.set([]);
+    const fixture = TestBed.createComponent(AdminUsers);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.textContent).toContain('ไม่พบบัญชีผู้ใช้ในระบบ');
+  });
+
+  describe('AdminUsers Pagination', () => {
+    const createMockUsers = (count: number): AdminUserItem[] => {
+      return Array.from({ length: count }, (_, i) => ({
+        id: `u-${i + 1}`,
+        username: `user_${i + 1}`,
+        email: `user${i + 1}@performante.lab`,
+        role: (i % 3 === 0 ? 'Admin' : i % 3 === 1 ? 'SuperAdmin' : 'User') as UserRole,
+        status: (i % 2 === 0 ? 'Active' : 'InActive') as 'Active' | 'InActive',
+        joinedAt: '2026-10-01',
+      }));
+    };
+
+    it('calculates totalPages = 3 and displays first 10 users on page 1 when there are 25 users', () => {
+      const adminService = TestBed.inject(AdminService);
+      adminService.loading.set(false);
+      adminService.users.set(createMockUsers(25));
+      const fixture = TestBed.createComponent(AdminUsers);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      expect(component.totalUsers()).toBe(25);
+      expect(component.totalPages()).toBe(3);
+      expect(component.currentPage()).toBe(1);
+      expect(component.pagedUsers().length).toBe(10);
+      expect(component.pagedUsers()[0].username).toBe('user_1');
+      expect(component.pagedUsers()[9].username).toBe('user_10');
+      expect(component.displayRange()).toEqual({ start: 1, end: 10, total: 25 });
+    });
+
+    it('navigates to page 2 via nextPage() and displays users 11 to 20', () => {
+      const adminService = TestBed.inject(AdminService);
+      adminService.loading.set(false);
+      adminService.users.set(createMockUsers(25));
+      const fixture = TestBed.createComponent(AdminUsers);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.nextPage();
+      fixture.detectChanges();
+
+      expect(component.currentPage()).toBe(2);
+      expect(component.pagedUsers().length).toBe(10);
+      expect(component.pagedUsers()[0].username).toBe('user_11');
+      expect(component.pagedUsers()[9].username).toBe('user_20');
+      expect(component.displayRange()).toEqual({ start: 11, end: 20, total: 25 });
+    });
+
+    it('disables Previous button on page 1 and disables Next button on page 3', () => {
+      const adminService = TestBed.inject(AdminService);
+      adminService.loading.set(false);
+      adminService.users.set(createMockUsers(25));
+      const fixture = TestBed.createComponent(AdminUsers);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const prevButton = compiled.querySelector('button[title="หน้าก่อนหน้า"]') as HTMLButtonElement;
+      const nextButton = compiled.querySelector('button[title="หน้าถัดไป"]') as HTMLButtonElement;
+
+      expect(prevButton.disabled).toBe(true);
+      expect(nextButton.disabled).toBe(false);
+
+      // Navigate to page 3 (last page)
+      component.goToPage(3);
+      fixture.detectChanges();
+
+      expect(component.currentPage()).toBe(3);
+      expect(prevButton.disabled).toBe(false);
+      expect(nextButton.disabled).toBe(true);
+      expect(component.pagedUsers().length).toBe(5);
+      expect(component.displayRange()).toEqual({ start: 21, end: 25, total: 25 });
+    });
+
+    it('resets currentPage to 1 when search or filter changes', () => {
+      const adminService = TestBed.inject(AdminService);
+      adminService.loading.set(false);
+      adminService.users.set(createMockUsers(35));
+      const fixture = TestBed.createComponent(AdminUsers);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.goToPage(2);
+      expect(component.currentPage()).toBe(2);
+
+      // Changing role filter resets page to 1
+      component.setRoleFilter('Admin');
+      fixture.detectChanges();
+      expect(component.currentPage()).toBe(1);
+
+      // Move to page 2 again (35 users have 12 Admins -> 2 pages)
+      component.goToPage(2);
+      expect(component.currentPage()).toBe(2);
+
+      // Changing search query resets page to 1
+      component.onSearchChange('user_1');
+      fixture.detectChanges();
+      expect(component.currentPage()).toBe(1);
+    });
+
+    it('handles prevPage navigation correctly without underflowing', () => {
+      const adminService = TestBed.inject(AdminService);
+      adminService.loading.set(false);
+      adminService.users.set(createMockUsers(25));
+      const fixture = TestBed.createComponent(AdminUsers);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.goToPage(2);
+      expect(component.currentPage()).toBe(2);
+
+      component.prevPage();
+      expect(component.currentPage()).toBe(1);
+
+      component.prevPage();
+      expect(component.currentPage()).toBe(1);
+    });
+  });
+
+  describe('AdminEditData Portal', () => {
+    let adminService: AdminService;
+
+    beforeEach(() => {
+      adminService = TestBed.inject(AdminService);
+      adminService.catalogBrands.set([
+        mapBrand({ id: 'b-toyota', name: 'Toyota', slug: 'toyota', logo_url: 'assets/brands/toyota.svg' }),
+        mapBrand({ id: 'b-mercedes', name: 'Mercedes-Benz', slug: 'mercedes-benz', logo_url: 'assets/brands/mercedes.svg' }),
+        mapBrand({ id: 'b-ferrari', name: 'Ferrari', slug: 'ferrari', logo_url: 'assets/brands/ferrari.png', is_custom_bg: true }),
+        mapBrand({ id: 'b-honda', name: 'Honda', slug: 'honda', logo_url: 'assets/brands/honda.svg' }),
+      ]);
+      adminService.catalogModels.set([
+        mapCarModel({ id: 'c-488-pista', brand_id: 'b-ferrari', name: 'Ferrari 488 Pista', slug: 'ferrari-488-pista', image_url: 'assets/car_pic.png', body_type: 'Coupe' }),
+        mapCarModel({ id: 'c-458', brand_id: 'b-ferrari', name: 'Ferrari 458', slug: 'ferrari-458', image_url: 'assets/car_pic.png', body_type: 'Coupe' }),
+      ]);
+      adminService.catalogParts.set([
+        mapPart({ id: 'p-1', car_model_id: 'c-488-pista', category: 'Full Body Kits', name: 'Pista Carbon Aero Kit', manufacturer: 'Ferrari', image_url: 'assets/car_pic.png', price: 450000 }),
+        mapPart({ id: 'p-2', car_model_id: 'c-488-pista', category: 'Full Body Kits', name: 'Novitec N-Largo Widebody Kit', manufacturer: 'Novitec', image_url: 'assets/car_pic.png', price: 850000 }),
+      ]);
+    });
+
+    it('shows empty state when catalog brands list is empty and not loading', () => {
+      adminService.catalogBrands.set([]);
+      adminService.catalogLoading.set(false);
+      const fixture = TestBed.createComponent(AdminEditData);
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      expect(compiled.textContent).toContain('ยังไม่มีข้อมูล Brand ในฐานข้อมูล');
+    });
+
+    it('shows loading spinner when catalogLoading is true and list is empty', () => {
+      adminService.catalogBrands.set([]);
+      adminService.catalogLoading.set(true);
+      const fixture = TestBed.createComponent(AdminEditData);
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      expect(compiled.textContent).toContain('กำลังโหลดข้อมูลแบรนด์จากฐานข้อมูล...');
+    });
+
+    it('renders initial Level 1 (brands) with Car brand heading and brands grid', () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      expect(component.level()).toBe('brands');
+      expect(compiled.textContent).toContain('Edit Data');
+      expect(compiled.textContent).toContain('Car brand');
+      expect(component.admin.editBrands().length).toBeGreaterThanOrEqual(4);
+      expect(compiled.querySelector('button[title="เพิ่ม Brand รถใหม่"]')).toBeTruthy();
+    });
+
+    it('switches to Level 2 (models) when a brand is selected and filters cars for that brand', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      expect(ferrari).toBeTruthy();
+
+      await component.selectBrand(ferrari!);
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      expect(component.level()).toBe('models');
+      expect(component.selectedBrand()?.name).toBe('Ferrari');
+      expect(compiled.textContent).toContain('Car Name');
+      expect(compiled.textContent).toContain('Ferrari 488 Pista');
+      expect(component.filteredCarsForBrand().some((c) => c.name === 'Ferrari 488 Pista')).toBe(true);
+    });
+
+    it('switches to Level 3 (parts) when a car model is selected', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+
+      const pista = component.filteredCarsForBrand().find((c) => c.name === 'Ferrari 488 Pista');
+      expect(pista).toBeTruthy();
+
+      await component.selectCar(pista!);
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      expect(component.level()).toBe('parts');
+      expect(component.selectedCar()?.name).toBe('Ferrari 488 Pista');
+      expect(compiled.textContent).toContain('Full Body Kits');
+      expect(component.filteredPartsForCar().length).toBeGreaterThan(0);
+    });
+
+    it('navigates back across levels correctly via backToModels() and backToBrands()', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+
+      expect(component.level()).toBe('parts');
+
+      // Back to models
+      component.backToModels();
+      expect(component.level()).toBe('models');
+      expect(component.selectedCar()).toBeNull();
+      expect(component.selectedBrand()?.name).toBe('Ferrari');
+
+      // Back to brands
+      component.backToBrands();
+      expect(component.level()).toBe('brands');
+      expect(component.selectedBrand()).toBeNull();
+    });
+
+    it('adds new brand, car model, and part via AdminService and updates signals', () => {
+      const initialBrandsCount = adminService.editBrands().length;
+      const initialCarsCount = adminService.editCars().length;
+      const initialPartsCount = adminService.editParts().length;
+
+      // Add Brand
+      const newBrand = adminService.addBrand({
+        name: 'Porsche',
+        logoUrl: 'assets/brands/porsche.png',
+        isCustomBg: false,
+      });
+      expect(adminService.editBrands().length).toBe(initialBrandsCount + 1);
+      expect(newBrand.name).toBe('Porsche');
+
+      // Add Car Model
+      const newCar = adminService.addCarModel({
+        brandId: newBrand.id,
+        name: 'Porsche 911 GT3 RS',
+        image: 'assets/car_pic.png',
+        bodyType: 'Coupe',
+      });
+      expect(adminService.editCars().length).toBe(initialCarsCount + 1);
+      expect(newCar.name).toBe('Porsche 911 GT3 RS');
+
+      // Add Part
+      const newPart = adminService.addPartData({
+        carId: newCar.id,
+        category: 'Full Body Kits',
+        name: 'Manthey Racing Aero Kit',
+        image: 'assets/car_pic.png',
+        price: 950000,
+      });
+      expect(adminService.editParts().length).toBe(initialPartsCount + 1);
+      expect(newPart.name).toBe('Manthey Racing Aero Kit');
+    });
+
+    it('supports modal forms to add brands, cars, and parts in component', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      // Modal 1: Add Brand
+      component.openBrandModal();
+      expect(component.brandModalOpen()).toBe(true);
+      component.newBrandName.set('Maserati');
+      await component.saveBrand();
+      expect(component.brandModalOpen()).toBe(false);
+      const maserati = component.admin.editBrands().find((b) => b.name === 'Maserati');
+      expect(maserati).toBeTruthy();
+
+      // Modal 2: Add Car under Maserati
+      await component.selectBrand(maserati!);
+      component.openCarModal();
+      expect(component.carModalOpen()).toBe(true);
+      component.newCarName.set('MC20 Cielo');
+      await component.saveCar();
+      expect(component.carModalOpen()).toBe(false);
+      const mc20 = component.filteredCarsForBrand().find((c) => c.name === 'MC20 Cielo');
+      expect(mc20).toBeTruthy();
+
+      // Modal 3: Add Part under MC20
+      await component.selectCar(mc20!);
+      component.openPartModal();
+      expect(component.partModalOpen()).toBe(true);
+      component.newPartName.set('Novitec Carbon Wing');
+      component.newPartPrice.set(380000);
+      await component.savePart();
+      expect(component.partModalOpen()).toBe(false);
+      const wing = component.filteredPartsForCar().find((p) => p.name === 'Novitec Carbon Wing');
+      expect(wing).toBeTruthy();
+    });
+
+    it('validates file type and size restrictions correctly', () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      let successCalled = false;
+      const onSuccess = () => { successCalled = true; };
+
+      // Invalid file type (e.g. text/plain)
+      const invalidFile = new File(['hello'], 'doc.txt', { type: 'text/plain' });
+      const valid1 = component.validateAndPreview(invalidFile, onSuccess);
+      expect(valid1).toBe(false);
+      expect(successCalled).toBe(false);
+      expect(component.toastMessage()).toContain('กรุณาเลือกไฟล์รูปภาพ');
+
+      // Oversized file (> 10MB)
+      const oversizedFile = new File([''], 'huge.jpg', { type: 'image/jpeg' });
+      Object.defineProperty(oversizedFile, 'size', { value: 11 * 1024 * 1024 });
+      const valid2 = component.validateAndPreview(oversizedFile, onSuccess);
+      expect(valid2).toBe(false);
+      expect(component.toastMessage()).toContain('ขนาดไฟล์ต้องไม่เกิน 10 MB');
+
+      // Valid file
+      const validFile = new File(['image-data'], 'valid.png', { type: 'image/png' });
+      const valid3 = component.validateAndPreview(validFile, onSuccess);
+      expect(valid3).toBe(true);
+    });
+
+    it('uploads file via CatalogStorageHelper and saves public URL on form submit', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            upload: vi.fn().mockResolvedValue({ data: { path: 'Aston-Martin/logo.png' }, error: null }),
+            getPublicUrl: vi.fn().mockReturnValue({
+              data: { publicUrl: 'https://test.supabase.co/storage/v1/object/public/catalog/Aston-Martin/logo.png' },
+            }),
+          }),
+        },
+        from: vi.fn().mockReturnValue({
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: 'b-aston',
+                  name: 'Aston Martin',
+                  slug: 'aston-martin',
+                  logo_url: 'https://test.supabase.co/storage/v1/object/public/catalog/Aston-Martin/logo.png',
+                  is_custom_bg: false,
+                },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      vi.spyOn(component.admin, 'getClient').mockResolvedValue(mockClient);
+
+      component.openBrandModal();
+      component.newBrandName.set('Aston Martin');
+      const testFile = new File(['mock-logo'], 'logo.png', { type: 'image/png' });
+      component.selectedBrandFile.set(testFile);
+      component.brandFilePreview.set('data:image/png;base64,preview...');
+
+      await component.saveBrand();
+
+      expect(component.brandModalOpen()).toBe(false);
+      const brand = component.admin.editBrands().find((b) => b.name === 'Aston Martin');
+      expect(brand).toBeTruthy();
+      expect(brand?.logoUrl).toBe(
+        'https://test.supabase.co/storage/v1/object/public/catalog/Aston-Martin/logo.png',
+      );
+    });
   });
 });
