@@ -65,7 +65,9 @@ export class AuthCallback {
     // Remove credentials/error parameters from browser history, including failure paths.
     this.document.defaultView?.history.replaceState(null, '', this.document.location.pathname);
     if (await this.auth.completeCallback(code, denied)) {
-      await this.router.navigateByUrl(this.next, { replaceUrl: true });
+      const destination =
+        this.next === '/discover' && this.auth.isAdmin() ? '/admin/discover' : this.next;
+      await this.router.navigateByUrl(destination, { replaceUrl: true });
     } else {
       this.failed.set(true);
     }

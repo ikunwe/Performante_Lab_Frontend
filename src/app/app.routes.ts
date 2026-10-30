@@ -1,7 +1,38 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { adminGuard } from './core/auth/admin.guard';
 
 export const routes: Routes = [
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/layout/admin-layout').then((m) => m.AdminLayout),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'discover',
+      },
+      {
+        path: 'discover',
+        title: 'Admin Discover | Performante Lab',
+        loadComponent: () =>
+          import('./features/admin/discover/admin-discover').then((m) => m.AdminDiscover),
+      },
+      {
+        path: 'requests',
+        title: 'Admin Requests | Performante Lab',
+        loadComponent: () =>
+          import('./features/admin/requests/admin-requests').then((m) => m.AdminRequests),
+      },
+      {
+        path: 'users',
+        title: 'Admin Users | Performante Lab',
+        loadComponent: () =>
+          import('./features/admin/users/admin-users').then((m) => m.AdminUsers),
+      },
+    ],
+  },
   {
     path: 'forgot-password',
     title: 'Forgot Password | Performante Lab',

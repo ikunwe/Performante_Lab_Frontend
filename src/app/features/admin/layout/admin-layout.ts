@@ -1,0 +1,50 @@
+import { Component, inject, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Icon } from '../../../shared/ui/icon/icon';
+import { AdsBanner } from '../../../shared/ui/ads-banner/ads-banner';
+import { AuthService, UserRole } from '../../../core/auth/auth.service';
+import { AdminService } from '../services/admin.service';
+
+@Component({
+  selector: 'app-admin-layout',
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon, AdsBanner],
+  templateUrl: './admin-layout.html',
+  styleUrl: './admin-layout.css',
+})
+export class AdminLayout {
+  readonly auth = inject(AuthService);
+  readonly admin = inject(AdminService);
+  private readonly router = inject(Router);
+
+  readonly userMenuOpen = signal(false);
+  readonly notificationsOpen = signal(false);
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((v) => !v);
+    if (this.userMenuOpen()) this.notificationsOpen.set(false);
+  }
+
+  toggleNotifications(): void {
+    this.notificationsOpen.update((v) => !v);
+    if (this.notificationsOpen()) this.userMenuOpen.set(false);
+  }
+
+  closeMenus(): void {
+    this.userMenuOpen.set(false);
+    this.notificationsOpen.set(false);
+  }
+
+  changeRole(newRole: UserRole): void {
+    this.auth.setRole(newRole);
+    this.userMenuOpen.set(false);
+    if (newRole === 'User') {
+      void this.router.navigate(['/discover']);
+    }
+  }
+
+  async logout(): Promise<void> {
+    this.closeMenus();
+    await this.auth.signOut();
+    await this.router.navigate(['/login']);
+  }
+}

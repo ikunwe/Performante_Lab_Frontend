@@ -15,9 +15,10 @@ import { StartButton } from '../../../shared/ui/start-button/start-button';
 })
 export class Login {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   readonly auth = inject(AuthService);
   private readonly next = loginDestination(
-    inject(ActivatedRoute).snapshot.queryParamMap.get('next'),
+    this.route.snapshot.queryParamMap.get('next'),
   );
   readonly showPassword = signal(false);
   readonly message = signal('');
@@ -32,9 +33,18 @@ export class Login {
     });
     effect(() => {
       if (this.auth.ready() && this.auth.user()) {
-        void this.router.navigateByUrl(this.next, { replaceUrl: true });
+        const destination = this.getRedirectDestination();
+        void this.router.navigateByUrl(destination, { replaceUrl: true });
       }
     });
+  }
+
+  private getRedirectDestination(): string {
+    const rawNext = this.route.snapshot.queryParamMap.get('next');
+    if (rawNext && rawNext !== '/discover') {
+      return this.next;
+    }
+    return this.auth.isAdmin() ? '/admin/discover' : '/discover';
   }
 
   async submit(): Promise<void> {
@@ -48,7 +58,8 @@ export class Login {
     if (!result.ok) this.message.set(result.error);
     else {
       this.form.controls.password.reset();
-      await this.router.navigateByUrl(this.next, { replaceUrl: true });
+      const destination = this.getRedirectDestination();
+      await this.router.navigateByUrl(destination, { replaceUrl: true });
     }
   }
 

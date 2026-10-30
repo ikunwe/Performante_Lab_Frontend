@@ -9,9 +9,13 @@ import {
   loginDestination,
 } from './auth-client';
 
+export type UserRole = 'User' | 'Admin' | 'SuperAdmin';
+
 export interface AccountSettings {
   username: string | null;
   hasPassword: boolean;
+  role: UserRole;
+  status: 'Active' | 'InActive';
 }
 export type AccountResult = { ok: true } | { ok: false; error: string };
 
@@ -30,11 +34,22 @@ export class AuthService {
   private unsubscribe?: () => void;
   readonly session = signal<Session | null>(null);
   readonly user = computed(() => this.session()?.user ?? null);
+  readonly currentRole = signal<UserRole>('User');
+  readonly userRole = computed<UserRole>(() => this.currentRole());
+  readonly isAdmin = computed(() => this.currentRole() === 'Admin' || this.currentRole() === 'SuperAdmin');
+  readonly isSuperAdmin = computed(() => this.currentRole() === 'SuperAdmin');
   readonly account = signal<AccountSettings | null>(null);
   readonly accountError = signal('');
   readonly accountComplete = computed(() =>
     this.account() ? !!this.account()!.username && this.account()!.hasPassword : null,
   );
+  readonly isActive = computed(() => {
+    const acc = this.account();
+    if (acc?.status) return acc.status !== 'InActive';
+    const profile = this.backendProfile();
+    if (profile?.status) return profile.status !== 'InActive';
+    return true;
+  });
   readonly avatarUrl = computed(() => {
     const url = this.user()?.user_metadata?.['avatar_url'];
     return typeof url === 'string' && url.startsWith('https://') ? url : '';
@@ -53,7 +68,13 @@ export class AuthService {
   readonly apiLoading = signal(false);
   readonly error = signal('');
   readonly apiError = signal('');
-  readonly backendProfile = signal<{ id: string; email: string | null; name: string } | null>(null);
+  readonly backendProfile = signal<{
+    id: string;
+    email: string | null;
+    name: string;
+    role?: UserRole;
+    status?: 'Active' | 'InActive';
+  } | null>(null);
 
   constructor() {
     this.destroyRef.onDestroy(() => this.unsubscribe?.());
@@ -68,6 +89,19 @@ export class AuthService {
     this.destroyRef.onDestroy(() => window?.removeEventListener('pageshow', onPageShow));
   }
 
+  syncRole(): void {
+    const metaRole = (this.user()?.app_metadata?.['role'] ||
+      this.user()?.user_metadata?.['role']) as UserRole | undefined;
+    if (metaRole && (metaRole === 'User' || metaRole === 'Admin' || metaRole === 'SuperAdmin')) {
+      this.currentRole.set(metaRole);
+    }
+  }
+
+  // Used for local simulation/tests or programmatic setting
+  setRole(role: UserRole): void {
+    this.currentRole.set(role);
+  }
+
   initialize(): Promise<void> {
     return (this.initialization ??= this.load());
   }
@@ -80,19 +114,23 @@ export class AuthService {
       const { data } = this.client.auth.onAuthStateChange((_event, session) => {
         // Keep this callback synchronous to avoid Supabase auth lock contention.
         this.session.set(session);
+        if (session) this.syncRole();
         if (_event === 'PASSWORD_RECOVERY') this.recoveryEventUser = session?.user.id ?? null;
         if (!session) {
           this.clearRecovery();
           this.backendProfile.set(null);
           this.account.set(null);
+          this.currentRole.set('User');
         }
       });
       this.unsubscribe = () => data.subscription.unsubscribe();
       const result = await this.client.auth.getSession();
       if (result.error) throw result.error;
       this.session.set(result.data.session);
-      if (result.data.session)
+      if (result.data.session) {
+        this.syncRole();
         await Promise.all([this.refreshBackendProfile(), this.refreshAccount()]);
+      }
     } catch {
       this.error.set('เชื่อมต่อระบบเข้าสู่ระบบไม่ได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
@@ -150,6 +188,7 @@ export class AuthService {
       const { data, error } = await this.client.auth.exchangeCodeForSession(code);
       if (error || !data.session) throw error;
       this.session.set(data.session);
+      this.syncRole();
       await Promise.all([this.refreshBackendProfile(), this.refreshAccount()]);
       return true;
     } catch {
@@ -173,6 +212,7 @@ export class AuthService {
       this.clearRecovery();
       this.account.set(null);
       this.backendProfile.set(null);
+      this.currentRole.set('User');
       this.apiError.set('');
       return true;
     } catch {
@@ -200,6 +240,12 @@ export class AuthService {
       if (!response.ok) throw new Error('api');
       const body = await response.json();
       this.backendProfile.set(body.user);
+      if (
+        body.user?.role &&
+        (body.user.role === 'User' || body.user.role === 'Admin' || body.user.role === 'SuperAdmin')
+      ) {
+        this.currentRole.set(body.user.role as UserRole);
+      }
       this.apiError.set('');
     } catch {
       this.backendProfile.set(null);
@@ -219,6 +265,12 @@ export class AuthService {
       if (error || !data || typeof data.hasPassword !== 'boolean') throw error;
       if (this.user()?.id === userId) {
         this.account.set(data as AccountSettings);
+        if (
+          data.role &&
+          (data.role === 'User' || data.role === 'Admin' || data.role === 'SuperAdmin')
+        ) {
+          this.currentRole.set(data.role as UserRole);
+        }
         this.accountError.set('');
       }
     } catch {
@@ -300,6 +352,7 @@ export class AuthService {
         if (result.error || !result.data.session)
           return { ok: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
         this.session.set(result.data.session);
+        this.syncRole();
       } else {
         const config = await this.loadConfig();
         const response = await fetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/auth/login`, {

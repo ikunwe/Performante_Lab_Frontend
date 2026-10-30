@@ -61,7 +61,12 @@ const destinations = new Set([
   '/my-builds',
   '/build/new',
   '/profile',
+  '/admin',
+  '/admin/discover',
+  '/admin/requests',
+  '/admin/users',
 ]);
+
 export function loginDestination(value: string | null): string {
   if (!value) return '/discover';
   try {

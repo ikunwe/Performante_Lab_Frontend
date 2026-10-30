@@ -346,4 +346,31 @@ describe('Supabase authentication', () => {
       '/build/new?car=f8-tributo',
     );
   });
+
+  it('defaults currentRole to User and updates role and status via get_my_account RPC', async () => {
+    client.rpc.mockResolvedValueOnce({
+      data: { username: 'testadmin', hasPassword: true, role: 'Admin', status: 'Active' },
+      error: null,
+    });
+    client.auth['getSession'].mockResolvedValue({ data: { session }, error: null });
+    const auth = TestBed.inject(AuthService);
+    await auth.initialize();
+
+    expect(auth.userRole()).toBe('Admin');
+    expect(auth.isAdmin()).toBe(true);
+    expect(auth.isActive()).toBe(true);
+  });
+
+  it('detects InActive suspended account from RPC data and reflects in isActive signal', async () => {
+    client.rpc.mockResolvedValueOnce({
+      data: { username: 'suspended_user', hasPassword: true, role: 'User', status: 'InActive' },
+      error: null,
+    });
+    client.auth['getSession'].mockResolvedValue({ data: { session }, error: null });
+    const auth = TestBed.inject(AuthService);
+    await auth.initialize();
+
+    expect(auth.userRole()).toBe('User');
+    expect(auth.isActive()).toBe(false);
+  });
 });

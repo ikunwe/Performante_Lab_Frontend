@@ -1,0 +1,10 @@
+.nav-item.active-nav {
+  background-color: #242424;
+  color: #ffffff;
+  border-left: 4px solid #ce281a;
+  padding-left: calc(1rem - 4px);
+}
+
+.nav-item.active-nav .nav-icon {
+  color: #ffffff !important;
+}
