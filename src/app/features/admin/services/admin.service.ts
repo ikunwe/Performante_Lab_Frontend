@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AUTH_CLIENT } from '../../../core/auth/auth-client';
+import { AUTH_CLIENT, AUTH_CONFIG } from '../../../core/auth/auth-client';
 import { AuthService, UserRole } from '../../../core/auth/auth.service';
 
 export interface AdminBuildItem {
@@ -267,43 +267,43 @@ const INITIAL_REQUESTS: AdminRequestItem[] = [
   },
 ];
 
-const INITIAL_USERS: AdminUserItem[] = [
+export const INITIAL_USERS: AdminUserItem[] = [
   {
     id: 'u-1',
-    username: 'username',
-    email: 'Email@gmail.com',
+    username: 'alex_r',
+    email: 'alex.r@performante.lab',
     role: 'Admin',
     status: 'Active',
     joinedAt: '2026-09-15',
   },
   {
     id: 'u-2',
-    username: 'username',
-    email: 'Email@gmail.com',
+    username: 'sarah_chief',
+    email: 'sarah.chief@performante.lab',
     role: 'SuperAdmin',
     status: 'Active',
     joinedAt: '2026-08-01',
   },
   {
     id: 'u-3',
-    username: 'username',
-    email: 'Email@gmail.com',
+    username: 'driver_ken',
+    email: 'driver.ken@gmail.com',
     role: 'User',
     status: 'InActive',
     joinedAt: '2026-10-10',
   },
   {
     id: 'u-4',
-    username: 'username',
-    email: 'Email@gmail.com',
+    username: 'marcus_m',
+    email: 'marcus.m@performante.lab',
     role: 'Admin',
     status: 'Active',
     joinedAt: '2026-09-20',
   },
   {
     id: 'u-5',
-    username: 'username',
-    email: 'Email@gmail.com',
+    username: 'elena_sp',
+    email: 'elena.sp@performante.lab',
     role: 'SuperAdmin',
     status: 'Active',
     joinedAt: '2026-07-12',
@@ -314,6 +314,7 @@ const INITIAL_USERS: AdminUserItem[] = [
 export class AdminService {
   private readonly auth = inject(AuthService);
   private readonly createClient = inject(AUTH_CLIENT);
+  private readonly loadConfig = inject(AUTH_CONFIG);
   private readonly platformId = inject(PLATFORM_ID);
   private client: SupabaseClient | null = null;
 
@@ -357,8 +358,8 @@ export class AdminService {
     });
   });
 
-  // Users state
-  readonly users = signal<AdminUserItem[]>(INITIAL_USERS);
+  // Users state: Real database integration starts empty []
+  readonly users = signal<AdminUserItem[]>([]);
   readonly usersSearch = signal('');
   readonly usersRoleFilter = signal<'All' | 'User' | 'Admin' | 'SuperAdmin'>('All');
   readonly usersStatusFilter = signal<'All' | 'Active' | 'InActive'>('All');
@@ -417,6 +418,19 @@ export class AdminService {
   private async getClient(): Promise<SupabaseClient | null> {
     if (!isPlatformBrowser(this.platformId)) return null;
     return (this.client ??= await this.createClient());
+  }
+
+  /**
+   * RBAC Permission Helper: Checks if the current actor can suspend/activate the target user
+   * - SuperAdmin cannot be suspended by anyone.
+   * - SuperAdmin can suspend both Admin and User.
+   * - Admin can suspend ONLY User.
+   */
+  canSuspendUser(target: AdminUserItem): boolean {
+    if (target.role === 'SuperAdmin') return false;
+    if (this.auth.isSuperAdmin()) return true; // SuperAdmin จัดการได้ทั้ง Admin และ User
+    if (this.auth.isAdmin()) return target.role === 'User'; // Admin จัดการได้เฉพาะ User
+    return false;
   }
 
   // Real Database Queries
@@ -481,28 +495,84 @@ export class AdminService {
     }
   }
 
+  /**
+   * Hybrid Data Fetching for Admin Users:
+   * 1. Primary: Calls Backend Express API `GET /api/admin/users` with Bearer token
+   * 2. Fallback: Calls Supabase direct RPC `admin_list_users()` if backend is unavailable
+   */
   async fetchUsers(): Promise<void> {
     const client = await this.getClient();
-    if (!client) return;
+    let token: string | undefined;
+    if (client) {
+      try {
+        const { data } = await client.auth.getSession();
+        token = data.session?.access_token;
+      } catch {
+        // ignore session retrieval error
+      }
+    }
+
+    // ── 1. ลองเรียกผ่าน Backend Express API ──
+    let apiLoaded = false;
     try {
-      const { data, error } = await client
-        .from('profiles')
-        .select('*')
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      if (data && data.length > 0) {
-        const mapped: AdminUserItem[] = data.map((item: any) => ({
-          id: item.id,
-          username: item.username,
-          email: item.email || `${item.username}@performante.lab`,
-          role: (item.role as UserRole) || 'User',
-          status: (item.status as 'Active' | 'InActive') || 'Active',
-          joinedAt: item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : '2026-10-30',
-        }));
-        this.users.set(mapped);
+      const config = await this.loadConfig();
+      if (config.apiBaseUrl && token) {
+        const res = await fetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/admin/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-store',
+          },
+          signal: AbortSignal.timeout(6000),
+        });
+
+        if (res.ok) {
+          const body = await res.json();
+          if (Array.isArray(body?.users)) {
+            const mapped: AdminUserItem[] = body.users.map((item: any) => ({
+              id: item.id,
+              username: item.username,
+              email: item.email || '-',
+              role: (item.role as UserRole) || 'User',
+              status: (item.status as 'Active' | 'InActive') || 'Active',
+              joinedAt: item.joinedAt
+                ? item.joinedAt.includes('T')
+                  ? item.joinedAt.split('T')[0]
+                  : item.joinedAt
+                : '2026-10-30',
+              avatarUrl: item.avatarUrl,
+            }));
+            this.users.set(mapped);
+            apiLoaded = true;
+            return;
+          }
+        }
       }
     } catch {
-      // Graceful fallback to initial seed users
+      // Backend API ไม่พร้อม ให้ตกมาทำงานที่ Fallback RPC
+    }
+
+    // ── 2. Fallback: เรียกตรงผ่าน Supabase RPC admin_list_users() ──
+    if (client && !apiLoaded) {
+      try {
+        const { data, error } = await client.rpc('admin_list_users');
+        if (error) throw error;
+        if (Array.isArray(data)) {
+          const mapped: AdminUserItem[] = data.map((item: any) => ({
+            id: item.id,
+            username: item.username,
+            email: item.email || '-',
+            role: (item.role as UserRole) || 'User',
+            status: (item.status as 'Active' | 'InActive') || 'Active',
+            joinedAt: item.joined_at
+              ? new Date(item.joined_at).toISOString().split('T')[0]
+              : '2026-10-30',
+          }));
+          this.users.set(mapped);
+          return;
+        }
+      } catch {
+        // หากทั้ง API และ RPC ล้มเหลว ให้คงสถานะ users เป็น [] และแสดง Error Alert
+      }
     }
   }
 
@@ -607,6 +677,11 @@ export class AdminService {
       return { ok: false, message: 'ห้ามระงับ SuperAdmin' };
     }
 
+    // Role-based permission check
+    if (!this.canSuspendUser(target)) {
+      return { ok: false, message: 'Admin สามารถจัดการได้เฉพาะบัญชี User เท่านั้น' };
+    }
+
     const nextStatus = target.status === 'Active' ? 'InActive' : 'Active';
     const previous = this.users();
 
@@ -618,11 +693,46 @@ export class AdminService {
     const client = await this.getClient();
     if (client) {
       try {
-        const { error } = await client
-          .from('profiles')
-          .update({ status: nextStatus })
-          .eq('id', id);
-        if (error) throw error;
+        let apiUpdated = false;
+        try {
+          const config = await this.loadConfig();
+          const { data: sessionData } = await client.auth.getSession();
+          const token = sessionData.session?.access_token;
+          if (token && config.apiBaseUrl) {
+            const res = await fetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/admin/users/${id}/status`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ status: nextStatus }),
+              signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok) {
+              apiUpdated = true;
+            } else if (res.status === 403 || res.status === 400) {
+              const errBody = await res.json().catch(() => ({}));
+              throw new Error(errBody.message || 'ถูกปฏิเสธสิทธิ์การเปลี่ยนสถานะ');
+            }
+          }
+        } catch (backendErr: any) {
+          if (
+            backendErr?.message &&
+            (backendErr.message.includes('ถูกปฏิเสธ') ||
+              backendErr.message.includes('สิทธิ์') ||
+              backendErr.message.includes('ห้าม'))
+          ) {
+            throw backendErr;
+          }
+        }
+
+        if (!apiUpdated) {
+          const { error } = await client
+            .from('profiles')
+            .update({ status: nextStatus })
+            .eq('id', id);
+          if (error) throw error;
+        }
       } catch (err: any) {
         // Rollback
         this.users.set(previous);
@@ -655,11 +765,46 @@ export class AdminService {
     const client = await this.getClient();
     if (client) {
       try {
-        const { error } = await client
-          .from('profiles')
-          .update({ role: newRole })
-          .eq('id', id);
-        if (error) throw error;
+        let apiUpdated = false;
+        try {
+          const config = await this.loadConfig();
+          const { data: sessionData } = await client.auth.getSession();
+          const token = sessionData.session?.access_token;
+          if (token && config.apiBaseUrl) {
+            const res = await fetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/admin/users/${id}/role`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ role: newRole }),
+              signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok) {
+              apiUpdated = true;
+            } else if (res.status === 403 || res.status === 400) {
+              const errBody = await res.json().catch(() => ({}));
+              throw new Error(errBody.message || 'ถูกปฏิเสธสิทธิ์การเปลี่ยน Role');
+            }
+          }
+        } catch (backendErr: any) {
+          if (
+            backendErr?.message &&
+            (backendErr.message.includes('ถูกปฏิเสธ') ||
+              backendErr.message.includes('สิทธิ์') ||
+              backendErr.message.includes('ต้องใช้สิทธิ์'))
+          ) {
+            throw backendErr;
+          }
+        }
+
+        if (!apiUpdated) {
+          const { error } = await client
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', id);
+          if (error) throw error;
+        }
       } catch (err: any) {
         // Rollback
         this.users.set(previous);

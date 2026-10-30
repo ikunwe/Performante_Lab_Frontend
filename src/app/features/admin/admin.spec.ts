@@ -4,9 +4,9 @@ import { AdminLayout } from './layout/admin-layout';
 import { AdminDiscover } from './discover/admin-discover';
 import { AdminRequests } from './requests/admin-requests';
 import { AdminUsers } from './users/admin-users';
-import { AdminService } from './services/admin.service';
+import { AdminService, INITIAL_USERS } from './services/admin.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { AUTH_CLIENT } from '../../core/auth/auth-client';
+import { AUTH_CLIENT, AUTH_CONFIG } from '../../core/auth/auth-client';
 import { signal } from '@angular/core';
 
 describe('Admin Portal Features', () => {
@@ -31,6 +31,14 @@ describe('Admin Portal Features', () => {
         provideRouter([]),
         { provide: AuthService, useValue: mockAuth },
         { provide: AUTH_CLIENT, useValue: vi.fn().mockResolvedValue(null) },
+        {
+          provide: AUTH_CONFIG,
+          useValue: vi.fn().mockResolvedValue({
+            supabaseUrl: 'https://test.supabase.co',
+            supabasePublishableKey: 'test-key',
+            apiBaseUrl: 'http://localhost:3000',
+          }),
+        },
       ],
     }).compileComponents();
   });
@@ -86,6 +94,7 @@ describe('Admin Portal Features', () => {
   it('renders AdminUsers with user rows, role badges, and Suspend buttons', () => {
     const adminService = TestBed.inject(AdminService);
     adminService.loading.set(false);
+    adminService.users.set([...INITIAL_USERS]);
     const fixture = TestBed.createComponent(AdminUsers);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -94,5 +103,34 @@ describe('Admin Portal Features', () => {
     expect(compiled.textContent).toContain('จัดการบัญชีของ User');
     expect(compiled.textContent).toContain('Suspend');
     expect(compiled.textContent).toContain('Active');
+  });
+
+  it('renders disabled action button and read-only badge when actor is regular Admin', () => {
+    mockAuth.isSuperAdmin.set(false);
+    mockAuth.isAdmin.set(true);
+    mockAuth.userRole.set('Admin');
+
+    const adminService = TestBed.inject(AdminService);
+    adminService.loading.set(false);
+    adminService.users.set([...INITIAL_USERS]);
+    const fixture = TestBed.createComponent(AdminUsers);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // Title attribute for disabled admin button
+    expect(compiled.innerHTML).toContain('เฉพาะ SuperAdmin เท่านั้นที่จัดการ Admin ได้');
+    // Read-only role title
+    expect(compiled.innerHTML).toContain('Read-only (ไม่มีสิทธิ์เปลี่ยน Role)');
+  });
+
+  it('renders empty state when users list is empty', () => {
+    const adminService = TestBed.inject(AdminService);
+    adminService.loading.set(false);
+    adminService.users.set([]);
+    const fixture = TestBed.createComponent(AdminUsers);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.textContent).toContain('ไม่พบบัญชีผู้ใช้ในระบบ');
   });
 });

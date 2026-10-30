@@ -40,6 +40,14 @@ export class AdminUsers {
   }
 
   async toggleStatus(user: AdminUserItem): Promise<void> {
+    if (!this.admin.canSuspendUser(user)) {
+      if (user.role === 'SuperAdmin') {
+        this.showToast('ไม่สามารถระงับบัญชี SuperAdmin ได้', 'error');
+      } else {
+        this.showToast('เฉพาะ SuperAdmin เท่านั้นที่จัดการ Admin ได้', 'error');
+      }
+      return;
+    }
     const res = await this.admin.toggleUserStatus(user.id);
     if (res.ok) {
       const action = user.status === 'Active' ? 'ระงับบัญชี' : 'เปิดใช้งานบัญชี';
@@ -61,6 +69,10 @@ export class AdminUsers {
 
   async changeUserRole(user: AdminUserItem, newRole: UserRole, event?: Event): Promise<void> {
     event?.stopPropagation();
+    if (!this.auth.isSuperAdmin()) {
+      this.showToast('เฉพาะ SuperAdmin เท่านั้นที่มีสิทธิ์แก้ไข Role ของผู้ใช้', 'error');
+      return;
+    }
     const res = await this.admin.updateUserRole(user.id, newRole);
     this.editingUserRole.set(null);
     if (res.ok) {
@@ -86,4 +98,3 @@ export class AdminUsers {
     }, 3500);
   }
 }
-
