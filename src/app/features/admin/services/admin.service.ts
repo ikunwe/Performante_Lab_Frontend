@@ -53,6 +53,102 @@ export interface AdminNotification {
   type: 'request' | 'user' | 'build';
 }
 
+export interface RealBrandItem {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string;
+  is_custom_bg: boolean;
+  created_at?: string;
+  // Aliases for compatibility
+  logoUrl?: string;
+  isCustomBg?: boolean;
+}
+
+export interface RealCarModelItem {
+  id: string;
+  brand_id: string;
+  name: string;
+  slug: string;
+  image_url: string;
+  body_type: string;
+  year?: string;
+  created_at?: string;
+  // Aliases
+  brandId?: string;
+  image?: string;
+  bodyType?: string;
+}
+
+export interface RealPartItem {
+  id: string;
+  car_model_id: string;
+  category: string;
+  name: string;
+  manufacturer: string;
+  image_url: string;
+  price: number;
+  created_at?: string;
+  // Aliases
+  carId?: string;
+  image?: string;
+}
+
+export type AdminBrandItem = RealBrandItem;
+export type AdminCarModelItem = RealCarModelItem;
+export type AdminPartDataItem = RealPartItem;
+
+export function mapBrand(row: any): RealBrandItem {
+  const logo = row.logo_url || row.logoUrl || '';
+  const isCustom = Boolean(row.is_custom_bg ?? row.isCustomBg);
+  return {
+    id: String(row.id),
+    name: row.name,
+    slug: row.slug || row.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    logo_url: logo,
+    logoUrl: logo,
+    is_custom_bg: isCustom,
+    isCustomBg: isCustom,
+    created_at: row.created_at,
+  };
+}
+
+export function mapCarModel(row: any): RealCarModelItem {
+  const image = row.image_url || row.image || '';
+  const brandId = row.brand_id || row.brandId || '';
+  const bodyType = row.body_type || row.bodyType || 'Coupe';
+  return {
+    id: String(row.id),
+    brand_id: brandId,
+    brandId,
+    name: row.name,
+    slug: row.slug || row.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    image_url: image,
+    image,
+    body_type: bodyType,
+    bodyType,
+    year: row.year,
+    created_at: row.created_at,
+  };
+}
+
+export function mapPart(row: any): RealPartItem {
+  const image = row.image_url || row.image || '';
+  const carModelId = row.car_model_id || row.carId || '';
+  return {
+    id: String(row.id),
+    car_model_id: carModelId,
+    carId: carModelId,
+    category: row.category,
+    name: row.name,
+    manufacturer: row.manufacturer || 'Custom',
+    image_url: image,
+    image,
+    price: Number(row.price) || 0,
+    created_at: row.created_at,
+  };
+}
+
 const INITIAL_BUILDS: AdminBuildItem[] = [
   {
     id: 'b-1',
@@ -310,6 +406,10 @@ export const INITIAL_USERS: AdminUserItem[] = [
   },
 ];
 
+export const INITIAL_EDIT_BRANDS: RealBrandItem[] = [];
+export const INITIAL_EDIT_CARS: RealCarModelItem[] = [];
+export const INITIAL_EDIT_PARTS: RealPartItem[] = [];
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly auth = inject(AuthService);
@@ -409,13 +509,298 @@ export class AdminService {
     () => this.notifications().filter((n) => !n.read).length,
   );
 
+  // Edit Data (Real Database Integration: car_brands, car_models, car_parts)
+  readonly catalogBrands = signal<RealBrandItem[]>([]);
+  readonly catalogModels = signal<RealCarModelItem[]>([]);
+  readonly catalogParts = signal<RealPartItem[]>([]);
+  readonly catalogLoading = signal<boolean>(false);
+
+  // Backward compatibility aliases
+  readonly editBrands = this.catalogBrands;
+  readonly editCars = this.catalogModels;
+  readonly editParts = this.catalogParts;
+
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       void this.loadAll();
     }
   }
 
-  private async getClient(): Promise<SupabaseClient | null> {
+  // 1. ดึงแบรนด์ทั้งหมด (car_brands)
+  async fetchCatalogBrands(): Promise<void> {
+    const client = await this.getClient();
+    if (!client) return;
+    this.catalogLoading.set(true);
+    try {
+      const { data, error } = await client
+        .from('car_brands')
+        .select('*')
+        .order('name', { ascending: true });
+      if (error) {
+        console.error('[AdminService] fetchCatalogBrands error:', error);
+        throw error;
+      }
+      this.catalogBrands.set((data || []).map(mapBrand));
+    } catch (err: any) {
+      console.error('[AdminService] fetchCatalogBrands exception:', err);
+      this.error.set(err?.message || 'โหลดข้อมูลแบรนด์ไม่สำเร็จ');
+    } finally {
+      this.catalogLoading.set(false);
+    }
+  }
+
+  // 2. ดึงรุ่นรถตาม brand_id (car_models)
+  async fetchCatalogModels(brandId: string): Promise<void> {
+    const client = await this.getClient();
+    if (!client || !brandId) return;
+    this.catalogLoading.set(true);
+    try {
+      const { data, error } = await client
+        .from('car_models')
+        .select('*')
+        .eq('brand_id', brandId)
+        .order('name', { ascending: true });
+      if (error) {
+        console.error('[AdminService] fetchCatalogModels error:', error);
+        throw error;
+      }
+      this.catalogModels.set((data || []).map(mapCarModel));
+    } catch (err: any) {
+      console.error('[AdminService] fetchCatalogModels exception:', err);
+      this.error.set(err?.message || 'โหลดข้อมูลรุ่นรถไม่สำเร็จ');
+    } finally {
+      this.catalogLoading.set(false);
+    }
+  }
+
+  // 3. ดึงพาร์ตตาม car_model_id (car_parts)
+  async fetchCatalogParts(carModelId: string): Promise<void> {
+    const client = await this.getClient();
+    if (!client || !carModelId) return;
+    this.catalogLoading.set(true);
+    try {
+      const { data, error } = await client
+        .from('car_parts')
+        .select('*')
+        .eq('car_model_id', carModelId)
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error('[AdminService] fetchCatalogParts error:', error);
+        throw error;
+      }
+      this.catalogParts.set((data || []).map(mapPart));
+    } catch (err: any) {
+      console.error('[AdminService] fetchCatalogParts exception:', err);
+      this.error.set(err?.message || 'โหลดข้อมูลพาร์ตไม่สำเร็จ');
+    } finally {
+      this.catalogLoading.set(false);
+    }
+  }
+
+  // บันทึก Brand (car_brands)
+  async insertBrand(item: {
+    name: string;
+    slug?: string;
+    logo_url: string;
+    is_custom_bg?: boolean;
+  }): Promise<{ ok: boolean; data?: RealBrandItem; error?: string }> {
+    const client = await this.getClient();
+    const slug = item.slug || item.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const payload = {
+      name: item.name.trim(),
+      slug,
+      logo_url: item.logo_url,
+      is_custom_bg: item.is_custom_bg ?? false,
+    };
+
+    if (!client) {
+      const fallbackItem = mapBrand({
+        id: `b-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        ...payload,
+      });
+      this.catalogBrands.update((list) => [...list, fallbackItem]);
+      return { ok: true, data: fallbackItem };
+    }
+
+    try {
+      const { data, error } = await client
+        .from('car_brands')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) {
+        console.error('[AdminService] insertBrand error:', error);
+        throw error;
+      }
+      const mapped = mapBrand(data);
+      this.catalogBrands.update((list) => [...list, mapped]);
+      return { ok: true, data: mapped };
+    } catch (err: any) {
+      console.error('[AdminService] insertBrand exception:', err);
+      return { ok: false, error: err?.message || 'บันทึก Brand ล้มเหลว' };
+    }
+  }
+
+  // บันทึก Car Model (car_models)
+  async insertCarModel(item: {
+    brand_id: string;
+    name: string;
+    slug?: string;
+    image_url: string;
+    body_type?: string;
+    year?: string;
+  }): Promise<{ ok: boolean; data?: RealCarModelItem; error?: string }> {
+    const client = await this.getClient();
+    const slug = item.slug || item.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const payload = {
+      brand_id: item.brand_id,
+      name: item.name.trim(),
+      slug,
+      image_url: item.image_url,
+      body_type: item.body_type || 'Coupe',
+      year: item.year || null,
+    };
+
+    if (!client) {
+      const fallbackItem = mapCarModel({
+        id: `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        ...payload,
+      });
+      this.catalogModels.update((list) => [...list, fallbackItem]);
+      return { ok: true, data: fallbackItem };
+    }
+
+    try {
+      const { data, error } = await client
+        .from('car_models')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) {
+        console.error('[AdminService] insertCarModel error:', error);
+        throw error;
+      }
+      const mapped = mapCarModel(data);
+      this.catalogModels.update((list) => [...list, mapped]);
+      return { ok: true, data: mapped };
+    } catch (err: any) {
+      console.error('[AdminService] insertCarModel exception:', err);
+      return { ok: false, error: err?.message || 'บันทึกรุ่นรถล้มเหลว' };
+    }
+  }
+
+  // บันทึก Part (car_parts)
+  async insertCarPart(item: {
+    car_model_id: string;
+    category: string;
+    name: string;
+    manufacturer?: string;
+    image_url: string;
+    price?: number;
+  }): Promise<{ ok: boolean; data?: RealPartItem; error?: string }> {
+    const client = await this.getClient();
+    const payload = {
+      car_model_id: item.car_model_id,
+      category: item.category,
+      name: item.name.trim(),
+      manufacturer: item.manufacturer || 'Custom',
+      image_url: item.image_url,
+      price: item.price ?? 0,
+    };
+
+    if (!client) {
+      const fallbackItem = mapPart({
+        id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        ...payload,
+      });
+      this.catalogParts.update((list) => [...list, fallbackItem]);
+      return { ok: true, data: fallbackItem };
+    }
+
+    try {
+      const { data, error } = await client
+        .from('car_parts')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) {
+        console.error('[AdminService] insertCarPart error:', error);
+        throw error;
+      }
+      const mapped = mapPart(data);
+      this.catalogParts.update((list) => [...list, mapped]);
+      return { ok: true, data: mapped };
+    } catch (err: any) {
+      console.error('[AdminService] insertCarPart exception:', err);
+      return { ok: false, error: err?.message || 'บันทึกพาร์ตล้มเหลว' };
+    }
+  }
+
+  // Synchronous mutation helpers for tests and local updates
+  addBrand(brand: {
+    name: string;
+    logoUrl?: string;
+    logo_url?: string;
+    isCustomBg?: boolean;
+    is_custom_bg?: boolean;
+    id?: string;
+  }): RealBrandItem {
+    const mapped = mapBrand({
+      id: brand.id || `b-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: brand.name.trim(),
+      logo_url: brand.logo_url || brand.logoUrl || 'assets/brands/ferrari.png',
+      is_custom_bg: brand.is_custom_bg ?? brand.isCustomBg ?? false,
+    });
+    this.catalogBrands.update((list) => [...list, mapped]);
+    return mapped;
+  }
+
+  addCarModel(car: {
+    brandId?: string;
+    brand_id?: string;
+    name: string;
+    image?: string;
+    image_url?: string;
+    bodyType?: string;
+    body_type?: string;
+    id?: string;
+  }): RealCarModelItem {
+    const mapped = mapCarModel({
+      id: car.id || `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      brand_id: car.brand_id || car.brandId || '',
+      name: car.name.trim(),
+      image_url: car.image_url || car.image || 'assets/car_pic.png',
+      body_type: car.body_type || car.bodyType || 'Coupe',
+    });
+    this.catalogModels.update((list) => [...list, mapped]);
+    return mapped;
+  }
+
+  addPartData(part: {
+    carId?: string;
+    car_model_id?: string;
+    category?: string;
+    name: string;
+    manufacturer?: string;
+    image?: string;
+    image_url?: string;
+    price?: number;
+    id?: string;
+  }): RealPartItem {
+    const mapped = mapPart({
+      id: part.id || `p-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      car_model_id: part.car_model_id || part.carId || '',
+      category: part.category || 'Full Body Kits',
+      name: part.name.trim(),
+      manufacturer: part.manufacturer || 'Custom',
+      image_url: part.image_url || part.image || 'assets/car_pic.png',
+      price: part.price ?? 0,
+    });
+    this.catalogParts.update((list) => [...list, mapped]);
+    return mapped;
+  }
+
+  async getClient(): Promise<SupabaseClient | null> {
     if (!isPlatformBrowser(this.platformId)) return null;
     return (this.client ??= await this.createClient());
   }

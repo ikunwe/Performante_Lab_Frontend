@@ -22,14 +22,30 @@ describe('AdminService', () => {
         }),
       },
       rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-      from: vi.fn().mockReturnValue({
+      from: vi.fn().mockImplementation((table: string) => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: {
+                id: 'gen-uuid-1',
+                name: 'Test Item',
+                slug: 'test-item',
+                logo_url: 'https://test.supabase.co/logo.png',
+                image_url: 'https://test.supabase.co/img.png',
+                is_custom_bg: false,
+                created_at: new Date().toISOString(),
+              },
+              error: null,
+            }),
+          }),
+        }),
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({ error: null }),
         }),
-      }),
+      })),
     };
 
     mockLoadConfig = vi.fn().mockResolvedValue({
@@ -311,6 +327,186 @@ describe('AdminService', () => {
       } finally {
         globalThis.fetch = originalFetch;
       }
+    });
+  });
+
+  describe('Real Car Catalog Database Operations', () => {
+    it('initializes catalog signals as empty arrays', () => {
+      expect(service.catalogBrands()).toEqual([]);
+      expect(service.catalogModels()).toEqual([]);
+      expect(service.catalogParts()).toEqual([]);
+      expect(service.catalogLoading()).toBe(false);
+    });
+
+    it('fetches brands from car_brands table and populates catalogBrands signal', async () => {
+      const mockDbBrands = [
+        {
+          id: 'b-100',
+          name: 'Ferrari',
+          slug: 'ferrari',
+          logo_url: 'https://test.supabase.co/ferrari.png',
+          is_custom_bg: true,
+          created_at: '2026-10-31T00:00:00.000Z',
+        },
+      ];
+
+      mockSupabaseClient.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: mockDbBrands, error: null }),
+      });
+      (service as any).client = mockSupabaseClient;
+
+      await service.fetchCatalogBrands();
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_brands');
+      expect(service.catalogBrands().length).toBe(1);
+      expect(service.catalogBrands()[0].name).toBe('Ferrari');
+      expect(service.catalogBrands()[0].logoUrl).toBe('https://test.supabase.co/ferrari.png');
+      expect(service.catalogBrands()[0].isCustomBg).toBe(true);
+    });
+
+    it('fetches car models from car_models table filtered by brand_id', async () => {
+      const mockDbModels = [
+        {
+          id: 'c-200',
+          brand_id: 'b-100',
+          name: '488 Pista',
+          slug: '488-pista',
+          image_url: 'https://test.supabase.co/pista.png',
+          body_type: 'Coupe',
+        },
+      ];
+
+      mockSupabaseClient.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: mockDbModels, error: null }),
+      });
+      (service as any).client = mockSupabaseClient;
+
+      await service.fetchCatalogModels('b-100');
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_models');
+      expect(service.catalogModels().length).toBe(1);
+      expect(service.catalogModels()[0].name).toBe('488 Pista');
+      expect(service.catalogModels()[0].brandId).toBe('b-100');
+    });
+
+    it('fetches car parts from car_parts table filtered by car_model_id', async () => {
+      const mockDbParts = [
+        {
+          id: 'p-300',
+          car_model_id: 'c-200',
+          category: 'Full Body Kits',
+          name: 'Carbon Aero Kit',
+          manufacturer: 'Ferrari',
+          image_url: 'https://test.supabase.co/kit.png',
+          price: 500000,
+        },
+      ];
+
+      mockSupabaseClient.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: mockDbParts, error: null }),
+      });
+      (service as any).client = mockSupabaseClient;
+
+      await service.fetchCatalogParts('c-200');
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_parts');
+      expect(service.catalogParts().length).toBe(1);
+      expect(service.catalogParts()[0].name).toBe('Carbon Aero Kit');
+      expect(service.catalogParts()[0].carId).toBe('c-200');
+    });
+
+    it('inserts brand into car_brands and updates catalogBrands signal', async () => {
+      const insertedRow = {
+        id: 'b-999',
+        name: 'McLaren',
+        slug: 'mclaren',
+        logo_url: 'https://test.supabase.co/mclaren.png',
+        is_custom_bg: false,
+      };
+
+      mockSupabaseClient.from = vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
+          }),
+        }),
+      });
+      (service as any).client = mockSupabaseClient;
+
+      const res = await service.insertBrand({
+        name: 'McLaren',
+        logo_url: 'https://test.supabase.co/mclaren.png',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(service.catalogBrands().some((b) => b.name === 'McLaren')).toBe(true);
+    });
+
+    it('inserts car model into car_models and updates catalogModels signal', async () => {
+      const insertedRow = {
+        id: 'c-999',
+        brand_id: 'b-999',
+        name: '720S',
+        slug: '720s',
+        image_url: 'https://test.supabase.co/720s.png',
+        body_type: 'Coupe',
+      };
+
+      mockSupabaseClient.from = vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
+          }),
+        }),
+      });
+      (service as any).client = mockSupabaseClient;
+
+      const res = await service.insertCarModel({
+        brand_id: 'b-999',
+        name: '720S',
+        image_url: 'https://test.supabase.co/720s.png',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(service.catalogModels().some((c) => c.name === '720S')).toBe(true);
+    });
+
+    it('inserts part into car_parts and updates catalogParts signal', async () => {
+      const insertedRow = {
+        id: 'p-999',
+        car_model_id: 'c-999',
+        category: 'Exhaust',
+        name: 'Titanium Exhaust',
+        manufacturer: 'Akrapovic',
+        image_url: 'https://test.supabase.co/exhaust.png',
+        price: 320000,
+      };
+
+      mockSupabaseClient.from = vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
+          }),
+        }),
+      });
+      (service as any).client = mockSupabaseClient;
+
+      const res = await service.insertCarPart({
+        car_model_id: 'c-999',
+        category: 'Exhaust',
+        name: 'Titanium Exhaust',
+        manufacturer: 'Akrapovic',
+        image_url: 'https://test.supabase.co/exhaust.png',
+        price: 320000,
+      });
+
+      expect(res.ok).toBe(true);
+      expect(service.catalogParts().some((p) => p.name === 'Titanium Exhaust')).toBe(true);
     });
   });
 });

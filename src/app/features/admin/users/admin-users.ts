@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Icon } from '../../../shared/ui/icon/icon';
@@ -27,16 +27,81 @@ export class AdminUsers {
   ];
   readonly statuses: ('All' | 'Active' | 'InActive')[] = ['All', 'Active', 'InActive'];
 
+  readonly pageSize = 10;
+  readonly currentPage = signal(1);
+
+  // คำนวณจำนวนหน้าทั้งหมด
+  readonly totalUsers = computed(() => this.admin.filteredUsers().length);
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalUsers() / this.pageSize)));
+
+  // ตัดข้อมูล 10 คนสำหรับหน้าปัจจุบัน
+  readonly pagedUsers = computed(() => {
+    const page = Math.max(1, Math.min(this.currentPage(), this.totalPages()));
+    const start = (page - 1) * this.pageSize;
+    return this.admin.filteredUsers().slice(start, start + this.pageSize);
+  });
+
+  // ช่วงรายการที่กำลังแสดง (สำหรับข้อความแสดง 1 - 10 จาก...)
+  readonly displayRange = computed(() => {
+    const total = this.totalUsers();
+    if (total === 0) return { start: 0, end: 0, total: 0 };
+    const page = Math.max(1, Math.min(this.currentPage(), this.totalPages()));
+    const start = (page - 1) * this.pageSize + 1;
+    const end = Math.min(page * this.pageSize, total);
+    return { start, end, total };
+  });
+
+  // Array หมายเลขหน้าสำหรับ Loop แสดงปุ่ม
+  readonly pageNumbers = computed(() => {
+    const total = this.totalPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
+  });
+
+  constructor() {
+    effect(() => {
+      // Auto-reset currentPage to 1 whenever search query or filters change
+      this.admin.usersSearch();
+      this.admin.usersRoleFilter();
+      this.admin.usersStatusFilter();
+      this.currentPage.set(1);
+    });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
+  }
+
+  prevPage(): void {
+    if (this.currentPage() > 1) {
+      this.goToPage(this.currentPage() - 1);
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.goToPage(this.currentPage() + 1);
+    }
+  }
+
+  onSearchChange(search: string): void {
+    this.admin.usersSearch.set(search);
+    this.currentPage.set(1);
+  }
+
   toggleFilters(): void {
     this.filtersOpen.update((v) => !v);
   }
 
   setRoleFilter(role: 'All' | 'User' | 'Admin' | 'SuperAdmin'): void {
     this.admin.usersRoleFilter.set(role);
+    this.currentPage.set(1);
   }
 
   setStatusFilter(status: 'All' | 'Active' | 'InActive'): void {
     this.admin.usersStatusFilter.set(status);
+    this.currentPage.set(1);
   }
 
   async toggleStatus(user: AdminUserItem): Promise<void> {

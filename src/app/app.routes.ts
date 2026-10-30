@@ -26,6 +26,12 @@ export const routes: Routes = [
           import('./features/admin/requests/admin-requests').then((m) => m.AdminRequests),
       },
       {
+        path: 'edit-data',
+        title: 'Admin Edit Data | Performante Lab',
+        loadComponent: () =>
+          import('./features/admin/edit-data/admin-edit-data').then((m) => m.AdminEditData),
+      },
+      {
         path: 'users',
         title: 'Admin Users | Performante Lab',
         loadComponent: () =>
