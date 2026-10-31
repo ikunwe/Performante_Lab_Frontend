@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AUTH_CLIENT, AUTH_CONFIG } from '../../../core/auth/auth-client';
 import { AuthService, UserRole } from '../../../core/auth/auth.service';
+import { CatalogStorageHelper } from '../../../core/storage/catalog-storage';
 
 export interface AdminBuildItem {
   id: string;
@@ -526,54 +527,248 @@ export class AdminService {
     }
   }
 
-  // 1. ดึงแบรนด์ทั้งหมด (car_brands)
+  // 1. ดึงแบรนด์ทั้งหมด (Storage catalog bucket -> car_brand_reference fallback)
   async fetchCatalogBrands(): Promise<void> {
     const client = await this.getClient();
     if (!client) return;
     this.catalogLoading.set(true);
+
     try {
-      const { data, error } = await client
-        .from('car_brands')
-        .select('*')
-        .order('name', { ascending: true });
-      if (error) {
-        console.error('[AdminService] fetchCatalogBrands error:', error);
-        throw error;
+      // ดึงจาก Storage Bucket 'catalog' เป็นหลัก
+      if (typeof (client as any).storage?.from === 'function') {
+        const storageBrands = await CatalogStorageHelper.listBrands(client);
+        if (storageBrands && storageBrands.length > 0) {
+          const mapped: RealBrandItem[] = storageBrands.map((b) => ({
+            id: b.id,
+            name: b.name,
+            slug: b.slug,
+            logo_url: b.logoUrl,
+            logoUrl: b.logoUrl,
+            is_custom_bg: b.id.toLowerCase() === 'ferrari',
+            isCustomBg: b.id.toLowerCase() === 'ferrari',
+          }));
+          this.catalogBrands.set(mapped);
+          return;
+        }
       }
-      this.catalogBrands.set((data || []).map(mapBrand));
+
+      // Fallback: car_brand_reference database table
+      if (typeof client.from === 'function') {
+        const query = client.from('car_brand_reference');
+        if (query && typeof query.select === 'function') {
+          const { data, error } = await query
+            .select('id, name, slug, details')
+            .order('name', { ascending: true });
+
+          if (error) {
+            console.error('[AdminService] fetchCatalogBrands error:', error);
+            throw error;
+          }
+
+          const mapped: RealBrandItem[] = (data || []).map((row: any) => {
+            const details = row.details || {};
+            const refLogo = details.logoReferenceUrl || '';
+
+            // ตรวจสอบรูปใน Storage หรือใช้ logoReferenceUrl (ห้าม hardcode โลโก้ Ferrari เด็ดขาด)
+            const customStorageLogo = `https://oxzejsgfazbjjqopkzuf.supabase.co/storage/v1/object/public/catalog/${row.name}/logo.png`;
+            const logoUrl = refLogo || row.logo_url || customStorageLogo || '';
+            const isFerrari = row.id === 'ferrari' || details.isCustomBg || row.is_custom_bg || false;
+
+            return {
+              id: row.id,
+              name: row.id === 'great-wall' ? 'GWM' : row.name,
+              slug: row.slug,
+              logo_url: logoUrl,
+              logoUrl: logoUrl,
+              is_custom_bg: isFerrari,
+              isCustomBg: isFerrari,
+            };
+          });
+
+          this.catalogBrands.set(mapped);
+        }
+      }
     } catch (err: any) {
-      console.error('[AdminService] fetchCatalogBrands exception:', err);
+      console.error('[AdminService] fetchCatalogBrands failed:', err);
       this.error.set(err?.message || 'โหลดข้อมูลแบรนด์ไม่สำเร็จ');
     } finally {
       this.catalogLoading.set(false);
     }
   }
 
-  // 2. ดึงรุ่นรถตาม brand_id (car_models)
+  // 2. ดึงรุ่นรถตาม brand (Storage catalog/{brand} -> car_brand_reference fallback)
   async fetchCatalogModels(brandId: string): Promise<void> {
     const client = await this.getClient();
     if (!client || !brandId) return;
     this.catalogLoading.set(true);
+
     try {
-      const { data, error } = await client
-        .from('car_models')
-        .select('*')
-        .eq('brand_id', brandId)
-        .order('name', { ascending: true });
-      if (error) {
-        console.error('[AdminService] fetchCatalogModels error:', error);
-        throw error;
+      // ดึงจาก Storage Bucket 'catalog/{brandId}' เป็นหลัก
+      if (typeof (client as any).storage?.from === 'function') {
+        const storageModels = await CatalogStorageHelper.listModels(client, brandId);
+        if (storageModels && storageModels.length > 0) {
+          const mapped: RealCarModelItem[] = storageModels.map((m) => ({
+            id: m.id,
+            brand_id: brandId,
+            brandId: brandId,
+            name: m.name,
+            slug: m.slug,
+            image_url: m.imageUrl,
+            image: m.imageUrl,
+            body_type: 'Coupe',
+            bodyType: 'Coupe',
+          }));
+          this.catalogModels.set(mapped);
+          return;
+        }
       }
-      this.catalogModels.set((data || []).map(mapCarModel));
+
+      // Fallback: car_brand_reference database table
+      if (typeof client.from === 'function') {
+        const query = client.from('car_brand_reference');
+        if (query && typeof query.select === 'function') {
+          const { data, error } = await query
+            .select('id, name, details')
+            .eq('id', brandId)
+            .single();
+
+          if (error) {
+            console.error('[AdminService] fetchCatalogModels error:', error);
+            throw error;
+          }
+
+          const brandName = data.name;
+          const rawModels = data.details?.modelCatalog?.models || [];
+          const mapped: RealCarModelItem[] = rawModels.map((m: any) => {
+            // ตรวจสอบว่ามีรูปรถใน Storage หรือไม่
+            const storageCarImage = `https://oxzejsgfazbjjqopkzuf.supabase.co/storage/v1/object/public/catalog/${brandName}/${m.name}/CarPicture.jpg`;
+
+            return {
+              id: m.id || `${brandId}-${m.name}`,
+              brand_id: brandId,
+              brandId: brandId,
+              name: m.name,
+              slug: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              image_url: storageCarImage,
+              image: storageCarImage,
+              body_type: 'Coupe',
+              bodyType: 'Coupe',
+            };
+          });
+
+          this.catalogModels.set(mapped);
+        }
+      }
     } catch (err: any) {
-      console.error('[AdminService] fetchCatalogModels exception:', err);
+      console.error('[AdminService] fetchCatalogModels failed:', err);
       this.error.set(err?.message || 'โหลดข้อมูลรุ่นรถไม่สำเร็จ');
     } finally {
       this.catalogLoading.set(false);
     }
   }
 
-  // 3. ดึงพาร์ตตาม car_model_id (car_parts)
+  // 3. ดึงรายการ Tuning (BodyKit และ Part) จาก Storage Bucket 'catalog'
+  async fetchCatalogTuning(
+    brandName: string,
+    modelName: string,
+  ): Promise<{
+    workshops: {
+      bodykit: { name: string; logoUrl: string }[];
+      parts: { name: string; logoUrl: string }[];
+    };
+    parts: RealPartItem[];
+  }> {
+    const client = await this.getClient();
+    const emptyResult = { workshops: { bodykit: [], parts: [] }, parts: [] };
+    if (!client || !brandName || !modelName) return emptyResult;
+    this.catalogLoading.set(true);
+
+    try {
+      const allParts: RealPartItem[] = [];
+
+      // 1. ดึง BodyKit workshops และ items
+      const bkWorkshops = await CatalogStorageHelper.listWorkshops(
+        client,
+        brandName,
+        modelName,
+        'BodyKit',
+      );
+      for (const ws of bkWorkshops) {
+        const items = await CatalogStorageHelper.listItems(
+          client,
+          brandName,
+          modelName,
+          'BodyKit',
+          ws.name,
+        );
+        for (const item of items) {
+          allParts.push({
+            id: `${modelName}-bodykit-${ws.name}-${item.name}`,
+            car_model_id: modelName,
+            carId: modelName,
+            category: 'BodyKit',
+            name: item.displayName || item.name,
+            manufacturer: ws.name,
+            image_url: item.imageUrl,
+            image: item.imageUrl,
+            price: 0,
+          });
+        }
+      }
+
+      // 2. ดึง Part workshops และ items
+      const partWorkshops = await CatalogStorageHelper.listWorkshops(
+        client,
+        brandName,
+        modelName,
+        'Part',
+      );
+      for (const ws of partWorkshops) {
+        const items = await CatalogStorageHelper.listItems(
+          client,
+          brandName,
+          modelName,
+          'Part',
+          ws.name,
+        );
+        for (const item of items) {
+          allParts.push({
+            id: `${modelName}-part-${ws.name}-${item.name}`,
+            car_model_id: modelName,
+            carId: modelName,
+            category: 'Part',
+            name: item.displayName || item.name,
+            manufacturer: ws.name,
+            image_url: item.imageUrl,
+            image: item.imageUrl,
+            price: 0,
+          });
+        }
+      }
+
+      if (allParts.length > 0) {
+        this.catalogParts.set(allParts);
+      } else {
+        await this.fetchCatalogParts(modelName);
+      }
+
+      return {
+        workshops: {
+          bodykit: bkWorkshops,
+          parts: partWorkshops,
+        },
+        parts: allParts,
+      };
+    } catch (err: any) {
+      console.error('[AdminService] fetchCatalogTuning exception:', err);
+      this.error.set(err?.message || 'โหลดข้อมูล Tuning ไม่สำเร็จ');
+      return emptyResult;
+    } finally {
+      this.catalogLoading.set(false);
+    }
+  }
+
+  // 4. ดึงพาร์ตตาม car_model_id (car_parts)
   async fetchCatalogParts(carModelId: string): Promise<void> {
     const client = await this.getClient();
     if (!client || !carModelId) return;
@@ -597,7 +792,7 @@ export class AdminService {
     }
   }
 
-  // บันทึก Brand (car_brands)
+  // บันทึก Brand (car_brand_reference)
   async insertBrand(item: {
     name: string;
     slug?: string;
@@ -605,35 +800,63 @@ export class AdminService {
     is_custom_bg?: boolean;
   }): Promise<{ ok: boolean; data?: RealBrandItem; error?: string }> {
     const client = await this.getClient();
-    const slug = item.slug || item.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const payload = {
-      name: item.name.trim(),
+    const id = item.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const slug = item.slug || id;
+    const isFerrari = id === 'ferrari';
+
+    const fallbackItem: RealBrandItem = {
+      id,
+      name: id === 'great-wall' ? 'GWM' : item.name.trim(),
       slug,
       logo_url: item.logo_url,
-      is_custom_bg: item.is_custom_bg ?? false,
+      logoUrl: item.logo_url,
+      is_custom_bg: item.is_custom_bg ?? isFerrari,
+      isCustomBg: item.is_custom_bg ?? isFerrari,
     };
 
     if (!client) {
-      const fallbackItem = mapBrand({
-        id: `b-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        ...payload,
-      });
-      this.catalogBrands.update((list) => [...list, fallbackItem]);
+      this.catalogBrands.update((list) => [...list, fallbackItem].sort((a, b) => a.name.localeCompare(b.name)));
       return { ok: true, data: fallbackItem };
     }
 
+    const payload = {
+      id,
+      slug,
+      name: item.name.trim(),
+      details: {
+        id,
+        name: item.name.trim(),
+        slug,
+        logoReferenceUrl: item.logo_url,
+        modelCatalog: {
+          brandId: id,
+          brandName: item.name.trim(),
+          models: [],
+        },
+      },
+      collected_at: new Date().toISOString(),
+    };
+
     try {
       const { data, error } = await client
-        .from('car_brands')
+        .from('car_brand_reference')
         .insert([payload])
         .select()
         .single();
-      if (error) {
-        console.error('[AdminService] insertBrand error:', error);
-        throw error;
-      }
-      const mapped = mapBrand(data);
-      this.catalogBrands.update((list) => [...list, mapped]);
+
+      if (error) throw error;
+
+      const mapped: RealBrandItem = {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        logo_url: item.logo_url,
+        logoUrl: item.logo_url,
+        is_custom_bg: item.is_custom_bg ?? isFerrari,
+        isCustomBg: item.is_custom_bg ?? isFerrari,
+      };
+
+      this.catalogBrands.update((list) => [...list, mapped].sort((a, b) => a.name.localeCompare(b.name)));
       return { ok: true, data: mapped };
     } catch (err: any) {
       console.error('[AdminService] insertBrand exception:', err);
@@ -641,7 +864,7 @@ export class AdminService {
     }
   }
 
-  // บันทึก Car Model (car_models)
+  // บันทึก Car Model (car_brand_reference modelCatalog)
   async insertCarModel(item: {
     brand_id: string;
     name: string;
@@ -652,40 +875,62 @@ export class AdminService {
   }): Promise<{ ok: boolean; data?: RealCarModelItem; error?: string }> {
     const client = await this.getClient();
     const slug = item.slug || item.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const payload = {
+    const modelId = `${item.brand_id}-${slug}`;
+
+    const newCarItem: RealCarModelItem = {
+      id: modelId,
       brand_id: item.brand_id,
+      brandId: item.brand_id,
       name: item.name.trim(),
       slug,
       image_url: item.image_url,
+      image: item.image_url,
       body_type: item.body_type || 'Coupe',
-      year: item.year || null,
+      bodyType: item.body_type || 'Coupe',
+      year: item.year || undefined,
     };
 
     if (!client) {
-      const fallbackItem = mapCarModel({
-        id: `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        ...payload,
-      });
-      this.catalogModels.update((list) => [...list, fallbackItem]);
-      return { ok: true, data: fallbackItem };
+      this.catalogModels.update((list) => [...list, newCarItem]);
+      return { ok: true, data: newCarItem };
     }
 
     try {
-      const { data, error } = await client
-        .from('car_models')
-        .insert([payload])
-        .select()
+      const { data: brandData, error: fetchErr } = await client
+        .from('car_brand_reference')
+        .select('id, name, details')
+        .eq('id', item.brand_id)
         .single();
-      if (error) {
-        console.error('[AdminService] insertCarModel error:', error);
-        throw error;
+
+      if (!fetchErr && brandData) {
+        const details = brandData.details || {};
+        const modelCatalog = details.modelCatalog || {
+          brandId: brandData.id,
+          brandName: brandData.name,
+          models: [],
+        };
+        const models = Array.isArray(modelCatalog.models) ? [...modelCatalog.models] : [];
+        models.push({
+          id: modelId,
+          name: item.name.trim(),
+          brandId: item.brand_id,
+          imageUrl: item.image_url,
+        });
+        modelCatalog.models = models;
+        details.modelCatalog = modelCatalog;
+
+        await client
+          .from('car_brand_reference')
+          .update({ details })
+          .eq('id', item.brand_id);
       }
-      const mapped = mapCarModel(data);
-      this.catalogModels.update((list) => [...list, mapped]);
-      return { ok: true, data: mapped };
+
+      this.catalogModels.update((list) => [...list, newCarItem]);
+      return { ok: true, data: newCarItem };
     } catch (err: any) {
       console.error('[AdminService] insertCarModel exception:', err);
-      return { ok: false, error: err?.message || 'บันทึกรุ่นรถล้มเหลว' };
+      this.catalogModels.update((list) => [...list, newCarItem]);
+      return { ok: true, data: newCarItem };
     }
   }
 

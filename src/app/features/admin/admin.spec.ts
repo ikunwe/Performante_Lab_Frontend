@@ -352,8 +352,60 @@ describe('Admin Portal Features', () => {
 
       expect(component.level()).toBe('parts');
       expect(component.selectedCar()?.name).toBe('Ferrari 488 Pista');
-      expect(compiled.textContent).toContain('Full Body Kits');
+      expect(compiled.textContent).toContain('Body Kit');
+      expect(component.tuningBrandsForCurrentContext().length).toBeGreaterThan(0);
       expect(component.filteredPartsForCar().length).toBeGreaterThan(0);
+    });
+
+    it('manages 2-step tuning selection and tab switching in Level 3', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+      fixture.detectChanges();
+
+      // Default tab is 'bodykit', selectedTuningBrand is null (Step 1)
+      expect(component.partTab()).toBe('bodykit');
+      expect(component.selectedTuningBrand()).toBeNull();
+      const tuningBrands = component.tuningBrandsForCurrentContext();
+      expect(tuningBrands.length).toBeGreaterThan(0);
+
+      // Step 2: Select a tuning brand
+      const brandToSelect = tuningBrands[0];
+      component.selectTuningBrand(brandToSelect);
+      expect(component.selectedTuningBrand()).toBe(brandToSelect);
+      expect(component.partsForSelectedTuningBrand().length).toBeGreaterThan(0);
+
+      // Back to Step 1
+      component.backToTuningBrands();
+      expect(component.selectedTuningBrand()).toBeNull();
+
+      // Switch to Parts tab
+      component.setPartTab('parts');
+      expect(component.partTab()).toBe('parts');
+      expect(component.selectedTuningBrand()).toBeNull();
+
+      // Add custom category
+      component.openCategoryModal();
+      expect(component.categoryModalOpen()).toBe(true);
+      component.newCustomCategoryName.set('Turbochargers');
+      component.addCustomCategory();
+      expect(component.availableCategories()).toContain('Turbochargers');
+      expect(component.selectedCategory()).toBe('Turbochargers');
+      expect(component.categoryModalOpen()).toBe(false);
+
+      // Add custom tuning brand
+      component.openTuningBrandModal();
+      expect(component.tuningBrandModalOpen()).toBe(true);
+      component.newTuningBrandName.set('HKS');
+      component.selectedTuningBrandFile.set(new File(['tuning'], 'hks.png', { type: 'image/png' }));
+      await component.addTuningBrand();
+      expect(component.selectedTuningBrand()).toBe('HKS');
+      expect(component.tuningBrandModalOpen()).toBe(false);
     });
 
     it('navigates back across levels correctly via backToModels() and backToBrands()', async () => {
@@ -421,35 +473,116 @@ describe('Admin Portal Features', () => {
       const component = fixture.componentInstance;
       fixture.detectChanges();
 
-      // Modal 1: Add Brand
+      // Modal 1: Add Brand (with mandatory file)
       component.openBrandModal();
       expect(component.brandModalOpen()).toBe(true);
       component.newBrandName.set('Maserati');
+      component.selectedBrandFile.set(new File(['logo'], 'maserati.png', { type: 'image/png' }));
       await component.saveBrand();
       expect(component.brandModalOpen()).toBe(false);
       const maserati = component.admin.editBrands().find((b) => b.name === 'Maserati');
       expect(maserati).toBeTruthy();
 
-      // Modal 2: Add Car under Maserati
+      // Modal 2: Add Car under Maserati (with mandatory file)
       await component.selectBrand(maserati!);
       component.openCarModal();
       expect(component.carModalOpen()).toBe(true);
       component.newCarName.set('MC20 Cielo');
+      component.selectedCarFile.set(new File(['car'], 'mc20.jpg', { type: 'image/jpeg' }));
       await component.saveCar();
       expect(component.carModalOpen()).toBe(false);
       const mc20 = component.filteredCarsForBrand().find((c) => c.name === 'MC20 Cielo');
       expect(mc20).toBeTruthy();
 
-      // Modal 3: Add Part under MC20
+      // Modal 3: Add Part under MC20 (with mandatory file)
       await component.selectCar(mc20!);
       component.openPartModal();
       expect(component.partModalOpen()).toBe(true);
       component.newPartName.set('Novitec Carbon Wing');
       component.newPartPrice.set(380000);
+      component.selectedPartFile.set(new File(['part'], 'wing.png', { type: 'image/png' }));
       await component.savePart();
       expect(component.partModalOpen()).toBe(false);
       const wing = component.filteredPartsForCar().find((p) => p.name === 'Novitec Carbon Wing');
       expect(wing).toBeTruthy();
+    });
+
+    it('enforces mandatory photo upload for brand, car, tuning brand, and part', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      // Try save brand without file
+      component.openBrandModal();
+      component.newBrandName.set('Bugatti');
+      component.selectedBrandFile.set(null);
+      await component.saveBrand();
+      expect(component.brandModalOpen()).toBe(true);
+      expect(component.toastMessage()).toContain('กรุณาอัปโหลดรูปภาพ');
+
+      // Try save car without file
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      component.openCarModal();
+      component.newCarName.set('Ferrari 812');
+      component.selectedCarFile.set(null);
+      await component.saveCar();
+      expect(component.carModalOpen()).toBe(true);
+      expect(component.toastMessage()).toContain('กรุณาอัปโหลดรูปภาพ');
+
+      // Try add tuning brand without file
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+      component.openTuningBrandModal();
+      component.newTuningBrandName.set('Mansory');
+      component.selectedTuningBrandFile.set(null);
+      await component.addTuningBrand();
+      expect(component.tuningBrandModalOpen()).toBe(true);
+      expect(component.toastMessage()).toContain('กรุณาอัปโหลดรูปภาพ');
+
+      // Try save part without file
+      component.openPartModal();
+      component.newPartName.set('Mansory Wing');
+      component.selectedPartFile.set(null);
+      await component.savePart();
+      expect(component.partModalOpen()).toBe(true);
+      expect(component.toastMessage()).toContain('กรุณาอัปโหลดรูปภาพ');
+    });
+
+    it('filters brands via brandSearchQuery and supports editBrandModal and editCarModal', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      // Search filtering
+      component.brandSearchQuery.set('Ferr');
+      expect(component.filteredBrands().every((b) => b.name.toLowerCase().includes('ferr'))).toBe(true);
+      component.brandSearchQuery.set('NonExistentBrand123');
+      expect(component.filteredBrands().length).toBe(0);
+      component.brandSearchQuery.set('');
+      expect(component.filteredBrands().length).toBeGreaterThan(0);
+
+      // Edit Brand Modal
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      component.openEditBrandModal(ferrari!);
+      expect(component.editBrandModalOpen()).toBe(true);
+      expect(component.editingBrandName()).toBe('Ferrari');
+      component.editingBrandName.set('Ferrari S.p.A.');
+      await component.saveEditBrand();
+      expect(component.editBrandModalOpen()).toBe(false);
+      expect(component.selectedBrand()?.name).toBe('Ferrari S.p.A.');
+
+      // Edit Car Model Modal
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+      component.openEditCarModal(pista);
+      expect(component.editCarModalOpen()).toBe(true);
+      expect(component.editingCarName()).toBe(pista.name);
+      component.editingCarName.set('488 Pista Spider');
+      await component.saveEditCar();
+      expect(component.editCarModalOpen()).toBe(false);
+      expect(component.selectedCar()?.name).toBe('488 Pista Spider');
     });
 
     it('validates file type and size restrictions correctly', () => {

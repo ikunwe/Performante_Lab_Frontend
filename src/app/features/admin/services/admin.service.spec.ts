@@ -338,15 +338,25 @@ describe('AdminService', () => {
       expect(service.catalogLoading()).toBe(false);
     });
 
-    it('fetches brands from car_brands table and populates catalogBrands signal', async () => {
+    it('fetches brands from car_brand_reference table and populates catalogBrands signal', async () => {
       const mockDbBrands = [
         {
-          id: 'b-100',
+          id: 'ferrari',
           name: 'Ferrari',
           slug: 'ferrari',
-          logo_url: 'https://test.supabase.co/ferrari.png',
-          is_custom_bg: true,
-          created_at: '2026-10-31T00:00:00.000Z',
+          details: {
+            logoReferenceUrl: 'https://test.supabase.co/ferrari.png',
+          },
+          collected_at: '2026-10-31T00:00:00.000Z',
+        },
+        {
+          id: 'great-wall',
+          name: 'Great Wall Motor',
+          slug: 'great-wall',
+          details: {
+            logoReferenceUrl: '',
+          },
+          collected_at: '2026-10-31T00:00:00.000Z',
         },
       ];
 
@@ -358,38 +368,46 @@ describe('AdminService', () => {
 
       await service.fetchCatalogBrands();
 
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_brands');
-      expect(service.catalogBrands().length).toBe(1);
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_brand_reference');
+      expect(service.catalogBrands().length).toBe(2);
       expect(service.catalogBrands()[0].name).toBe('Ferrari');
       expect(service.catalogBrands()[0].logoUrl).toBe('https://test.supabase.co/ferrari.png');
       expect(service.catalogBrands()[0].isCustomBg).toBe(true);
+
+      // Great Wall mapped to GWM with storage logo fallback
+      expect(service.catalogBrands()[1].name).toBe('GWM');
+      expect(service.catalogBrands()[1].logoUrl).toContain('Great Wall Motor/logo.png');
     });
 
-    it('fetches car models from car_models table filtered by brand_id', async () => {
-      const mockDbModels = [
-        {
-          id: 'c-200',
-          brand_id: 'b-100',
-          name: '488 Pista',
-          slug: '488-pista',
-          image_url: 'https://test.supabase.co/pista.png',
-          body_type: 'Coupe',
+    it('fetches car models from car_brand_reference table modelCatalog filtered by brand_id', async () => {
+      const mockBrandRecord = {
+        id: 'ferrari',
+        name: 'Ferrari',
+        details: {
+          modelCatalog: {
+            models: [
+              {
+                id: 'ferrari-488-pista',
+                name: '488 Pista',
+              },
+            ],
+          },
         },
-      ];
+      };
 
       mockSupabaseClient.from = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: mockDbModels, error: null }),
+        single: vi.fn().mockResolvedValue({ data: mockBrandRecord, error: null }),
       });
       (service as any).client = mockSupabaseClient;
 
-      await service.fetchCatalogModels('b-100');
+      await service.fetchCatalogModels('ferrari');
 
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_models');
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('car_brand_reference');
       expect(service.catalogModels().length).toBe(1);
       expect(service.catalogModels()[0].name).toBe('488 Pista');
-      expect(service.catalogModels()[0].brandId).toBe('b-100');
+      expect(service.catalogModels()[0].brandId).toBe('ferrari');
     });
 
     it('fetches car parts from car_parts table filtered by car_model_id', async () => {
@@ -420,13 +438,14 @@ describe('AdminService', () => {
       expect(service.catalogParts()[0].carId).toBe('c-200');
     });
 
-    it('inserts brand into car_brands and updates catalogBrands signal', async () => {
+    it('inserts brand into car_brand_reference and updates catalogBrands signal', async () => {
       const insertedRow = {
-        id: 'b-999',
+        id: 'mclaren',
         name: 'McLaren',
         slug: 'mclaren',
-        logo_url: 'https://test.supabase.co/mclaren.png',
-        is_custom_bg: false,
+        details: {
+          logoReferenceUrl: 'https://test.supabase.co/mclaren.png',
+        },
       };
 
       mockSupabaseClient.from = vi.fn().mockReturnValue({
@@ -447,27 +466,31 @@ describe('AdminService', () => {
       expect(service.catalogBrands().some((b) => b.name === 'McLaren')).toBe(true);
     });
 
-    it('inserts car model into car_models and updates catalogModels signal', async () => {
-      const insertedRow = {
-        id: 'c-999',
-        brand_id: 'b-999',
-        name: '720S',
-        slug: '720s',
-        image_url: 'https://test.supabase.co/720s.png',
-        body_type: 'Coupe',
+    it('inserts car model into car_brand_reference and updates catalogModels signal', async () => {
+      const mockBrandRecord = {
+        id: 'mclaren',
+        name: 'McLaren',
+        details: {
+          modelCatalog: {
+            brandId: 'mclaren',
+            brandName: 'McLaren',
+            models: [],
+          },
+        },
       };
 
       mockSupabaseClient.from = vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
-          }),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: mockBrandRecord, error: null }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
         }),
       });
       (service as any).client = mockSupabaseClient;
 
       const res = await service.insertCarModel({
-        brand_id: 'b-999',
+        brand_id: 'mclaren',
         name: '720S',
         image_url: 'https://test.supabase.co/720s.png',
       });
@@ -507,6 +530,151 @@ describe('AdminService', () => {
 
       expect(res.ok).toBe(true);
       expect(service.catalogParts().some((p) => p.name === 'Titanium Exhaust')).toBe(true);
+    });
+
+    it('fetches brands directly from storage catalog bucket when available', async () => {
+      const storageClient = {
+        storage: {
+          from: vi.fn().mockImplementation(() => ({
+            list: vi.fn().mockImplementation((path: string) => {
+              if (path === '') {
+                return Promise.resolve({
+                  data: [
+                    { name: 'Ferrari', id: null, metadata: null },
+                    { name: 'Toyota', id: null, metadata: null },
+                  ],
+                  error: null,
+                });
+              }
+              if (path === 'Ferrari') {
+                return Promise.resolve({
+                  data: [{ name: 'logo.png', id: '1', metadata: {} }],
+                  error: null,
+                });
+              }
+              if (path === 'Toyota') {
+                return Promise.resolve({
+                  data: [{ name: 'logo.svg', id: '2', metadata: {} }],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+            getPublicUrl: vi.fn().mockImplementation((filePath: string) => ({
+              data: { publicUrl: `https://test.supabase.co/catalog/${filePath}` },
+            })),
+          })),
+        },
+      } as any;
+      (service as any).client = storageClient;
+
+      await service.fetchCatalogBrands();
+
+      expect(service.catalogBrands().length).toBe(2);
+      expect(service.catalogBrands()[0].name).toBe('Ferrari');
+      expect(service.catalogBrands()[0].logoUrl).toBe('https://test.supabase.co/catalog/Ferrari/logo.png');
+      expect(service.catalogBrands()[1].name).toBe('Toyota');
+      expect(service.catalogBrands()[1].logoUrl).toBe('https://test.supabase.co/catalog/Toyota/logo.svg');
+    });
+
+    it('fetches car models directly from storage catalog bucket', async () => {
+      const storageClient = {
+        storage: {
+          from: vi.fn().mockImplementation(() => ({
+            list: vi.fn().mockImplementation((path: string) => {
+              if (path === 'Ferrari') {
+                return Promise.resolve({
+                  data: [
+                    { name: '488-Pista', id: null, metadata: null },
+                    { name: 'logo.png', id: '1', metadata: {} },
+                  ],
+                  error: null,
+                });
+              }
+              if (path === 'Ferrari/488-Pista') {
+                return Promise.resolve({
+                  data: [
+                    { name: 'CarPicture.jpg', id: 'p1', metadata: {} },
+                  ],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+            getPublicUrl: vi.fn().mockImplementation((filePath: string) => ({
+              data: { publicUrl: `https://test.supabase.co/catalog/${filePath}` },
+            })),
+          })),
+        },
+      } as any;
+      (service as any).client = storageClient;
+
+      await service.fetchCatalogModels('Ferrari');
+
+      expect(service.catalogModels().length).toBe(1);
+      expect(service.catalogModels()[0].name).toBe('488-Pista');
+      expect(service.catalogModels()[0].image_url).toBe(
+        'https://test.supabase.co/catalog/Ferrari/488-Pista/CarPicture.jpg',
+      );
+    });
+
+    it('fetches catalog tuning (BodyKit and Part workshops and items) from storage', async () => {
+      const storageClient = {
+        storage: {
+          from: vi.fn().mockImplementation(() => ({
+            list: vi.fn().mockImplementation((path: string) => {
+              if (path === 'Ferrari/488-Pista/BodyKit') {
+                return Promise.resolve({
+                  data: [{ name: 'Novitec', id: null, metadata: null }],
+                  error: null,
+                });
+              }
+              if (path === 'Ferrari/488-Pista/BodyKit/Novitec') {
+                return Promise.resolve({
+                  data: [
+                    { name: 'logo.png', id: 'l1', metadata: {} },
+                    { name: 'Carbon-Lip.png', id: 'i1', metadata: {} },
+                  ],
+                  error: null,
+                });
+              }
+              if (path === 'Ferrari/488-Pista/Part') {
+                return Promise.resolve({
+                  data: [{ name: 'Brembo', id: null, metadata: null }],
+                  error: null,
+                });
+              }
+              if (path === 'Ferrari/488-Pista/Part/Brembo') {
+                return Promise.resolve({
+                  data: [
+                    { name: 'logo.png', id: 'l2', metadata: {} },
+                    { name: 'GT-R-Brake.png', id: 'i2', metadata: {} },
+                  ],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+            getPublicUrl: vi.fn().mockImplementation((filePath: string) => ({
+              data: { publicUrl: `https://test.supabase.co/catalog/${filePath}` },
+            })),
+          })),
+        },
+      } as any;
+      (service as any).client = storageClient;
+
+      const res = await service.fetchCatalogTuning('Ferrari', '488-Pista');
+
+      expect(res.workshops.bodykit.length).toBe(1);
+      expect(res.workshops.bodykit[0].name).toBe('Novitec');
+      expect(res.workshops.parts.length).toBe(1);
+      expect(res.workshops.parts[0].name).toBe('Brembo');
+      expect(res.parts.length).toBe(2);
+      expect(res.parts[0].name).toBe('Carbon Lip');
+      expect(res.parts[0].manufacturer).toBe('Novitec');
+      expect(res.parts[1].name).toBe('GT R Brake');
+      expect(res.parts[1].manufacturer).toBe('Brembo');
+      expect(service.catalogParts().length).toBe(2);
     });
   });
 });
