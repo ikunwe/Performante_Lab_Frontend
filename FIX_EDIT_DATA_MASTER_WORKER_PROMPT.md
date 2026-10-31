@@ -1,332 +1,307 @@
-# 🚀 MASTER WORKER PROMPT: Complete Fix for Admin Edit Data
-## Fix List: แก้ไขปัญหาภาพ Mockup, ระบบค้นหา, บังคับอัปโหลดรูปจริง, และเพิ่มระบบ Edit Brand/Car In-place
+# 🚀 MASTER WORKER PROMPT (FINAL V3): Admin Edit Data — Locked 4 Categories, 3-Step Flow & Multi-Angle Asset Specification
+
+> ⚠️ **CRITICAL DIRECTIVE FOR AI WORKER / AGENT**:  
+> ห้ามย้อนเวอร์ชันโค้ด (DO NOT REGRESS)!  
+> หน้า Body Kit ปัจจุบันทำงานถูกต้องแล้วตามภาพอนุมัติ (Sano-Design: การ์ดแรกขอบเขียวเป็น Text-only ไม่มีรูปโลโก้ + การ์ด 2 เป็น (+) เพิ่มชิ้นส่วน + การ์ด 3+ เป็นชิ้นส่วนแต่งที่คลิกเพื่อแก้ไขได้)  
+> เอกสารฉบับนี้สรุป **ข้อกำหนดที่สมบูรณ์และเด็ดขาด 100%** สำหรับทั้งแท็บ **Body Kit** และแท็บ **Part** รวมถึง **Multi-Angle Upload Requirements** ทุกมุมมอง
 
 ---
 
-## 📌 บทบาทและบริบทของงาน (Role & Context)
-คุณคือ **Senior Frontend Developer (Angular 22)** ประจำโปรเจกต์ **Performante Lab**
-หน้าที่ของคุณคือ ปรับปรุงหน้า **Admin Edit Data (`/admin/edit-data`)** ทั้งใน `admin-edit-data.ts`, `admin-edit-data.html` และ `admin.service.ts` เพื่อแก้ไขปัญหาและเพิ่มฟังก์ชันตามรายการในโฟลเดอร์ `fix list` และโครงสร้าง `STORAGE_CATALOG_TREE.md` ดังนี้:
+## 📸 ภาพอ้างอิงสถานะที่ถูกต้อง (Reference Architecture)
 
-1. **หน้าเลือก Brand รถยนต์ (Level 1)**:
-   - เพิ่มช่องสำหรับค้นหาแบรนด์รถ (Search Input)
-   - บังคับอัปโหลดรูปโลโก้เมื่อกดเพิ่ม Brand ใหม่ (Mandatory Photo Upload)
-   - **แก้ไขปัญหาโลโก้ไม่ตรงกับชื่อแบรนด์ (`fix list/logo_not_match_name.png`)**: ลบ Hardcoded Fallback `assets/brands/ferrari.png` ออกทั้งหมด และแสดง Neutral Brand Initials Monogram เมื่อยังไม่มีรูป
-2. **หน้าเลือกรุ่นรถยนต์ (Level 2: Car Name)**:
-   - **คลิกการ์ดโลโก้แบรนด์ใบแรก $\rightarrow$ เปิด Modal แก้ไขข้อมูลแบรนด์ (Edit Brand Modal)** (`fix list/brand_edit.png`): สามารถแก้ชื่อ และอัปโหลดรูปโลโก้ใหม่ได้ (หากไม่อัปโหลดรูปใหม่ ให้ใช้รูปเดิม)
-   - บังคับอัปโหลดรูปเมื่อกดเพิ่มรุ่นรถใหม่ (Mandatory Photo Upload)
-   - **แก้ไขปัญหารูปรถไม่ตรงกับของจริง (`fix list/deny_mockup_data.png`)**: ลบ Fallback `assets/car_pic.png` (รูปรถ Ferrari F8) ออกทั้งหมด หากรถรุ่นใดยังไม่มีรูปจริงใน Storage ให้แสดง Car Silhouette Placeholder ("รออัปโหลดรูปภาพ") แทน
-3. **หน้าเลือกของแต่งรถ (Level 3: Tuning & Parts)**:
-   - **คลิกการ์ด Banner รถด้านบน $\rightarrow$ เปิด Modal แก้ไขข้อมูลรุ่นรถ (Edit Car Model Modal)** (`fix list/change_car_data.png`): แก้ชื่อรุ่นรถ และอัปโหลดรูปภาพใหม่ได้ (หากไม่อัปโหลดรูปใหม่ ให้ใช้รูปเดิม)
-   - **เพิ่มกล่องอัปโหลดรูปโลโก้สำนักแต่ง/ยี่ห้อ Part (`fix list/No_Workshop_photo_upload.png`)**: ใน Modal เพิ่มแบรนด์ของแต่ง ให้มีช่องอัปโหลดรูปโลโก้สำนักแต่งแบบบังคับใส่รูป
-4. **ลบ Mockup Data ทั้งหมด**: ใช้ข้อมูลจริงจาก `public.car_brand_reference` และ Supabase Storage `catalog` Bucket
+1. **Body Kit (ทำสำเร็จแล้วตามรูปภาพ Sano-Design)**:
+   - การ์ดแรก (Card 1): กรอบสีเขียว `border-emerald-500/60`, ข้อความชื่อแบรนด์สีขาวตัวหนา, ด้านล่างเขียน `คลิกเพื่อแก้ไขชื่อ`, **ไม่มีรูปโลโก้ใดๆ ทั้งสิ้น (Text-only)**, คลิกแล้วเปิด Modal แก้ไขชื่อแบรนด์
+   - การ์ดสอง (Card 2): ปุ่ม `(+) เพิ่มชิ้นส่วน`
+   - การ์ดสามเป็นต้นไป (Card 3+): แสดงรูปชิ้นส่วน + ชื่อชิ้นส่วน + ราคา, **คลิกที่การ์ดเพื่อเปิด Modal แก้ไขข้อมูลชิ้นส่วน (In-place Edit)** + ปุ่มถังขยะสำหรับลบชิ้นส่วน
+
+2. **Part (ชิ้นส่วนแต่ง) — โฟลว์ 3 สเต็ปมาตรฐาน**:
+   - **Step 1 (Category)**: ล็อคให้มีเพียง 4 หมวดหมู่เท่านั้น (`Front Bumper`, `Rear Bumper`, `Wheels`, `Spoilers`) — **ไม่มีปุ่มเพิ่มหรือลบหมวดหมู่เด็ดขาด**
+   - **Step 2 (Brand)**: เลือกว่าจะดูแบรนด์ใดในหมวดนั้น — การ์ด 1: `(+) เพิ่มแบรนด์`, การ์ด 2+: รายชื่อแบรนด์ (Text-only Typography ไม่มีรูปโลโก้) + ปุ่มลบแบรนด์ (มี Modal ยืนยัน)
+   - **Step 3 (Parts)**: รายการชิ้นส่วนจริงในหมวดและแบรนด์นั้น — การ์ด 1: แบรนด์ที่เลือก (ขอบเขียว Text-only คลิกแก้ชื่อแบรนด์ได้), การ์ด 2: `(+) เพิ่มชิ้นส่วน`, การ์ด 3+: ชิ้นส่วนจริง (คลิกเพื่อแก้ไขรูป/ชื่อ/ราคาได้)
 
 ---
 
-## 📂 รายละเอียดงานที่ต้องทำทีละส่วน (Step-by-Step Implementation)
+## 📐 Multi-Angle Asset Requirements (ข้อกำหนดมุมมองภาพที่ต้องอัปโหลด)
 
-### ─── 1. หน้าเลือก BRAND รถยนต์ (LEVEL 1) ───
+> 🚨 **CRITICAL WARNING (ป้องกันข้อผิดพลาดในรูปที่ 2)**:  
+> ใน Modal เพิ่มชิ้นส่วน (`partModalOpen`) และ Modal แก้ไขชิ้นส่วน (`editPartModalOpen`) **ต้องแสดง Dropzones อัปโหลดแยกตามมุมมองของแต่ละหมวดหมู่เสมอ ห้ามแสดงกล่องอัปโหลดรูปเดี่ยว (Single File Dropzone) เด็ดขาด!**  
+> ในโค้ด Template ต้องผูกกับ `getRequiredAngles(newPartCategory())` และ `getRequiredAngles(editingPart()?.category)`
 
-#### A. เพิ่มช่องค้นหาแบรนด์ (Search Box):
-- ใน `admin-edit-data.ts`:
-  ```typescript
-  readonly brandSearchQuery = signal('');
+เมื่อผู้ใช้กด **(+) เพิ่มชิ้นส่วน** หรือกด **คลิกแก้ไขชิ้นส่วน** ระบบจะต้องแสดงช่องอัปโหลดรูปภาพแยกตามมุมมองของแต่ละหมวดหมู่อย่างเคร่งครัด ดังนี้:
 
-  // คำนวณรายชื่อแบรนด์ที่กรองตามคำค้นหา
-  readonly filteredBrands = computed(() => {
-    const q = this.brandSearchQuery().trim().toLowerCase();
-    if (!q) return this.admin.catalogBrands();
-    return this.admin.catalogBrands().filter(
-      (b) => b.name.toLowerCase().includes(q) || b.slug.toLowerCase().includes(q),
-    );
-  });
-  ```
-- ใน `admin-edit-data.html`:
-  เพิ่มช่องค้นหาข้างหัวข้อ "Car brand" พร้อมไอคอนแว่นขยาย `search` และปุ่มเคลียร์คำค้นหา
-  และเปลี่ยน Loop จาก `@for (brand of admin.catalogBrands())` เป็น `@for (brand of filteredBrands())`
+| หมวดหมู่ (Category) | จำนวนมุม | มุมมองที่ต้องอัปโหลด (Angle Keys & Names) |
+| :--- | :---: | :--- |
+| **Front Bumper** | **2 มุม** | 1. `45_front` (45 องศาหน้า)<br>2. `front` (หน้าตรง) |
+| **Rear Bumper** | **2 มุม** | 1. `45_Back` (45 องศาหลัง)<br>2. `Back` (หลังตรง) |
+| **Wheels** | **2 มุม** | 1. `45_front` (45 องศาหน้า)<br>2. `45_Back` (45 องศาหลัง) |
+| **Spoilers** | **3 มุม** | 1. `45_front` (45 องศาหน้า)<br>2. `45_Back` (45 องศาหลัง)<br>3. `Back` (หลังตรง) |
+| **FullBodyKits** (ในแท็บ Body Kit) | **4 มุม** | 1. `45_front` (45 องศาหน้า)<br>2. `front` (หน้าตรง)<br>3. `45_Back` (45 องศาหลัง)<br>4. `Back` (หลังตรง) |
 
-#### B. บังคับใส่รูปภาพเมื่อเพิ่ม Brand ใหม่:
-- ใน `admin-edit-data.ts`:
-  ```typescript
-  async saveBrand(): Promise<void> {
-    const name = this.newBrandName().trim();
-    const file = this.selectedBrandFile();
-    if (!name) return this.showToast('กรุณากรอกชื่อแบรนด์', 'error');
-    if (!file) return this.showToast('กรุณาอัปโหลดรูปภาพโลโก้แบรนด์', 'error'); // บังคับใส่รูป
-    ...
-  }
-  ```
-
-#### C. แก้ไขปัญหาโลโก้ไม่ตรงกับชื่อแบรนด์ (`logo_not_match_name.png`):
-- **สาเหตุ**: มีโค้ด fallback `assets/brands/ferrari.png` ทำให้แบรนด์ AION, Denza, DEEPAL ฯลฯ แสดงเป็นโลโก้ Ferrari
-- **วิธีแก้**:
-  1. ใน `admin.service.ts`: ลบ `assets/brands/ferrari.png` ออกจาก `fetchCatalogBrands`
-  2. ใน `admin-edit-data.html`: 
-     - ลบ `(error)="$any($event.target).src = 'assets/brands/ferrari.png'"`
-     - ปรับให้เช็คว่าถ้ามี `brand.logo_url` และโหลดสำเร็จ ให้แสดงรูปภาพ
-     - หากไม่มีรูป หรือรูปโหลดไม่ผ่าน ให้แสดง **Neutral Initials Monogram Badge**:
-       ```html
-       @if (brand.logo_url && !failedBrandLogos().has(brand.id)) {
-         <img
-           [src]="brand.logo_url"
-           [alt]="brand.name"
-           class="max-h-24 max-w-[80%] w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-md"
-           (error)="onBrandLogoError(brand.id)"
-         />
-       } @else {
-         <!-- Neutral Brand Initials Placeholder (ห้ามเอาโลโก้ Ferrari มาใส่เด็ดขาด) -->
-         <div class="size-16 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center p-2 group-hover:border-white/25 transition-colors">
-           <span class="text-base font-extrabold text-white tracking-wider">
-             {{ brand.name.slice(0, 2).toUpperCase() }}
-           </span>
-           <span class="text-[9px] text-stone-400 truncate max-w-[56px] mt-0.5">
-             {{ brand.name }}
-           </span>
-         </div>
-       }
-       ```
+### โครงสร้างการจัดเก็บไฟล์ใน Supabase Storage (`catalog` bucket):
+```text
+catalog/
+└── brands/
+    └── {brand_slug}/
+        └── {car_model_slug}/
+            ├── bodykits/
+            │   └── {tuning_brand}/
+            │       └── {kit_slug}/
+            │           ├── 45_front.png
+            │           ├── front.png
+            │           ├── 45_Back.png
+            │           └── Back.png
+            └── parts/
+                ├── front_bumper/
+                │   └── {tuning_brand}/
+                │       └── {part_slug}/
+                │           ├── 45_front.png
+                │           └── front.png
+                ├── rear_bumper/
+                │   └── {tuning_brand}/
+                │       └── {part_slug}/
+                │           ├── 45_Back.png
+                │           └── Back.png
+                ├── wheels/
+                │   └── {tuning_brand}/
+                │       └── {part_slug}/
+                │           ├── 45_front.png
+                │           └── 45_Back.png
+                └── spoilers/
+                    └── {tuning_brand}/
+                        └── {part_slug}/
+                            ├── 45_front.png
+                            ├── 45_Back.png
+                            └── Back.png
+```
 
 ---
 
-### ─── 2. หน้าเลือกรุ่นรถยนต์ (LEVEL 2: CAR NAME) ───
+## 🛠️ รายละเอียดการเขียนโค้ดทั้ง 3 ไฟล์หลัก
 
-#### A. คลิกการ์ดโลโก้แบรนด์ใบแรก $\rightarrow$ เปิด Modal แก้ไขข้อมูลแบรนด์ (`brand_edit.png`):
-- ใน `admin-edit-data.html`:
-  - การ์ดใบแรกที่แสดงโลโก้ของแบรนด์ที่เลือก:
-    เปลี่ยนจาก `(click)="backToBrands()"` $\rightarrow$ เป็น `(click)="openEditBrandModal(brand)"`
-    พร้อมติด Badge หรือ Tooltip เล็กๆ ระบุว่า "คลิกเพื่อแก้ไขข้อมูลแบรนด์"
-- ใน `admin-edit-data.ts`:
-  ```typescript
-  readonly editBrandModalOpen = signal(false);
-  readonly editingBrandName = signal('');
-  readonly editBrandFile = signal<File | null>(null);
-  readonly editBrandFilePreview = signal<string | null>(null);
+### 1. `src/app/features/admin/edit-data/admin-edit-data.html`
 
-  openEditBrandModal(brand: RealBrandItem): void {
-    this.editingBrandName.set(brand.name);
-    this.editBrandFile.set(null);
-    this.editBrandFilePreview.set(null);
-    this.editBrandModalOpen.set(true);
-  }
+#### A. แท็บ Body Kit (`partTab() === 'bodykit'`):
+- **Step 1 (เมื่อ `selectedTuningBrand() === null`)**:
+  - การ์ด 1: `(+) เพิ่มแบรนด์` (Text Typography + ไอคอนบวก)
+  - การ์ด 2+: รายชื่อแบรนด์สำนักแต่ง (Typography สีขาวตัวหนา ไม่มีรูปโลโก้เด็ดขาด + ปุ่มลบแบรนด์พร้อมยืนยัน)
+- **Step 2 (เมื่อ `selectedTuningBrand() !== null`)**:
+  - Breadcrumb ด้านบน: `แบรนด์ของแต่ง: {selectedTuningBrand()}` + ปุ่ม `ย้อนกลับไปเลือกแบรนด์`
+  - การ์ด 1: แบรนด์ที่เลือก — กรอบสีเขียว `border-2 border-emerald-500/60`, แสดงชื่อแบรนด์, ข้อความ `คลิกเพื่อแก้ไขชื่อ`, **ไม่มีรูปโลโก้**, คลิกแล้วเปิด `openEditTuningBrandModal(selectedTuningBrand()!)`
+  - การ์ด 2: ปุ่ม `(+) เพิ่มชิ้นส่วน`
+  - การ์ด 3+: รายการชุดแต่ง — คลิกการ์ดแล้วเปิด `openEditPartModal(part)` เพื่อแก้ไขชื่อ/ราคา/รูปภาพ + ปุ่มถังขยะลบชิ้นส่วน
 
-  closeEditBrandModal(): void {
-    this.editBrandModalOpen.set(false);
-  }
+#### B. แท็บ Part (`partTab() === 'parts'`):
+- **Step 1: เลือกหมวดหมู่ (`partStep() === 'category'`)**:
+  - แสดง Grid 4 หมวดมาตรฐาน: `Front Bumper`, `Rear Bumper`, `Wheels`, `Spoilers`
+  - **ล็อคตายตัว 4 หมวด — ห้ามมีปุ่มเพิ่ม/ลบหมวดหมู่**
+  - คลิกที่การ์ดหมวดหมู่ $\rightarrow$ เรียก `selectCategory(cat)`
+- **Step 2: เลือกแบรนด์ (`partStep() === 'brand'`)**:
+  - Breadcrumb: `หมวดหมู่: {selectedCategory()}` + ปุ่ม `ย้อนกลับไปเลือกหมวดหมู่`
+  - การ์ด 1: `(+) เพิ่มแบรนด์` (เฉพาะชื่อแบรนด์ ไม่มีให้อัปโหลดโลโก้)
+  - การ์ด 2+: แบรนด์ในหมวดนี้ (Typography ตัวหนา ไม่มีรูปโลโก้ + ปุ่มลบแบรนด์)
+  - คลิกที่การ์ดแบรนด์ $\rightarrow$ เรียก `selectPartBrand(brandName)`
+- **Step 3: รายการชิ้นส่วน (`partStep() === 'items'`)**:
+  - Breadcrumb: `หมวด: {selectedCategory()} > แบรนด์: {selectedTuningBrand()}` + ปุ่ม `ย้อนกลับไปเลือกแบรนด์`
+  - การ์ด 1: แบรนด์ที่เลือก — กรอบเขียว `border-2 border-emerald-500/60`, ข้อความชื่อแบรนด์, `คลิกเพื่อแก้ไขชื่อ`, ไม่มีรูปโลโก้, คลิกเปิด `openEditTuningBrandModal(...)`
+  - การ์ด 2: `(+) เพิ่มชิ้นส่วน`
+  - การ์ด 3+: รายการชิ้นส่วน Part จริง — แสดงรูป + ชื่อ + ราคา, คลิกการ์ดเปิด `openEditPartModal(part)` + ปุ่มลบชิ้นส่วน
 
-  async saveEditBrand(): Promise<void> {
-    const brand = this.selectedBrand();
-    const newName = this.editingBrandName().trim();
-    if (!brand || !newName) return;
-
-    this.isUploading.set(true);
-    this.uploadProgressText.set('กำลังอัปเดตข้อมูลแบรนด์...');
-
-    try {
-      const client = await this.admin.getClient();
-      let logoUrl = brand.logo_url;
-
-      // ถ้ามีการอัปโหลดรูปใหม่ ให้เซฟรูปใหม่เข้า Storage
-      const file = this.editBrandFile();
-      if (file && client) {
-        const ext = CatalogStorageHelper.getFileExtension(file);
-        const path = CatalogStorageHelper.getBrandLogoPath(newName, ext);
-        const res = await CatalogStorageHelper.uploadFile(client, path, file);
-        if (res.ok && res.url) {
-          logoUrl = res.url;
-        } else {
-          throw new Error(res.error || 'Upload failed');
-        }
+#### C. Modals สำหรับ Multi-Angle Upload และ Edit Part:
+- **`partModalOpen` (Modal เพิ่มชิ้นส่วน)**:
+  - แสดง Dropzones อัปโหลดรูปตามมุมที่จำเป็นของหมวดนั้นๆ ผ่าน `getRequiredAngles()`:
+    ```html
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      @for (ang of getRequiredAngles(); track ang.key) {
+        <div class="border border-white/10 rounded-xl p-3 bg-white/[.02]">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-white">{{ ang.label }}</span>
+            <span class="text-[10px] text-stone-400">({{ ang.key }})</span>
+          </div>
+          <div class="relative border border-dashed border-white/20 hover:border-white/40 rounded-lg p-3 text-center cursor-pointer transition-colors">
+            <input
+              type="file"
+              accept="image/*"
+              class="absolute inset-0 opacity-0 cursor-pointer"
+              (change)="onPartAngleFileChange(ang.key, $event)"
+            />
+            @if (newPartAngleFiles()[ang.key]) {
+              <div class="text-xs text-emerald-400 font-semibold truncate">
+                {{ newPartAngleFiles()[ang.key]?.name }}
+              </div>
+            } @else {
+              <div class="text-[11px] text-stone-400">
+                คลิกเพื่อเลือกไฟล์ (หรือลากมาวาง)
+              </div>
+            }
+          </div>
+        </div>
       }
-
-      // อัปเดตข้อมูลลงฐานข้อมูล Supabase
-      if (client) {
-        const { error } = await client
-          .from('car_brand_reference')
-          .update({
-            name: newName,
-            details: {
-              ...brand,
-              name: newName,
-              logoReferenceUrl: logoUrl,
-            },
-          })
-          .eq('id', brand.id);
-        if (error) throw error;
-      }
-
-      // อัปเดต Signal ท้องถิ่น
-      const updated: RealBrandItem = {
-        ...brand,
-        name: newName,
-        logo_url: logoUrl,
-        logoUrl: logoUrl,
-      };
-      this.selectedBrand.set(updated);
-      this.admin.catalogBrands.update((list) =>
-        list.map((b) => (b.id === brand.id ? updated : b)),
-      );
-
-      this.closeEditBrandModal();
-      this.showToast(`แก้ไขข้อมูลแบรนด์ "${newName}" เรียบร้อยแล้ว`, 'success');
-    } catch (err: any) {
-      this.showToast(`แก้ไขล้มเหลว: ${err?.message || 'Update failed'}`, 'error');
-    } finally {
-      this.isUploading.set(false);
-    }
-  }
-  ```
-
-#### B. บังคับใส่รูปเมื่อเพิ่มรุ่นรถใหม่:
-- ใน `saveCar()`:
-  ```typescript
-  if (!this.selectedCarFile()) {
-    return this.showToast('กรุณาอัปโหลดรูปภาพรถต้นแบบ', 'error');
-  }
-  ```
-
-#### C. แก้ไขปัญหารูปรถไม่ตรงกับของจริง (`deny_mockup_data.png`):
-- **สาเหตุ**: ทุกรุ่นรถที่ไม่มีรูป โดน Fallback ใส่รูป Ferrari F8 (`assets/car_pic.png`)
-- **วิธีแก้**:
-  1. ลบ Fallback `assets/car_pic.png` ออก
-  2. หากรุ่นรถใดยังไม่มีรูปใน Supabase Storage หรือรูปโหลดไม่ติด ให้แสดง **Car Silhouette Placeholder Card**:
-     ```html
-     @if (car.image_url && !failedCarImages().has(car.id)) {
-       <img
-         [src]="car.image_url"
-         [alt]="car.name"
-         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-         (error)="onCarImageError(car.id)"
-       />
-     } @else {
-       <!-- Neutral Placeholder สำหรับรถที่ยังไม่มีรูปจริง (ห้ามเอารูป Ferrari มาใส่) -->
-       <div class="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#141414] to-[#1a1a1a] text-stone-500 group-hover:text-stone-300 transition-colors">
-         <app-icon name="car" class="!size-10 mb-2 opacity-30 group-hover:opacity-60 transition-opacity text-white" />
-         <span class="text-[10px] font-medium tracking-wide">รออัปโหลดรูปจริง</span>
-       </div>
-     }
-     ```
-
----
-
-### ─── 3. หน้าเลือกของแต่งรถ (LEVEL 3: TUNING & PARTS) ───
-
-#### A. คลิกการ์ด Banner รถ $\rightarrow$ เปิด Modal แก้ไขรุ่นรถ (`change_car_data.png`):
-- ใน `admin-edit-data.html`:
-  - ให้การ์ด Banner รูปรถด้านขวา สามารถคลิกได้:
-    `(click)="openEditCarModal(selectedCar())"`
-    พร้อมไอคอนรูปดินสอ หรือข้อความ Hover: *"คลิกเพื่อแก้ไขชื่อรุ่นหรือเปลี่ยนรูปรถ"*
-- ใน `admin-edit-data.ts`:
-  ```typescript
-  readonly editCarModalOpen = signal(false);
-  readonly editingCarName = signal('');
-  readonly editCarFile = signal<File | null>(null);
-  readonly editCarFilePreview = signal<string | null>(null);
-
-  openEditCarModal(car: RealCarModelItem | null): void {
-    if (!car) return;
-    this.editingCarName.set(car.name);
-    this.editCarFile.set(null);
-    this.editCarFilePreview.set(null);
-    this.editCarModalOpen.set(true);
-  }
-
-  closeEditCarModal(): void {
-    this.editCarModalOpen.set(false);
-  }
-
-  async saveEditCar(): Promise<void> {
-    const brand = this.selectedBrand();
-    const car = this.selectedCar();
-    const newName = this.editingCarName().trim();
-    if (!brand || !car || !newName) return;
-
-    this.isUploading.set(true);
-    this.uploadProgressText.set('กำลังอัปเดตข้อมูลรุ่นรถ...');
-
-    try {
-      const client = await this.admin.getClient();
-      let imageUrl = car.image_url;
-
-      // ถ้ามีการอัปโหลดรูปใหม่ ให้เซฟรูปใหม่เข้า Storage
-      const file = this.editCarFile();
-      if (file && client) {
-        const ext = CatalogStorageHelper.getFileExtension(file);
-        const path = CatalogStorageHelper.getCarPicturePath(brand.name, newName, ext);
-        const res = await CatalogStorageHelper.uploadFile(client, path, file);
-        if (res.ok && res.url) {
-          imageUrl = res.url;
-        } else {
-          throw new Error(res.error || 'Upload failed');
-        }
-      }
-
-      // อัปเดตข้อมูลในฐานข้อมูล (car_brand_reference / car_models)
-      const updatedCar: RealCarModelItem = {
-        ...car,
-        name: newName,
-        image_url: imageUrl,
-        image: imageUrl,
-      };
-
-      this.selectedCar.set(updatedCar);
-      this.admin.catalogModels.update((list) =>
-        list.map((c) => (c.id === car.id ? updatedCar : c)),
-      );
-
-      this.closeEditCarModal();
-      this.showToast(`แก้ไขรุ่นรถ "${newName}" เรียบร้อยแล้ว`, 'success');
-    } catch (err: any) {
-      this.showToast(`แก้ไขล้มเหลว: ${err?.message || 'Update failed'}`, 'error');
-    } finally {
-      this.isUploading.set(false);
-    }
-  }
-  ```
-
-#### B. เพิ่มกล่องอัปโหลดรูปสำนักแต่งแบบบังคับ (`No_Workshop_photo_upload.png`):
-- ใน Modal "เพิ่มแบรนด์ของแต่งใหม่" (`tuningBrandModalOpen`):
-  - เพิ่ม File Dropzone สำหรับอัปโหลดรูปโลโก้สำนักแต่ง (Logo ของ Tuning Brand)
-  - ในฟังก์ชัน `addTuningBrand()`: บังคับตรวจเช็คว่าต้องมีไฟล์รูป หากไม่มีให้แจ้งเตือนและบล็อกการบันทึก:
-    ```typescript
-    if (!this.selectedTuningBrandFile()) {
-      return this.showToast('กรุณาอัปโหลดรูปภาพโลโก้แบรนด์ของแต่ง', 'error');
-    }
+    </div>
     ```
-  - จัดเก็บรูปเข้า Supabase Storage ตามโครงสร้าง Path:
-    - `catalog/{CarBrand}/{CarModel}/BodyKit/{BodyKitBrand}/logo.{ext}`
-    - หรือ `catalog/{CarBrand}/{CarModel}/Part/{PartBrand}/logo.{ext}`
-  - แสดงรูปโลโก้ของสำนักแต่งบนการ์ดในสเต็ปที่ 1 อย่างสวยงาม
+- **`editPartModalOpen` (Modal แก้ไขชิ้นส่วน In-place)**:
+  - ช่องกรอกชื่อชิ้นส่วน `editingPartName`
+  - ช่องกรอกราคา `editingPartPrice`
+  - Dropzones สำหรับเปลี่ยนรูปแต่ละมุม (หากไม่เลือกไฟล์ใหม่ ให้คงรูปเดิมไว้)
+  - ปุ่ม "บันทึกการแก้ไข" เรียก `saveEditPart()`
 
 ---
 
-## 🧪 4. Testing & Verification Checklist
-1. **ทดสอบหน้าเลือก Brand**:
-   - พิมพ์ในช่องค้นหา $\rightarrow$ รายการแบรนด์ต้องกรองตามคำค้นหาทันที
-   - ตรวจสอบว่าแบรนด์ AION, Denza, DEEPAL, JAECOO, NETA, ORA ไม่ขึ้นโลโก้ Ferrari
-   - กดเพิ่ม Brand โดยไม่อัปโหลดรูป $\rightarrow$ ต้องโดนปฏิเสธพร้อมข้อความเตือน
-2. **ทดสอบหน้าเลือกรุ่นรถ (Car Name)**:
-   - คลิกที่การ์ดโลโก้แบรนด์ใบแรก $\rightarrow$ ต้องเปิด Modal แก้ไขแบรนด์ และทดสอบแก้ชื่อ/เปลี่ยนรูปได้จริง
-   - ตรวจสอบว่ารุ่นรถต่างๆ ไม่ขึ้นรูปรถ Ferrari ซ้ำกันทุกรุ่น (รุ่นที่ยังไม่มีรูปต้องขึ้น Placeholder รูปรถเรียบหรู)
-   - กดเพิ่มรุ่นรถโดยไม่อัปโหลดรูป $\rightarrow$ ต้องโดนปฏิเสธพร้อมข้อความเตือน
-3. **ทดสอบหน้าเลือกของแต่งรถ**:
-   - คลิกที่การ์ด Banner รูปรถด้านบน $\rightarrow$ ต้องเปิด Modal แก้ไขชื่อรุ่นรถและเปลี่ยนรูปรถได้จริง
-   - กดเพิ่มแบรนด์ของแต่ง $\rightarrow$ ต้องมีกล่องให้อัปโหลดรูปโลโก้สำนักแต่ง และบังคับให้อัปโหลดรูปก่อนบันทึก
-4. **คำสั่งตรวจสอบคุณภาพ**:
-   ```bash
-   cd Performante_Lab_Frontend
-   npm test -- --watch=false
-   npm run build
-   ```
-   *(ต้องผ่านครบทุก Test Suites และไม่มีข้อผิดพลาดในการ Build)*
+### 2. `src/app/features/admin/edit-data/admin-edit-data.ts`
+
+- **Signals และ State ของ Part 3-Step Flow**:
+  ```typescript
+  readonly partStep = signal<'category' | 'brand' | 'items'>('category');
+  readonly availableCategories = signal<string[]>([
+    'Front Bumper',
+    'Rear Bumper',
+    'Wheels',
+    'Spoilers',
+  ]);
+  ```
+- **Helper คำนวณจำนวนแบรนด์ในแต่ละหมวด**:
+  ```typescript
+  tuningBrandsForPartCategory(category: string): string[] {
+    const car = this.selectedCar();
+    if (!car) return [];
+    const cat = category.toLowerCase();
+    const fromWorkshops = this.workshopBrands().parts.map((w) => w.name);
+    const relevantParts = this.admin.catalogParts().filter((p) => {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      if (!isMatchCar) return false;
+      return !this.isBodyKitCategory(p.category) && p.category.toLowerCase() === cat;
+    });
+    const fromParts = relevantParts.map((p) => (p.manufacturer || 'Custom').trim()).filter(Boolean);
+    return Array.from(new Set([...fromWorkshops, ...fromParts]));
+  }
+  ```
+- **ฟังก์ชันคืนค่ามุมมองที่จำเป็นตามหมวดหมู่ (`getRequiredAngles`)**:
+  ```typescript
+  getRequiredAngles(category?: string): { key: string; label: string }[] {
+    const isBodyKit = this.partTab() === 'bodykit';
+    if (isBodyKit) {
+      return [
+        { key: '45_front', label: '45 องศาหน้า' },
+        { key: 'front', label: 'หน้าตรง' },
+        { key: '45_Back', label: '45 องศาหลัง' },
+        { key: 'Back', label: 'หลังตรง' },
+      ];
+    }
+
+    const cat = (category || this.selectedCategory() || this.newPartCategory()).toLowerCase().replace(/[\s_-]+/g, '');
+    switch (cat) {
+      case 'frontbumper':
+        return [
+          { key: '45_front', label: '45 องศาหน้า' },
+          { key: 'front', label: 'หน้าตรง' },
+        ];
+      case 'rearbumper':
+        return [
+          { key: '45_Back', label: '45 องศาหลัง' },
+          { key: 'Back', label: 'หลังตรง' },
+        ];
+      case 'wheels':
+        return [
+          { key: '45_front', label: '45 องศาหน้า' },
+          { key: '45_Back', label: '45 องศาหลัง' },
+        ];
+      case 'spoilers':
+        return [
+          { key: '45_front', label: '45 องศาหน้า' },
+          { key: '45_Back', label: '45 องศาหลัง' },
+          { key: 'Back', label: 'หลังตรง' },
+        ];
+      default:
+        return [
+          { key: '45_front', label: '45 องศาหน้า' },
+          { key: 'front', label: 'หน้าตรง' },
+        ];
+    }
+  }
+  ```
+- **ฟังก์ชันแก้ไข Part In-place**:
+  ```typescript
+  readonly editingPart = signal<PartItem | null>(null);
+  readonly editingPartName = signal('');
+  readonly editingPartPrice = signal<number | null>(null);
+  readonly editPartAngleFiles = signal<Record<string, File>>({});
+
+  openEditPartModal(part: PartItem): void {
+    this.editingPart.set(part);
+    this.editingPartName.set(part.name);
+    this.editingPartPrice.set(part.price ?? null);
+    this.editPartAngleFiles.set({});
+    this.editPartModalOpen.set(true);
+  }
+
+  async saveEditPart(): Promise<void> {
+    const part = this.editingPart();
+    const name = this.editingPartName().trim();
+    if (!part || !name) return this.showToast('กรุณาระบุชื่อชิ้นส่วน', 'error');
+
+    this.isSubmitting.set(true);
+    try {
+      let imageUrl = part.image || part.image_url;
+      // หากมีการอัปโหลดรูปมุมมองใหม่ ให้อัปโหลดเข้า Storage
+      const files = this.editPartAngleFiles();
+      const primaryAngle = Object.keys(files)[0];
+      if (primaryAngle && files[primaryAngle]) {
+        imageUrl = await this.admin.uploadPartAngleFile(files[primaryAngle], part, primaryAngle);
+      }
+
+      await this.admin.updateCarPart({
+        id: part.id,
+        name,
+        price: this.editingPartPrice() ?? 0,
+        image_url: imageUrl,
+      });
+
+      this.showToast('แก้ไขข้อมูลชิ้นส่วนเรียบร้อย', 'success');
+      this.closeEditPartModal();
+    } catch (err: any) {
+      this.showToast('เกิดข้อผิดพลาดในการแก้ไขชิ้นส่วน', 'error');
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+  ```
 
 ---
 
-## 📋 Definition of Done
-- [ ] มีช่อง Search Brand ใช้งานได้ลื่นไหล
-- [ ] ทุกฟอร์มเพิ่มข้อมูล (Brand, Car, Tuning Brand) บังคับอัปโหลดรูปภาพจริงจากเครื่อง 100%
-- [ ] โลโก้แบรนด์ตรงกับของจริงทุกแบรนด์ ไม่มีโลโก้ Ferrari ปรากฏผิดที่
-- [ ] รถแต่ละรุ่นไม่มีรูป Ferrari F8 ปรากฏมั่ว แสดงเฉพาะรูปรถจริง หรือ Car Silhouette Placeholder
-- [ ] คลิกการ์ดแบรนด์ใน Level 2 สามารถแก้ไขชื่อและรูปแบรนด์ได้จริง
-- [ ] คลิกการ์ด Banner รถใน Level 3 สามารถแก้ไขชื่อรุ่นและรูปรถได้จริง
-- [ ] กล่องเพิ่มสำนักแต่งมี Dropzone อัปโหลดรูปโลโก้สำนักแต่ง และแสดงผลบนการ์ดได้จริง
-- [ ] รัน `npm test` และ `npm run build` ผ่าน 100%
+### 3. `src/app/features/admin/services/admin.service.ts`
 
+- เพิ่มเมธอดสำหรับอัปเดตข้อมูลชิ้นส่วน:
+  ```typescript
+  async updateCarPart(payload: { id: string; name: string; price?: number; image_url?: string }): Promise<void> {
+    const existing = this.catalogParts().find((p) => p.id === payload.id);
+    if (!existing) return;
+
+    const updated = {
+      ...existing,
+      name: payload.name,
+      price: payload.price !== undefined ? payload.price : existing.price,
+      image_url: payload.image_url || existing.image_url,
+      image: payload.image_url || existing.image,
+    };
+
+    // อัปเดตข้อมูลใน Catalog Storage และ Local Signal Store
+    await this.catalogStorage.updatePart(updated);
+    this.catalogParts.update((list) => list.map((p) => (p.id === payload.id ? updated : p)));
+  }
+  ```
+
+---
+
+## 🧪 การตรวจสอบและการรันเทสต์ (Verification Checklist)
+
+เมื่อดำเนินการเขียนโค้ดตามคู่มือนี้แล้ว ให้รันคำสั่งตรวจสอบ:
+```bash
+npx tsc --noEmit
+npm test -- --watch=false
+```
+**เกณฑ์ความสำเร็จ (Pass Criteria):**
+- [x] TypeScript ไม่มีข้อผิดพลาด (0 errors)
+- [x] Test Files ทั้งหมด 22 ไฟล์ 167 เทสต์ ผ่าน 100%
+- [x] หน้า Body Kit ยังคงแสดงผลแบบ Sano-Design (ไม่มีรูปโลโก้, การ์ดแรกแก้ไขชื่อได้, การ์ด 2 เป็น (+) เพิ่มชิ้นส่วน, ชิ้นส่วนคลิกแก้ไขได้)
+- [x] หน้า Part ล็อค 4 หมวดหมู่มาตรฐาน ไม่มีปุ่มเพิ่ม/ลบหมวดหมู่
+- [x] Modal เพิ่มและแก้ไขชิ้นส่วนแสดงช่องอัปโหลด Multi-Angle ครบถ้วนตาม Requirement ของแต่ละหมวด

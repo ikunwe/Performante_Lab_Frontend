@@ -85,6 +85,37 @@ export class CatalogStorageHelper {
   }
 
   /**
+   * สร้าง Path ชุดแต่ง FullBodyKits แยกตามมุมมอง:
+   * {brand}/{model}/BodyKit/{bodyKitBrand}/{kitName}/{angle}.{ext}
+   */
+  static getBodyKitAnglePath(
+    brand: string,
+    model: string,
+    bodyKitBrand: string,
+    kitName: string,
+    angle: string,
+    ext = 'png',
+  ): string {
+    return `${this.sanitize(brand)}/${this.sanitize(model)}/BodyKit/${this.sanitize(bodyKitBrand)}/${this.sanitize(kitName)}/${angle}.${this.cleanExt(ext)}`;
+  }
+
+  /**
+   * สร้าง Path ชิ้นส่วนพาร์ตแต่งแยกตามหมวดหมู่และมุมมอง:
+   * {brand}/{model}/Part/{category}/{partBrand}/{partName}/{angle}.{ext}
+   */
+  static getPartAnglePath(
+    brand: string,
+    model: string,
+    category: string,
+    partBrand: string,
+    partName: string,
+    angle: string,
+    ext = 'png',
+  ): string {
+    return `${this.sanitize(brand)}/${this.sanitize(model)}/Part/${this.sanitize(category)}/${this.sanitize(partBrand)}/${this.sanitize(partName)}/${angle}.${this.cleanExt(ext)}`;
+  }
+
+  /**
    * สร้าง Path โลโก้แบรนด์ของแต่ง (Tuning Brand):
    * {brand}/{model}/BodyKit/{bodyKitBrand}/logo.{ext} หรือ {brand}/{model}/Part/{partBrand}/logo.{ext}
    */
@@ -334,5 +365,53 @@ export class CatalogStorageHelper {
       return [];
     }
   }
-}
 
+  /**
+   * ลบไฟล์ออกจาก Storage bucket 'catalog'
+   */
+  static async deleteFile(
+    client: SupabaseClient,
+    path: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const storage = client?.storage?.from ? client.storage.from(this.BUCKET) : null;
+      if (!storage || typeof storage.remove !== 'function') {
+        return { ok: false, error: 'Storage not available' };
+      }
+      const { error } = await storage.remove([path]);
+      if (error) throw error;
+      return { ok: true };
+    } catch (err: any) {
+      console.warn('[CatalogStorageHelper] deleteFile error:', err);
+      return { ok: false, error: err?.message || 'Delete failed' };
+    }
+  }
+
+  /**
+   * ลบไฟล์ทั้งหมดในโฟลเดอร์ prefix ออกจาก Storage bucket 'catalog'
+   */
+  static async deleteFolder(
+    client: SupabaseClient,
+    prefix: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const storage = client?.storage?.from ? client.storage.from(this.BUCKET) : null;
+      if (!storage || typeof storage.list !== 'function' || typeof storage.remove !== 'function') {
+        return { ok: false, error: 'Storage not available' };
+      }
+      const { data: files } = await storage.list(prefix, { limit: 100 });
+      if (files && files.length > 0) {
+        const filePaths = files
+          .filter((f) => f.name && !f.name.startsWith('.'))
+          .map((f) => `${prefix}/${f.name}`);
+        if (filePaths.length > 0) {
+          await storage.remove(filePaths);
+        }
+      }
+      return { ok: true };
+    } catch (err: any) {
+      console.warn('[CatalogStorageHelper] deleteFolder error:', err);
+      return { ok: false, error: err?.message || 'Delete folder failed' };
+    }
+  }
+}

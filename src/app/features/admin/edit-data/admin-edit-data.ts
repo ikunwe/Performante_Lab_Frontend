@@ -14,6 +14,17 @@ import {
 } from '../services/admin.service';
 import { CatalogStorageHelper } from '../../../core/storage/catalog-storage';
 
+export interface DeleteTarget {
+  type: 'category' | 'tuningBrand' | 'part';
+  id?: string;
+  name: string;
+  brandCount?: number;
+  partCount?: number;
+  category?: string;
+  storagePath?: string;
+  tab?: 'bodykit' | 'parts';
+}
+
 @Component({
   selector: 'app-admin-edit-data',
   imports: [CommonModule, FormsModule, Icon],
@@ -28,15 +39,16 @@ export class AdminEditData implements OnInit {
   readonly selectedBrand = signal<RealBrandItem | null>(null);
   readonly selectedCar = signal<RealCarModelItem | null>(null);
 
-  // Level 3 Architecture: Tabs & 2-Step Tuning Selection
+  // Level 3 Architecture: Tabs & 3-Step Selection Flow
   readonly partTab = signal<'bodykit' | 'parts'>('bodykit');
-  readonly selectedCategory = signal<string>('Wheels');
+  readonly partStep = signal<'category' | 'brand' | 'parts'>('category');
+
+  readonly selectedCategory = signal<string>('Front Bumper');
   readonly availableCategories = signal<string[]>([
+    'Front Bumper',
+    'Rear Bumper',
     'Wheels',
     'Spoilers',
-    'Exhaust',
-    'Brakes',
-    'Suspension',
   ]);
 
   // Selected Tuning Brand: null = Step 1 (Brand Selection), string = Step 2 (Part Items)
@@ -80,8 +92,18 @@ export class AdminEditData implements OnInit {
   readonly carModalOpen = signal(false);
   readonly editCarModalOpen = signal(false);
   readonly partModalOpen = signal(false);
+  readonly editPartModalOpen = signal(false);
+  readonly editingPart = signal<RealPartItem | null>(null);
+  readonly editingPartName = signal('');
+  readonly editingPartPrice = signal<number | null>(null);
+  readonly editPartFile = signal<File | null>(null);
+  readonly editPartFilePreview = signal<string | null>(null);
+  readonly editPartAngleFiles = signal<Map<string, File>>(new Map());
+  readonly editPartAnglePreviews = signal<Map<string, string>>(new Map());
   readonly tuningBrandModalOpen = signal(false);
+  readonly editTuningBrandModalOpen = signal(false);
   readonly categoryModalOpen = signal(false);
+  readonly confirmDeleteModalOpen = signal(false);
 
   // File state & preview for modals
   readonly selectedBrandFile = signal<File | null>(null);
@@ -99,17 +121,27 @@ export class AdminEditData implements OnInit {
   readonly selectedPartFile = signal<File | null>(null);
   readonly partFilePreview = signal<string | null>(null);
 
+  // Multi-angle Part & BodyKit files
+  readonly partAngleFiles = signal<Map<string, File>>(new Map());
+  readonly partAnglePreviews = signal<Map<string, string>>(new Map());
+
   readonly selectedTuningBrandFile = signal<File | null>(null);
   readonly tuningBrandFilePreview = signal<string | null>(null);
+
+  readonly editTuningBrandFile = signal<File | null>(null);
+  readonly editTuningBrandFilePreview = signal<string | null>(null);
+
   readonly tuningBrandLogos = signal<Map<string, string>>(new Map());
   readonly workshopBrands = signal<{
     bodykit: { name: string; logoUrl: string }[];
     parts: { name: string; logoUrl: string }[];
   }>({ bodykit: [], parts: [] });
 
-  // Uploading state
+  // Uploading & Deleting state
   readonly isUploading = signal(false);
   readonly uploadProgressText = signal('');
+  readonly isDeleting = signal(false);
+  readonly deleteTarget = signal<DeleteTarget | null>(null);
 
   // Form states: New Brand / Edit Brand
   readonly newBrandName = signal('');
@@ -119,8 +151,12 @@ export class AdminEditData implements OnInit {
   readonly newCarName = signal('');
   readonly editingCarName = signal('');
 
-  // Form states: Tuning Brand & Custom Category
+  // Form states: Tuning Brand & Edit Tuning Brand
   readonly newTuningBrandName = signal('');
+  readonly editingTuningBrandName = signal('');
+  readonly originalTuningBrandName = signal('');
+
+  // Form states: Custom Category
   readonly newCustomCategoryName = signal('');
 
   // Form states: New Part
@@ -133,7 +169,7 @@ export class AdminEditData implements OnInit {
   readonly toastMessage = signal('');
   readonly toastType = signal<'success' | 'error'>('success');
 
-  private isBodyKitCategory(cat: string): boolean {
+  isBodyKitCategory(cat: string): boolean {
     const c = (cat || '').toLowerCase().replace(/[\s_-]+/g, '');
     return c === 'bodykit' || c === 'fullbodykits' || c === 'bodykits';
   }
@@ -157,7 +193,7 @@ export class AdminEditData implements OnInit {
     });
   });
 
-  // Level 3 Step 1: Distinct Tuning Brands for current car & tab/category
+  // Level 3 BodyKit: Distinct Tuning Brands for current car
   readonly tuningBrandsForCurrentContext = computed(() => {
     const car = this.selectedCar();
     if (!car) return [];
@@ -176,7 +212,30 @@ export class AdminEditData implements OnInit {
     return Array.from(new Set([...fromWorkshops, ...fromParts]));
   });
 
-  // Level 3 Step 2: Part Items for the selected tuning brand
+  // Level 3 Part: Distinct Tuning Brands for a specific part category
+  tuningBrandsForPartCategory(category: string): string[] {
+    const car = this.selectedCar();
+    if (!car) return [];
+    const cat = category.toLowerCase();
+
+    const fromWorkshops = this.workshopBrands().parts.map((w) => w.name);
+    const relevantParts = this.admin.catalogParts().filter((p) => {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      if (!isMatchCar) return false;
+      return !this.isBodyKitCategory(p.category) && p.category.toLowerCase() === cat;
+    });
+
+    const fromParts = relevantParts.map((p) => (p.manufacturer || 'Custom').trim()).filter(Boolean);
+    return Array.from(new Set([...fromWorkshops, ...fromParts]));
+  }
+
+  // Level 3 Part Step 2: Distinct Tuning Brands for current car & selected part category
+  readonly tuningBrandsForCurrentPartCategory = computed(() => {
+    return this.tuningBrandsForPartCategory(this.selectedCategory());
+  });
+
+  // Level 3 Step 2 / Step 3: Part Items for the selected tuning brand in BodyKit tab
   readonly partsForSelectedTuningBrand = computed(() => {
     const car = this.selectedCar();
     const brandName = this.selectedTuningBrand();
@@ -190,6 +249,23 @@ export class AdminEditData implements OnInit {
       const isMatchCategory = isBodyKit
         ? this.isBodyKitCategory(p.category)
         : !this.isBodyKitCategory(p.category);
+      return isMatchCar && isMatchBrand && isMatchCategory;
+    });
+  });
+
+  // Level 3 Part Step 3: Real Part Items for current car, category, and tuning brand
+  readonly partsForSelectedPartBrandAndCategory = computed(() => {
+    const car = this.selectedCar();
+    const brandName = this.selectedTuningBrand();
+    const cat = this.selectedCategory().toLowerCase();
+    if (!car || !brandName) return [];
+
+    return this.admin.catalogParts().filter((p) => {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      const isMatchBrand = (p.manufacturer || 'Custom').toLowerCase() === brandName.toLowerCase();
+      const isMatchCategory =
+        !this.isBodyKitCategory(p.category) && p.category.toLowerCase() === cat;
       return isMatchCar && isMatchBrand && isMatchCategory;
     });
   });
@@ -231,7 +307,25 @@ export class AdminEditData implements OnInit {
   });
 
   readonly partPlaceholders = computed(() => {
-    const filled = 1 + this.partsForSelectedTuningBrand().length;
+    const filled = 2 + this.partsForSelectedTuningBrand().length;
+    const remaining = Math.max(0, 12 - filled);
+    return Array.from({ length: remaining });
+  });
+
+  readonly categoryPlaceholders = computed(() => {
+    const filled = this.availableCategories().length;
+    const remaining = Math.max(0, 12 - filled);
+    return Array.from({ length: remaining });
+  });
+
+  readonly partBrandPlaceholders = computed(() => {
+    const filled = 2 + this.tuningBrandsForCurrentPartCategory().length;
+    const remaining = Math.max(0, 12 - filled);
+    return Array.from({ length: remaining });
+  });
+
+  readonly partItemPlaceholders = computed(() => {
+    const filled = 2 + this.partsForSelectedPartBrandAndCategory().length;
     const remaining = Math.max(0, 12 - filled);
     return Array.from({ length: remaining });
   });
@@ -260,6 +354,7 @@ export class AdminEditData implements OnInit {
     this.selectedCar.set(car);
     this.selectedTuningBrand.set(null);
     this.partTab.set('bodykit');
+    this.partStep.set('category');
     this.level.set('parts');
     const brandName = this.selectedBrand()?.name || '';
     if (brandName) {
@@ -290,11 +385,34 @@ export class AdminEditData implements OnInit {
   setPartTab(tab: 'bodykit' | 'parts'): void {
     this.partTab.set(tab);
     this.selectedTuningBrand.set(null);
+    this.partStep.set('category');
   }
 
   selectCategory(cat: string): void {
     this.selectedCategory.set(cat);
     this.selectedTuningBrand.set(null);
+    this.partStep.set('brand');
+  }
+
+  selectPartCategory(cat: string): void {
+    this.selectedCategory.set(cat);
+    this.selectedTuningBrand.set(null);
+    this.partStep.set('brand');
+  }
+
+  backToPartCategories(): void {
+    this.selectedTuningBrand.set(null);
+    this.partStep.set('category');
+  }
+
+  selectPartTuningBrand(brand: string): void {
+    this.selectedTuningBrand.set(brand);
+    this.partStep.set('parts');
+  }
+
+  backToPartBrands(): void {
+    this.selectedTuningBrand.set(null);
+    this.partStep.set('brand');
   }
 
   selectTuningBrand(brand: string): void {
@@ -359,49 +477,6 @@ export class AdminEditData implements OnInit {
       this.showToast('กรุณาระบุชื่อแบรนด์ของแต่ง', 'error');
       return;
     }
-    const file = this.selectedTuningBrandFile();
-    if (!file) {
-      this.showToast('กรุณาอัปโหลดรูปภาพโลโก้แบรนด์ของแต่ง', 'error');
-      return;
-    }
-
-    let logoUrl = this.tuningBrandFilePreview() || '';
-    const car = this.selectedCar();
-    const carBrand = this.selectedBrand();
-
-    if (file && car && carBrand) {
-      this.isUploading.set(true);
-      this.uploadProgressText.set('กำลังอัปโหลดโลโก้สำนักแต่ง...');
-      try {
-        const client = await this.admin.getClient();
-        if (client) {
-          const ext = CatalogStorageHelper.getFileExtension(file);
-          const path = CatalogStorageHelper.getTuningBrandLogoPath(
-            carBrand.name,
-            car.name,
-            this.partTab(),
-            name,
-            ext,
-          );
-          const res = await CatalogStorageHelper.uploadFile(client, path, file);
-          if (res.ok && res.url) {
-            logoUrl = res.url;
-          }
-        }
-      } catch (err) {
-        console.warn('[AdminEditData] Upload tuning brand logo warning:', err);
-      } finally {
-        this.isUploading.set(false);
-      }
-    }
-
-    if (logoUrl) {
-      this.tuningBrandLogos.update((map) => {
-        const next = new Map(map);
-        next.set(name.toLowerCase(), logoUrl);
-        return next;
-      });
-    }
 
     this.workshopBrands.update((wb) => {
       const tabKey = this.partTab();
@@ -409,15 +484,261 @@ export class AdminEditData implements OnInit {
       if (!existing.some((w) => w.name.toLowerCase() === name.toLowerCase())) {
         return {
           ...wb,
-          [tabKey]: [...existing, { name, logoUrl }].sort((a, b) => a.name.localeCompare(b.name)),
+          [tabKey]: [...existing, { name, logoUrl: '' }].sort((a, b) => a.name.localeCompare(b.name)),
         };
       }
       return wb;
     });
 
     this.selectedTuningBrand.set(name);
+    if (this.partTab() === 'parts') {
+      this.partStep.set('parts');
+    }
     this.closeTuningBrandModal();
-    this.showToast(`เลือกแบรนด์ "${name}" แล้ว - กดปุ่ม (+) เพื่อเพิ่มชิ้นส่วนได้ทันที`, 'success');
+    this.showToast(`เพิ่มแบรนด์ "${name}" เรียบร้อยแล้ว`, 'success');
+  }
+
+  // Edit Tuning Brand Modal Handlers
+  openEditTuningBrandModal(brandName: string): void {
+    this.editingTuningBrandName.set(brandName);
+    this.originalTuningBrandName.set(brandName);
+    this.editTuningBrandFile.set(null);
+    this.editTuningBrandFilePreview.set(null);
+    this.editTuningBrandModalOpen.set(true);
+  }
+
+  closeEditTuningBrandModal(): void {
+    this.editTuningBrandModalOpen.set(false);
+  }
+
+  onEditTuningBrandFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.validateAndPreview(file, (preview) => {
+        this.editTuningBrandFile.set(file);
+        this.editTuningBrandFilePreview.set(preview);
+      });
+    }
+  }
+
+  async saveEditTuningBrand(): Promise<void> {
+    const oldName = this.originalTuningBrandName().trim();
+    const newName = this.editingTuningBrandName().trim();
+    if (!oldName || !newName) {
+      this.showToast('กรุณาระบุชื่อแบรนด์', 'error');
+      return;
+    }
+
+    this.isUploading.set(true);
+    this.uploadProgressText.set('กำลังอัปเดตข้อมูลแบรนด์...');
+
+    try {
+      // Update workshop brands list
+      this.workshopBrands.update((wb) => {
+        const tabKey = this.partTab();
+        const list = wb[tabKey].map((w) =>
+          w.name.toLowerCase() === oldName.toLowerCase()
+            ? { ...w, name: newName }
+            : w,
+        );
+        return { ...wb, [tabKey]: list };
+      });
+
+      // Update catalog parts in memory
+      this.admin.catalogParts.update((parts) =>
+        parts.map((p) =>
+          (p.manufacturer || '').toLowerCase() === oldName.toLowerCase()
+            ? { ...p, manufacturer: newName }
+            : p,
+        ),
+      );
+
+      // If active selection was this brand, update it
+      if (this.selectedTuningBrand()?.toLowerCase() === oldName.toLowerCase()) {
+        this.selectedTuningBrand.set(newName);
+      }
+
+      this.closeEditTuningBrandModal();
+      this.showToast(`แก้ไขข้อมูลแบรนด์ "${newName}" เรียบร้อยแล้ว`, 'success');
+    } catch (err: any) {
+      this.showToast(`แก้ไขล้มเหลว: ${err?.message || 'Update failed'}`, 'error');
+    } finally {
+      this.isUploading.set(false);
+    }
+  }
+
+  // Delete Confirmation Safeguard Handlers
+  confirmDeleteCategory(category: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    const brandCount = this.getBrandsCountForCategory(category);
+    const partCount = this.getPartsCountForCategory(category);
+    this.deleteTarget.set({
+      type: 'category',
+      name: category,
+      brandCount,
+      partCount,
+      category,
+    });
+    this.confirmDeleteModalOpen.set(true);
+  }
+
+  confirmDeleteTuningBrand(brandName: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    const isBodyKit = this.partTab() === 'bodykit';
+    const partCount = isBodyKit
+      ? this.getPartsCountForBodyKitBrand(brandName)
+      : this.getPartsCountForBrandAndCategory(brandName, this.selectedCategory());
+
+    this.deleteTarget.set({
+      type: 'tuningBrand',
+      name: brandName,
+      partCount,
+      tab: this.partTab(),
+      category: isBodyKit ? 'BodyKit' : this.selectedCategory(),
+    });
+    this.confirmDeleteModalOpen.set(true);
+  }
+
+  confirmDeletePart(part: RealPartItem, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.deleteTarget.set({
+      type: 'part',
+      id: part.id,
+      name: part.name,
+      storagePath: part.image_url || part.image,
+    });
+    this.confirmDeleteModalOpen.set(true);
+  }
+
+  closeConfirmDeleteModal(): void {
+    if (this.isDeleting()) return;
+    this.confirmDeleteModalOpen.set(false);
+    this.deleteTarget.set(null);
+  }
+
+  async executeDelete(): Promise<void> {
+    const target = this.deleteTarget();
+    const car = this.selectedCar();
+    const brand = this.selectedBrand();
+    if (!target) return;
+
+    this.isDeleting.set(true);
+
+    try {
+      if (target.type === 'category') {
+        const carName = car?.name || '';
+        const res = await this.admin.deletePartCategory(target.name, carName);
+        if (res.ok) {
+          this.availableCategories.update((cats) =>
+            cats.filter((c) => c.toLowerCase() !== target.name.toLowerCase()),
+          );
+          if (this.selectedCategory().toLowerCase() === target.name.toLowerCase()) {
+            const nextCat = this.availableCategories()[0] || 'Wheels';
+            this.selectedCategory.set(nextCat);
+          }
+          this.showToast(`ลบหมวดหมู่ "${target.name}" เรียบร้อยแล้ว`, 'success');
+        } else {
+          this.showToast(res.error || 'ลบหมวดหมู่ล้มเหลว', 'error');
+        }
+      } else if (target.type === 'tuningBrand') {
+        const carName = car?.name || '';
+        const brandName = brand?.name || '';
+        const tab = target.tab || this.partTab();
+        const res = await this.admin.deleteTuningBrand(brandName, carName, tab, target.name);
+        if (res.ok) {
+          this.workshopBrands.update((wb) => ({
+            ...wb,
+            [tab]: wb[tab].filter((w) => w.name.toLowerCase() !== target.name.toLowerCase()),
+          }));
+          if (this.selectedTuningBrand()?.toLowerCase() === target.name.toLowerCase()) {
+            this.selectedTuningBrand.set(null);
+          }
+          this.showToast(`ลบแบรนด์ "${target.name}" เรียบร้อยแล้ว`, 'success');
+        } else {
+          this.showToast(res.error || 'ลบแบรนด์ล้มเหลว', 'error');
+        }
+      } else if (target.type === 'part' && target.id) {
+        const res = await this.admin.deletePartItem(target.id, target.storagePath);
+        if (res.ok) {
+          this.showToast(`ลบชิ้นส่วน "${target.name}" เรียบร้อยแล้ว`, 'success');
+        } else {
+          this.showToast(res.error || 'ลบชิ้นส่วนล้มเหลว', 'error');
+        }
+      }
+    } catch (err: any) {
+      this.showToast(`เกิดข้อผิดพลาดในการลบ: ${err?.message || 'Delete error'}`, 'error');
+    } finally {
+      this.isDeleting.set(false);
+      this.confirmDeleteModalOpen.set(false);
+      this.deleteTarget.set(null);
+    }
+  }
+
+  // Category counts & Icon helpers
+  getBrandsCountForCategory(category: string): number {
+    const car = this.selectedCar();
+    if (!car) return 0;
+    const cat = category.toLowerCase();
+    const brands = new Set<string>();
+    for (const p of this.admin.catalogParts()) {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      if (isMatchCar && !this.isBodyKitCategory(p.category) && p.category.toLowerCase() === cat) {
+        if (p.manufacturer) brands.add(p.manufacturer.trim());
+      }
+    }
+    return brands.size;
+  }
+
+  getPartsCountForCategory(category: string): number {
+    const car = this.selectedCar();
+    if (!car) return 0;
+    const cat = category.toLowerCase();
+    return this.admin.catalogParts().filter((p) => {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      return isMatchCar && !this.isBodyKitCategory(p.category) && p.category.toLowerCase() === cat;
+    }).length;
+  }
+
+  getPartsCountForBrandAndCategory(brandName: string, category: string): number {
+    const car = this.selectedCar();
+    if (!car) return 0;
+    const cat = category.toLowerCase();
+    const bName = brandName.toLowerCase();
+    return this.admin.catalogParts().filter((p) => {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      const isMatchBrand = (p.manufacturer || 'Custom').toLowerCase() === bName;
+      return (
+        isMatchCar &&
+        isMatchBrand &&
+        !this.isBodyKitCategory(p.category) &&
+        p.category.toLowerCase() === cat
+      );
+    }).length;
+  }
+
+  getPartsCountForBodyKitBrand(brandName: string): number {
+    const car = this.selectedCar();
+    if (!car) return 0;
+    const bName = brandName.toLowerCase();
+    return this.admin.catalogParts().filter((p) => {
+      const isMatchCar =
+        (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
+      const isMatchBrand = (p.manufacturer || 'Custom').toLowerCase() === bName;
+      return isMatchCar && isMatchBrand && this.isBodyKitCategory(p.category);
+    }).length;
+  }
+
+  getCategoryIcon(category: string): string {
+    const c = category.toLowerCase().replace(/[\s_-]+/g, '');
+    if (c === 'frontbumper') return 'front';
+    if (c === 'rearbumper') return 'rear';
+    if (c === 'wheels') return 'wheel';
+    if (c === 'spoilers') return 'car';
+    return 'parts';
   }
 
   // Edit Brand Modal Handlers
@@ -815,19 +1136,87 @@ export class AdminEditData implements OnInit {
 
   readonly submitAddCar = (): Promise<void> => this.saveCar();
 
-  // Part Modal Handlers (2-Step Tuning Integration)
+  getRequiredAngles(catParam?: string): { key: string; label: string }[] {
+    const rawCat =
+      catParam ||
+      (this.partTab() === 'bodykit' ? 'bodykit' : (this.newPartCategory() || this.selectedCategory()));
+    const cat = (rawCat || '').toLowerCase().replace(/[\s_-]+/g, '');
+    if (cat === 'bodykit' || cat === 'fullbodykits' || cat === 'bodykits' || cat === 'fullbodykit') {
+      return [
+        { key: '45_front', label: '45 องศาหน้า' },
+        { key: 'front', label: 'หน้าตรง' },
+        { key: '45_Back', label: '45 องศาหลัง' },
+        { key: 'Back', label: 'หลังตรง' },
+      ];
+    }
+    const c = cat;
+    if (c === 'frontbumper' || c === 'front' || c === 'frontbumpers') {
+      return [
+        { key: '45_front', label: '45 องศาหน้า' },
+        { key: 'front', label: 'หน้าตรง' },
+      ];
+    }
+    if (c === 'rearbumper' || c === 'rear' || c === 'rearbumpers') {
+      return [
+        { key: '45_Back', label: '45 องศาหลัง' },
+        { key: 'Back', label: 'หลังตรง' },
+      ];
+    }
+    if (c === 'wheels' || c === 'wheel') {
+      return [
+        { key: '45_front', label: '45 องศาหน้า' },
+        { key: '45_Back', label: '45 องศาหลัง' },
+      ];
+    }
+    if (c === 'spoilers' || c === 'spoiler') {
+      return [
+        { key: '45_front', label: '45 องศาหน้า' },
+        { key: '45_Back', label: '45 องศาหลัง' },
+        { key: 'Back', label: 'หลังตรง' },
+      ];
+    }
+    return [
+      { key: '45_front', label: '45 องศาหน้า' },
+      { key: 'front', label: 'หน้าตรง' },
+    ];
+  }
+
+  onPartAngleFileChange(angleKey: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.validateAndPreview(file, (preview) => {
+        this.partAngleFiles.update((map) => {
+          const next = new Map(map);
+          next.set(angleKey, file);
+          return next;
+        });
+        this.partAnglePreviews.update((map) => {
+          const next = new Map(map);
+          next.set(angleKey, preview);
+          return next;
+        });
+      });
+    }
+  }
+
+  // Part Modal Handlers (Multi-Angle Integration)
   openPartModal(): void {
-    const currentCat = this.partTab() === 'bodykit' ? 'BodyKit' : this.selectedCategory();
+    const currentCat = this.partTab() === 'bodykit' ? 'FullBodyKits' : this.selectedCategory();
     this.newPartCategory.set(currentCat);
     this.newPartManufacturer.set(this.selectedTuningBrand() || 'Custom');
     this.newPartName.set('');
     this.newPartPrice.set(null);
     this.selectedPartFile.set(null);
     this.partFilePreview.set(null);
+    this.partAngleFiles.set(new Map());
+    this.partAnglePreviews.set(new Map());
     this.partModalOpen.set(true);
   }
 
   closePartModal(): void {
+    this.partAngleFiles.set(new Map());
+    this.partAnglePreviews.set(new Map());
     this.partModalOpen.set(false);
   }
 
@@ -844,28 +1233,187 @@ export class AdminEditData implements OnInit {
 
     const isBodyKit = this.partTab() === 'bodykit';
     const tuningBrand = this.selectedTuningBrand() || this.newPartManufacturer().trim() || 'Custom';
-    const category = isBodyKit ? 'BodyKit' : this.selectedCategory();
-    const file = this.selectedPartFile();
-    if (!file) {
+    const category = isBodyKit ? 'FullBodyKits' : this.selectedCategory();
+
+    const requiredAngles = this.getRequiredAngles();
+    const angleFiles = this.partAngleFiles();
+
+    // Support single file fallback (e.g. from tests or simplified upload)
+    if (angleFiles.size === 0 && this.selectedPartFile()) {
+      for (const req of requiredAngles) {
+        angleFiles.set(req.key, this.selectedPartFile()!);
+      }
+    }
+
+    if (angleFiles.size === 0 && !this.selectedPartFile()) {
       this.showToast('กรุณาอัปโหลดรูปภาพชิ้นส่วน', 'error');
       return;
     }
 
-    let imageUrl = this.partFilePreview() || '';
+    for (const req of requiredAngles) {
+      if (!angleFiles.has(req.key)) {
+        this.showToast(`กรุณาอัปโหลดรูปภาพมุม "${req.label}" ให้ครบถ้วน`, 'error');
+        return;
+      }
+    }
 
+    let primaryImageUrl = '';
+    this.isUploading.set(true);
+    this.uploadProgressText.set('กำลังอัปโหลดรูปภาพแต่ละมุมมอง...');
+
+    try {
+      const client = await this.admin.getClient();
+      const brandName = brand?.name || 'Universal';
+
+      for (const req of requiredAngles) {
+        const file = angleFiles.get(req.key)!;
+        const ext = CatalogStorageHelper.getFileExtension(file);
+
+        const path = isBodyKit
+          ? CatalogStorageHelper.getBodyKitAnglePath(brandName, car.name, tuningBrand, name, req.key, ext)
+          : CatalogStorageHelper.getPartAnglePath(brandName, car.name, category, tuningBrand, name, req.key, ext);
+
+        if (client) {
+          const res = await CatalogStorageHelper.uploadFile(client, path, file);
+          if (res.ok && res.url) {
+            if (!primaryImageUrl) primaryImageUrl = res.url;
+          } else {
+            throw new Error(res.error || `Upload angle ${req.key} failed`);
+          }
+        }
+      }
+    } catch (err: any) {
+      this.showToast(`อัปโหลดล้มเหลว: ${err?.message || 'Upload failed'}`, 'error');
+      this.isUploading.set(false);
+      return;
+    } finally {
+      this.isUploading.set(false);
+    }
+
+    const price = this.newPartPrice() ?? 0;
+    const res = await this.admin.insertCarPart({
+      car_model_id: car.id,
+      category,
+      name,
+      manufacturer: tuningBrand,
+      image_url: primaryImageUrl,
+      price,
+    });
+    if (res.ok) {
+      if (brand && car) {
+        const tRes = await this.admin.fetchCatalogTuning(brand.name, car.name);
+        this.workshopBrands.set(tRes.workshops);
+      }
+      this.closePartModal();
+      this.showToast(`เพิ่มชิ้นส่วน "${name}" พร้อมมุมมองครบถ้วน สำเร็จ`, 'success');
+    } else {
+      this.showToast(res.error || 'บันทึกพาร์ตล้มเหลว', 'error');
+    }
+  }
+
+  readonly submitAddPart = (): Promise<void> => this.savePart();
+
+  // Edit Part Modal Handlers
+  openEditPartModal(part: RealPartItem): void {
+    this.editingPart.set(part);
+    this.editingPartName.set(part.name);
+    this.editingPartPrice.set(part.price ?? null);
+    this.editPartFile.set(null);
+    this.editPartFilePreview.set(part.image || part.image_url || null);
+    this.editPartAngleFiles.set(new Map());
+    this.editPartAnglePreviews.set(new Map());
+    this.editPartModalOpen.set(true);
+  }
+
+  closeEditPartModal(): void {
+    this.editPartModalOpen.set(false);
+    this.editingPart.set(null);
+    this.editPartFile.set(null);
+    this.editPartFilePreview.set(null);
+    this.editPartAngleFiles.set(new Map());
+    this.editPartAnglePreviews.set(new Map());
+  }
+
+  onEditPartFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (file) {
+      this.validateAndPreview(file, (preview) => {
+        this.editPartFile.set(file);
+        this.editPartFilePreview.set(preview);
+      });
+    }
+  }
+
+  onEditPartAngleFileChange(angleKey: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.validateAndPreview(file, (preview) => {
+        this.editPartAngleFiles.update((map) => {
+          const next = new Map(map);
+          next.set(angleKey, file);
+          return next;
+        });
+        this.editPartAnglePreviews.update((map) => {
+          const next = new Map(map);
+          next.set(angleKey, preview);
+          return next;
+        });
+      });
+    }
+  }
+
+  async saveEditPart(): Promise<void> {
+    const part = this.editingPart();
+    const brand = this.selectedBrand();
+    const car = this.selectedCar();
+    if (!part) return;
+
+    const newName = this.editingPartName().trim();
+    if (!newName) {
+      this.showToast('กรุณากรอกชื่อชิ้นส่วน', 'error');
+      return;
+    }
+
+    const brandName = brand?.name || 'Universal';
+    const carName = car?.name || 'Universal';
+    const isBodyKit = this.isBodyKitCategory(part.category);
+    const tuningBrand = part.manufacturer || this.selectedTuningBrand() || 'Custom';
+    const category = part.category;
+
+    let imageUrl = part.image || part.image_url || '';
+    const angleFiles = this.editPartAngleFiles();
+    const singleFile = this.editPartFile();
+
+    if (angleFiles.size > 0 || singleFile) {
       this.isUploading.set(true);
-      this.uploadProgressText.set('กำลังอัปโหลดรูปพาร์ตแต่ง...');
+      this.uploadProgressText.set('กำลังอัปโหลดรูปภาพใหม่...');
       try {
         const client = await this.admin.getClient();
-        if (client) {
-          const ext = CatalogStorageHelper.getFileExtension(file);
-          const brandName = brand?.name || 'Universal';
-          const path = isBodyKit
-            ? CatalogStorageHelper.getBodyKitPath(brandName, car.name, tuningBrand, name, ext)
-            : CatalogStorageHelper.getPartPath(brandName, car.name, tuningBrand, name, ext);
 
-          const res = await CatalogStorageHelper.uploadFile(client, path, file);
+        if (angleFiles.size > 0) {
+          for (const [angleKey, file] of angleFiles.entries()) {
+            const ext = CatalogStorageHelper.getFileExtension(file);
+            const path = isBodyKit
+              ? CatalogStorageHelper.getBodyKitAnglePath(brandName, carName, tuningBrand, newName, angleKey, ext)
+              : CatalogStorageHelper.getPartAnglePath(brandName, carName, category, tuningBrand, newName, angleKey, ext);
+
+            if (client) {
+              const res = await CatalogStorageHelper.uploadFile(client, path, file);
+              if (res.ok && res.url) {
+                imageUrl = res.url;
+              } else {
+                throw new Error(res.error || `Upload angle ${angleKey} failed`);
+              }
+            }
+          }
+        } else if (singleFile && client) {
+          const ext = CatalogStorageHelper.getFileExtension(singleFile);
+          const path = isBodyKit
+            ? CatalogStorageHelper.getBodyKitPath(brandName, carName, tuningBrand, newName, ext)
+            : CatalogStorageHelper.getPartPath(brandName, carName, tuningBrand, newName, ext);
+          const res = await CatalogStorageHelper.uploadFile(client, path, singleFile);
           if (res.ok && res.url) {
             imageUrl = res.url;
           } else {
@@ -881,28 +1429,21 @@ export class AdminEditData implements OnInit {
       }
     }
 
-    const price = this.newPartPrice() ?? 0;
-    const res = await this.admin.insertCarPart({
-      car_model_id: car.id,
-      category,
-      name,
-      manufacturer: tuningBrand,
-      image_url: imageUrl,
+    const price = this.editingPartPrice() ?? part.price ?? 0;
+    const res = await this.admin.updateCarPart({
+      id: part.id,
+      name: newName,
       price,
+      image_url: imageUrl,
     });
+
     if (res.ok) {
-      if (brand && car) {
-        const tRes = await this.admin.fetchCatalogTuning(brand.name, car.name);
-        this.workshopBrands.set(tRes.workshops);
-      }
-      this.closePartModal();
-      this.showToast(`เพิ่มชิ้นส่วน "${name}" สำเร็จ`, 'success');
+      this.closeEditPartModal();
+      this.showToast(`แก้ไขชิ้นส่วน "${newName}" สำเร็จ`, 'success');
     } else {
-      this.showToast(res.error || 'บันทึกพาร์ตล้มเหลว', 'error');
+      this.showToast(res.error || 'บันทึกการแก้ไขล้มเหลว', 'error');
     }
   }
-
-  readonly submitAddPart = (): Promise<void> => this.savePart();
 
   private showToast(msg: string, type: 'success' | 'error' = 'success'): void {
     this.toastMessage.set(msg);

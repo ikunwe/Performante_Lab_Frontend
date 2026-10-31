@@ -981,6 +981,138 @@ export class AdminService {
     }
   }
 
+  // อัปเดตชิ้นส่วน Part (car_parts)
+  async updateCarPart(item: {
+    id: string;
+    name: string;
+    price?: number;
+    image_url?: string;
+  }): Promise<{ ok: boolean; data?: RealPartItem; error?: string }> {
+    const client = await this.getClient();
+    const updatePayload: Record<string, any> = {
+      name: item.name.trim(),
+    };
+    if (item.price !== undefined) updatePayload['price'] = item.price;
+    if (item.image_url) updatePayload['image_url'] = item.image_url;
+
+    if (!client || typeof client.from !== 'function') {
+      let updatedItem: RealPartItem | undefined;
+      this.catalogParts.update((list) =>
+        list.map((p) => {
+          if (p.id === item.id) {
+            updatedItem = {
+              ...p,
+              name: item.name.trim(),
+              price: item.price ?? p.price,
+              image: item.image_url || p.image,
+              image_url: item.image_url || p.image_url,
+            };
+            return updatedItem;
+          }
+          return p;
+        }),
+      );
+      return { ok: true, data: updatedItem };
+    }
+
+    try {
+      const { data, error } = await client
+        .from('car_parts')
+        .update(updatePayload)
+        .eq('id', item.id)
+        .select()
+        .single();
+      if (error) {
+        console.error('[AdminService] updateCarPart error:', error);
+        throw error;
+      }
+      const mapped = mapPart(data);
+      this.catalogParts.update((list) => list.map((p) => (p.id === item.id ? mapped : p)));
+      return { ok: true, data: mapped };
+    } catch (err: any) {
+      console.error('[AdminService] updateCarPart exception:', err);
+      return { ok: false, error: err?.message || 'อัปเดตพาร์ตล้มเหลว' };
+    }
+  }
+
+  // ลบชิ้นส่วน Part (car_parts & storage)
+  async deletePartItem(
+    partId: string,
+    storagePath?: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const client = await this.getClient();
+    if (client) {
+      try {
+        if (typeof client.from === 'function') {
+          await client.from('car_parts').delete().eq('id', partId);
+        }
+        if (storagePath) {
+          await CatalogStorageHelper.deleteFile(client, storagePath);
+        }
+      } catch (err: any) {
+        console.warn('[AdminService] deletePartItem error:', err);
+      }
+    }
+    this.catalogParts.update((list) => list.filter((p) => p.id !== partId));
+    return { ok: true };
+  }
+
+  // ลบสำนักแต่ง Tuning Brand (car_parts & storage folder)
+  async deleteTuningBrand(
+    brandName: string,
+    carModelName: string,
+    tab: 'bodykit' | 'parts',
+    tuningBrand: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const client = await this.getClient();
+    const folder = tab === 'bodykit' ? 'BodyKit' : 'Part';
+    const prefix = `${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carModelName)}/${folder}/${CatalogStorageHelper.sanitize(tuningBrand)}`;
+
+    if (client) {
+      try {
+        await CatalogStorageHelper.deleteFolder(client, prefix);
+        if (typeof client.from === 'function') {
+          await client
+            .from('car_parts')
+            .delete()
+            .ilike('manufacturer', tuningBrand);
+        }
+      } catch (err: any) {
+        console.warn('[AdminService] deleteTuningBrand error:', err);
+      }
+    }
+
+    this.catalogParts.update((list) =>
+      list.filter((p) => p.manufacturer?.toLowerCase() !== tuningBrand.toLowerCase()),
+    );
+    return { ok: true };
+  }
+
+  // ลบหมวดหมู่ Part (car_parts)
+  async deletePartCategory(
+    categoryName: string,
+    carModelName: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const client = await this.getClient();
+    if (client) {
+      try {
+        if (typeof client.from === 'function') {
+          await client
+            .from('car_parts')
+            .delete()
+            .ilike('category', categoryName);
+        }
+      } catch (err: any) {
+        console.warn('[AdminService] deletePartCategory error:', err);
+      }
+    }
+
+    this.catalogParts.update((list) =>
+      list.filter((p) => p.category?.toLowerCase() !== categoryName.toLowerCase()),
+    );
+    return { ok: true };
+  }
+
   // Synchronous mutation helpers for tests and local updates
   addBrand(brand: {
     name: string;

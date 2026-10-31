@@ -507,7 +507,7 @@ describe('Admin Portal Features', () => {
       expect(wing).toBeTruthy();
     });
 
-    it('enforces mandatory photo upload for brand, car, tuning brand, and part', async () => {
+    it('enforces mandatory photo upload for brand, car, and part (tuning brand is text-only)', async () => {
       const fixture = TestBed.createComponent(AdminEditData);
       const component = fixture.componentInstance;
       fixture.detectChanges();
@@ -530,15 +530,14 @@ describe('Admin Portal Features', () => {
       expect(component.carModalOpen()).toBe(true);
       expect(component.toastMessage()).toContain('กรุณาอัปโหลดรูปภาพ');
 
-      // Try add tuning brand without file
+      // Tuning brands do not require photo (typography/text-only per latest requirement)
       const pista = component.filteredCarsForBrand()[0];
       await component.selectCar(pista);
       component.openTuningBrandModal();
       component.newTuningBrandName.set('Mansory');
       component.selectedTuningBrandFile.set(null);
       await component.addTuningBrand();
-      expect(component.tuningBrandModalOpen()).toBe(true);
-      expect(component.toastMessage()).toContain('กรุณาอัปโหลดรูปภาพ');
+      expect(component.tuningBrandModalOpen()).toBe(false);
 
       // Try save part without file
       component.openPartModal();
@@ -661,6 +660,204 @@ describe('Admin Portal Features', () => {
       expect(brand?.logoUrl).toBe(
         'https://test.supabase.co/storage/v1/object/public/catalog/Aston-Martin/logo.png',
       );
+    });
+
+    it('manages 3-step part selection flow (category -> brand -> parts) and breadcrumb navigation', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+
+      // Switch to Parts Tab
+      component.setPartTab('parts');
+      expect(component.partTab()).toBe('parts');
+      expect(component.partStep()).toBe('category');
+
+      // Step 1: Select Category 'Wheels'
+      component.selectPartCategory('Wheels');
+      expect(component.partStep()).toBe('brand');
+      expect(component.selectedCategory()).toBe('Wheels');
+      expect(component.selectedTuningBrand()).toBeNull();
+
+      // Step 2: Select Tuning Brand 'BBS'
+      component.selectPartTuningBrand('BBS');
+      expect(component.partStep()).toBe('parts');
+      expect(component.selectedTuningBrand()).toBe('BBS');
+
+      // Step 3: Back to Brands
+      component.backToPartBrands();
+      expect(component.partStep()).toBe('brand');
+      expect(component.selectedTuningBrand()).toBeNull();
+
+      // Back to Categories
+      component.backToPartCategories();
+      expect(component.partStep()).toBe('category');
+      expect(component.selectedCategory()).toBe('Wheels');
+    });
+
+    it('supports editing tuning brand name and logo via editTuningBrandModal', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+
+      component.workshopBrands.set({
+        bodykit: [{ name: 'Novitec', logoUrl: 'https://example.com/novitec.png' }],
+        parts: [],
+      });
+      component.tuningBrandLogos.set(new Map([['novitec', 'https://example.com/novitec.png']]));
+
+      component.openEditTuningBrandModal('Novitec');
+      expect(component.editTuningBrandModalOpen()).toBe(true);
+      expect(component.editingTuningBrandName()).toBe('Novitec');
+      expect(component.originalTuningBrandName()).toBe('Novitec');
+
+      component.editingTuningBrandName.set('Novitec Rosso');
+      await component.saveEditTuningBrand();
+
+      expect(component.editTuningBrandModalOpen()).toBe(false);
+      expect(component.workshopBrands().bodykit.some((w) => w.name === 'Novitec Rosso')).toBe(true);
+      expect(component.toastMessage()).toContain('แก้ไขข้อมูลแบรนด์ "Novitec Rosso" เรียบร้อยแล้ว');
+    });
+
+    it('enforces Delete Confirmation Safeguard modal before deleting category, brand, or part', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+
+      // 1. Delete Category confirmation
+      component.confirmDeleteCategory('Wheels');
+      expect(component.confirmDeleteModalOpen()).toBe(true);
+      expect(component.deleteTarget()?.type).toBe('category');
+      expect(component.deleteTarget()?.name).toBe('Wheels');
+
+      // Cancel delete
+      component.closeConfirmDeleteModal();
+      expect(component.confirmDeleteModalOpen()).toBe(false);
+      expect(component.deleteTarget()).toBeNull();
+
+      // Confirm delete category
+      component.confirmDeleteCategory('Wheels');
+      await component.executeDelete();
+      expect(component.confirmDeleteModalOpen()).toBe(false);
+      expect(component.availableCategories()).not.toContain('Wheels');
+      expect(component.toastMessage()).toContain('ลบหมวดหมู่ "Wheels" เรียบร้อยแล้ว');
+
+      // 2. Delete Tuning Brand confirmation
+      component.workshopBrands.set({
+        bodykit: [{ name: 'Mansory', logoUrl: '' }],
+        parts: [],
+      });
+      component.confirmDeleteTuningBrand('Mansory');
+      expect(component.confirmDeleteModalOpen()).toBe(true);
+      expect(component.deleteTarget()?.type).toBe('tuningBrand');
+      expect(component.deleteTarget()?.name).toBe('Mansory');
+
+      await component.executeDelete();
+      expect(component.confirmDeleteModalOpen()).toBe(false);
+      expect(component.workshopBrands().bodykit.some((w) => w.name === 'Mansory')).toBe(false);
+      expect(component.toastMessage()).toContain('ลบแบรนด์ "Mansory" เรียบร้อยแล้ว');
+
+      // 3. Delete Part Item confirmation
+      const mockPart = {
+        id: 'p-test',
+        name: 'Carbon Diffuser',
+        car_model_id: pista.id,
+        category: 'BodyKit',
+        price: 50000,
+        image_url: 'catalog/Ferrari/488-Pista/BodyKit/Novitec/Diffuser.png',
+      } as any;
+
+      component.confirmDeletePart(mockPart);
+      expect(component.confirmDeleteModalOpen()).toBe(true);
+      expect(component.deleteTarget()?.type).toBe('part');
+      expect(component.deleteTarget()?.name).toBe('Carbon Diffuser');
+
+      await component.executeDelete();
+      expect(component.confirmDeleteModalOpen()).toBe(false);
+      expect(component.toastMessage()).toContain('ลบชิ้นส่วน "Carbon Diffuser" เรียบร้อยแล้ว');
+    });
+
+    it('supports in-place editing of part / bodykit item name and image via editPartModal', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+
+      // Create a test part
+      const initialPart = component.admin.addPartData({
+        car_model_id: pista.id,
+        category: 'FullBodyKits',
+        name: 'Initial Aero Kit',
+        manufacturer: 'Novitec',
+        price: 150000,
+        image_url: 'assets/car_pic.png',
+      });
+
+      // Open edit modal for part
+      component.openEditPartModal(initialPart);
+      expect(component.editPartModalOpen()).toBe(true);
+      expect(component.editingPart()?.id).toBe(initialPart.id);
+      expect(component.editingPartName()).toBe('Initial Aero Kit');
+      expect(component.editingPartPrice()).toBe(150000);
+
+      // Modify name and price without uploading new image (keeps existing image)
+      component.editingPartName.set('Novitec Esteso Widebody');
+      component.editingPartPrice.set(220000);
+      await component.saveEditPart();
+
+      expect(component.editPartModalOpen()).toBe(false);
+      const updatedPart = component.admin.catalogParts().find((p) => p.id === initialPart.id);
+      expect(updatedPart?.name).toBe('Novitec Esteso Widebody');
+      expect(updatedPart?.price).toBe(220000);
+      expect(updatedPart?.image_url || updatedPart?.image).toBe('assets/car_pic.png');
+    });
+
+    it('returns exact required angles for each category according to specifications', () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+
+      // 1. Front Bumper: 2 angles (45_front, front)
+      const frontAngles = component.getRequiredAngles('Front Bumper');
+      expect(frontAngles.length).toBe(2);
+      expect(frontAngles.map((a) => a.key)).toEqual(['45_front', 'front']);
+
+      // 2. Rear Bumper: 2 angles (45_Back, Back)
+      const rearAngles = component.getRequiredAngles('Rear Bumper');
+      expect(rearAngles.length).toBe(2);
+      expect(rearAngles.map((a) => a.key)).toEqual(['45_Back', 'Back']);
+
+      // 3. Wheels: 2 angles (45_front, 45_Back)
+      const wheelAngles = component.getRequiredAngles('Wheels');
+      expect(wheelAngles.length).toBe(2);
+      expect(wheelAngles.map((a) => a.key)).toEqual(['45_front', '45_Back']);
+
+      // 4. Spoilers: 3 angles (45_front, 45_Back, Back)
+      const spoilerAngles = component.getRequiredAngles('Spoilers');
+      expect(spoilerAngles.length).toBe(3);
+      expect(spoilerAngles.map((a) => a.key)).toEqual(['45_front', '45_Back', 'Back']);
+
+      // 5. FullBodyKits: 4 angles (45_front, front, 45_Back, Back)
+      const bodyKitAngles = component.getRequiredAngles('FullBodyKits');
+      expect(bodyKitAngles.length).toBe(4);
+      expect(bodyKitAngles.map((a) => a.key)).toEqual(['45_front', 'front', '45_Back', 'Back']);
     });
   });
 });

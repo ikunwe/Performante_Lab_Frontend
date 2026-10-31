@@ -402,185 +402,387 @@
           </button>
         </div>
 
-        <!-- Part Tab Sub-categories Bar (Wheels, Spoilers, Exhaust ฯลฯ) -->
-        @if (partTab() === 'parts') {
-          <div class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-1">
-            <div class="flex items-center flex-wrap gap-1.5">
-              @for (cat of availableCategories(); track cat) {
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- TAB 1: BODY KIT (ชุดแต่งรอบคัน)                               -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        @if (partTab() === 'bodykit') {
+          <!-- Step 1: เลือกยี่ห้อสำนักแต่ง Body Kit -->
+          @if (selectedTuningBrand() === null) {
+            <div class="space-y-3">
+              <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
+                <span class="text-sm font-bold text-white tracking-wide">
+                  สำนักแต่ง Body Kit (Tuning Brands)
+                </span>
+                <span class="text-xs text-stone-400">
+                  {{ tuningBrandsForCurrentContext().length }} แบรนด์
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Card 1: เพิ่มแบรนด์ -->
                 <button
                   type="button"
-                  (click)="selectCategory(cat)"
-                  class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer select-none"
-                  [class]="selectedCategory() === cat 
-                    ? 'bg-white text-black font-bold shadow-sm' 
-                    : 'bg-[#181818] text-stone-400 hover:text-white border border-white/10'"
+                  (click)="openTuningBrandModal()"
+                  class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow-sm p-4 text-center select-none"
+                  title="เพิ่มแบรนด์ของแต่งใหม่"
                 >
-                  {{ cat }}
-                </button>
-              }
-            </div>
-
-            <button
-              type="button"
-              (click)="openCategoryModal()"
-              class="h-8 px-3 rounded-lg border border-dashed border-white/20 hover:border-white/40 text-stone-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="เพิ่มหมวดหมู่ชิ้นส่วนใหม่"
-            >
-              <app-icon name="plus" class="!size-3" />
-              <span>เพิ่มหมวดหมู่</span>
-            </button>
-          </div>
-        }
-
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- STEP 1: TUNING BRANDS GRID (เมื่อยังไม่ได้เลือกยี่ห้อของแต่ง) -->
-        <!-- ════════════════════════════════════════════════════════════ -->
-        @if (selectedTuningBrand() === null) {
-          <div class="space-y-3">
-            <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
-              <span class="text-sm font-bold text-white tracking-wide">
-                {{ partTab() === 'bodykit' ? 'สำนักแต่ง Body Kit (Tuning Brands)' : 'ยี่ห้อของแต่ง (' + selectedCategory() + ')' }}
-              </span>
-              <span class="text-xs text-stone-400">
-                {{ tuningBrandsForCurrentContext().length }} แบรนด์
-              </span>
-            </div>
-
-            <!-- 6-Column Tuning Brands Grid -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <!-- Card 1: Add New Tuning Brand Button -->
-              <button
-                type="button"
-                (click)="openTuningBrandModal()"
-                class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow-sm p-4 text-center select-none"
-                title="เพิ่มแบรนด์ของแต่งใหม่"
-              >
-                <div class="size-10 rounded-full border border-white/30 group-hover:border-white group-hover:bg-white/5 flex items-center justify-center text-white transition-all">
-                  <app-icon name="plus" class="!size-4" />
-                </div>
-                <span class="text-[11px] font-semibold text-stone-300 group-hover:text-white">
-                  เพิ่มแบรนด์
-                </span>
-              </button>
-
-              <!-- Tuning Brand Cards -->
-              @for (brandName of tuningBrandsForCurrentContext(); track brandName) {
-                <div
-                  (click)="selectTuningBrand(brandName)"
-                  class="aspect-square rounded-2xl bg-[#141414] border border-white/10 hover:border-white/30 hover:bg-[#181818] flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group relative select-none shadow-sm"
-                  [title]="'ดูชิ้นส่วนของ ' + brandName"
-                >
-                  @if (tuningBrandLogos().get(brandName.toLowerCase()); as logoUrl) {
-                    <div class="size-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-1.5 overflow-hidden mb-2 group-hover:border-white/30 transition-all">
-                      <img [src]="logoUrl" [alt]="brandName" class="w-full h-full object-contain" />
-                    </div>
-                  } @else {
-                    <div class="size-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-extrabold text-lg tracking-wider group-hover:bg-[#ce281a]/20 group-hover:border-[#ce281a]/40 group-hover:text-[#ce281a] transition-all mb-2">
-                      {{ brandName.charAt(0).toUpperCase() }}
-                    </div>
-                  }
-                  <span class="text-xs font-bold text-white text-center tracking-wide truncate max-w-full block">
-                    {{ brandName }}
+                  <div class="size-10 rounded-full border border-white/30 group-hover:border-white group-hover:bg-white/5 flex items-center justify-center text-white transition-all">
+                    <app-icon name="plus" class="!size-4" />
+                  </div>
+                  <span class="text-[11px] font-semibold text-stone-300 group-hover:text-white">
+                    เพิ่มแบรนด์
                   </span>
-                  <span class="text-[10px] text-stone-500 mt-1">คลิกเพื่อดูชิ้นส่วน</span>
+                </button>
+
+                <!-- Card 2+: แบรนด์สำนักแต่ง (Typography/Text-only ไม่มีรูปโลโก้) -->
+                @for (brandName of tuningBrandsForCurrentContext(); track brandName) {
+                  <div
+                    (click)="selectTuningBrand(brandName)"
+                    class="aspect-square rounded-2xl bg-[#141414] border border-white/10 hover:border-white/30 hover:bg-[#181818] flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group relative select-none shadow-sm"
+                    [title]="'ดูชุดแต่งของ ' + brandName"
+                  >
+                    <button
+                      type="button"
+                      (click)="confirmDeleteTuningBrand(brandName, $event)"
+                      class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                      title="ลบแบรนด์นี้"
+                    >
+                      <app-icon name="trash" class="!size-3" />
+                    </button>
+                    <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-[#ce281a] transition-colors truncate max-w-full block mb-1">
+                      {{ brandName }}
+                    </span>
+                    <span class="text-[10px] text-stone-500">คลิกเพื่อดูชุดแต่ง</span>
+                  </div>
+                }
+
+                @for (_ of tuningBrandPlaceholders(); track $index) {
+                  <div class="aspect-square rounded-2xl bg-[#151515] border border-white/[.04] opacity-70 pointer-events-none"></div>
+                }
+              </div>
+
+              @if (tuningBrandsForCurrentContext().length === 0) {
+                <div class="rounded-xl border border-dashed border-white/10 bg-[#161616]/60 p-6 text-center text-xs text-stone-400">
+                  ยังไม่มีแบรนด์ชุดแต่งสำหรับรุ่นนี้ — คลิกปุ่ม (+) "เพิ่มแบรนด์" เพื่อเริ่มสร้างรายการชิ้นส่วน
                 </div>
               }
+            </div>
+          }
 
-              <!-- Empty Grid Slot Placeholders -->
-              @for (_ of tuningBrandPlaceholders(); track $index) {
-                <div class="aspect-square rounded-2xl bg-[#151515] border border-white/[.04] opacity-70 pointer-events-none"></div>
+          <!-- Step 2: รายการชุดแต่งของแบรนด์ที่เลือก -->
+          @if (selectedTuningBrand() !== null) {
+            <div class="space-y-3 animate-in fade-in duration-200">
+              <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-stone-400">แบรนด์ของแต่ง:</span>
+                  <span class="text-sm font-bold text-white tracking-wide">{{ selectedTuningBrand() }}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-stone-300 font-semibold">Body Kit</span>
+                </div>
+                <button
+                  type="button"
+                  (click)="backToTuningBrands()"
+                  class="text-xs text-stone-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+                >
+                  <app-icon name="back" class="!size-3" />
+                  <span>ย้อนกลับไปเลือกแบรนด์</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Card 1: แบรนด์ที่เลือก (ขอบเขียว, คลิกเพื่อแก้ไขชื่อ) -->
+                <div
+                  (click)="openEditTuningBrandModal(selectedTuningBrand()!)"
+                  class="aspect-square rounded-2xl bg-[#141414] border-2 border-emerald-500/60 hover:border-emerald-400 relative flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group select-none shadow-sm"
+                  title="คลิกเพื่อแก้ไขชื่อแบรนด์"
+                >
+                  <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-emerald-300 transition-colors truncate max-w-full block mb-1">
+                    {{ selectedTuningBrand() }}
+                  </span>
+                  <span class="text-[10px] text-stone-400">คลิกเพื่อแก้ไขชื่อ</span>
+                  <div class="absolute bottom-2 inset-x-2 flex items-center justify-center text-[9px] text-emerald-300 bg-black/70 backdrop-blur-sm py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>แก้ไขแบรนด์</span>
+                  </div>
+                  <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" title="Active Tuning Brand"></span>
+                </div>
+
+                <!-- Card 2: (+) เพิ่มชุดแต่ง -->
+                <button
+                  type="button"
+                  (click)="openPartModal()"
+                  class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow-sm p-4 text-center select-none"
+                  title="เพิ่มชุดแต่งใหม่"
+                >
+                  <div class="size-10 rounded-full border border-white/30 group-hover:border-white group-hover:bg-white/5 flex items-center justify-center text-white transition-all">
+                    <app-icon name="plus" class="!size-4" />
+                  </div>
+                  <span class="text-[11px] font-semibold text-stone-300 group-hover:text-white">
+                    เพิ่มชิ้นส่วน
+                  </span>
+                </button>
+
+                <!-- Card 3+: รายการชุดแต่งรอบคัน (คลิกเพื่อแก้ไขรูปและชื่อ) -->
+                @for (part of partsForSelectedTuningBrand(); track part.id) {
+                  <div
+                    (click)="openEditPartModal(part)"
+                    class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 relative overflow-hidden flex flex-col justify-between transition-all hover:scale-[1.02] group select-none shadow-sm cursor-pointer"
+                    [title]="'คลิกเพื่อแก้ไขรูปและชื่อ: ' + part.name"
+                  >
+                    <div class="absolute top-2 left-2 size-7 rounded-lg bg-black/60 text-stone-400 group-hover:text-emerald-400 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-10" title="แก้ไขชิ้นส่วน">
+                      <app-icon name="edit" class="!size-3" />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="confirmDeletePart(part, $event)"
+                      class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                      title="ลบชุดแต่งนี้"
+                    >
+                      <app-icon name="trash" class="!size-3" />
+                    </button>
+                    <div class="w-full h-full overflow-hidden flex items-center justify-center bg-black/40">
+                      <img
+                        [src]="part.image || part.image_url"
+                        [alt]="part.name"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        (error)="$any($event.target).src = 'assets/car_pic.png'"
+                      />
+                    </div>
+                    <div class="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm py-2 px-2 text-center border-t border-white/10">
+                      <span class="text-xs font-semibold text-white tracking-wide truncate block">
+                        {{ part.name }}
+                      </span>
+                      @if (part.price) {
+                        <span class="text-[10px] text-stone-400 block">฿{{ part.price.toLocaleString() }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @for (_ of partPlaceholders(); track $index) {
+                  <div class="aspect-square rounded-2xl bg-[#151515] border border-white/[.04] opacity-70 pointer-events-none"></div>
+                }
+              </div>
+
+              @if (partsForSelectedTuningBrand().length === 0) {
+                <div class="rounded-xl border border-dashed border-white/10 bg-[#161616]/60 p-6 text-center text-xs text-stone-400">
+                  ยังไม่มีชุดแต่งภายใต้แบรนด์ {{ selectedTuningBrand() }} — คลิกปุ่ม (+) เพื่อเพิ่มชิ้นส่วนแรก
+                </div>
               }
             </div>
-
-            @if (tuningBrandsForCurrentContext().length === 0) {
-              <div class="rounded-xl border border-dashed border-white/10 bg-[#161616]/60 p-6 text-center text-xs text-stone-400">
-                ยังไม่มีแบรนด์ของแต่งสำหรับหมวดนี้ — คลิกปุ่ม (+) "เพิ่มแบรนด์" เพื่อเริ่มสร้างรายการชิ้นส่วน
-              </div>
-            }
-          </div>
+          }
         }
 
         <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- STEP 2: PART ITEMS GRID (เมื่อเลือกยี่ห้อของแต่งแล้ว)         -->
+        <!-- TAB 2: PART (ชิ้นส่วนแต่ง) — โฟลว์ 3 สเต็ป ล็อค 4 หมวดหมู่      -->
         <!-- ════════════════════════════════════════════════════════════ -->
-        @if (selectedTuningBrand() !== null) {
-          <div class="space-y-3 animate-in fade-in duration-200">
-            <!-- Header Bar with Back Button -->
-            <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-stone-400">แบรนด์ของแต่ง:</span>
+        @if (partTab() === 'parts') {
+          <!-- STEP 1: เลือกหมวดหมู่ (ล็อค 4 หมวด ไม่มีปุ่มเพิ่ม/ลบหมวด) -->
+          @if (partStep() === 'category') {
+            <div class="space-y-3">
+              <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
                 <span class="text-sm font-bold text-white tracking-wide">
-                  {{ selectedTuningBrand() }}
+                  เลือกหมวดหมู่ชิ้นส่วนแต่ง (4 หมวดหมู่มาตรฐาน)
                 </span>
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-stone-300 font-semibold">
-                  {{ partTab() === 'bodykit' ? 'Body Kit' : selectedCategory() }}
+                <span class="text-xs text-stone-400">
+                  คลิกที่หมวดหมู่เพื่อเลือกยี่ห้อและจัดการพาร์ต
                 </span>
               </div>
 
-              <button
-                type="button"
-                (click)="backToTuningBrands()"
-                class="text-xs text-stone-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer select-none"
-              >
-                <app-icon name="back" class="!size-3" />
-                <span>ย้อนกลับไปเลือกแบรนด์</span>
-              </button>
-            </div>
-
-            <!-- 6-Column Part Items Grid -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <!-- Card 1: Add New Part Item (+) Button -->
-              <button
-                type="button"
-                (click)="openPartModal()"
-                class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow-sm p-4 text-center select-none"
-                title="เพิ่มชิ้นส่วนใหม่"
-              >
-                <div class="size-10 rounded-full border border-white/30 group-hover:border-white group-hover:bg-white/5 flex items-center justify-center text-white transition-all">
-                  <app-icon name="plus" class="!size-4" />
-                </div>
-                <span class="text-[11px] font-semibold text-stone-300 group-hover:text-white">
-                  เพิ่มชิ้นส่วน
-                </span>
-              </button>
-
-              <!-- Part Cards -->
-              @for (part of partsForSelectedTuningBrand(); track part.id) {
-                <div
-                  class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 relative overflow-hidden flex flex-col justify-between transition-all hover:scale-[1.02] group select-none shadow-sm"
-                  [title]="part.name"
-                >
-                  <div class="w-full h-full overflow-hidden flex items-center justify-center bg-black/40">
-                    <img
-                      [src]="part.image || part.image_url"
-                      [alt]="part.name"
-                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      (error)="$any($event.target).src = 'assets/car_pic.png'"
-                    />
-                  </div>
-                  <div class="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm py-2 px-2 text-center border-t border-white/10">
-                    <span class="text-xs font-semibold text-white tracking-wide truncate block">
-                      {{ part.name }}
+              <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                @for (cat of availableCategories(); track cat) {
+                  <div
+                    (click)="selectCategory(cat)"
+                    class="aspect-square rounded-2xl bg-[#141414] border border-white/10 hover:border-[#ce281a]/60 hover:bg-[#181818] flex flex-col items-center justify-center p-6 cursor-pointer transition-all hover:scale-[1.02] group relative select-none shadow-sm"
+                    [title]="'เลือกหมวด ' + cat"
+                  >
+                    <div class="size-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white mb-3 group-hover:border-[#ce281a]/40 group-hover:bg-[#ce281a]/10 group-hover:text-[#ce281a] transition-all">
+                      <app-icon [name]="getCategoryIcon(cat)" class="!size-7" />
+                    </div>
+                    <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-[#ce281a] transition-colors block mb-1">
+                      {{ cat }}
                     </span>
-                    @if (part.price) {
-                      <span class="text-[10px] text-stone-400 block">฿{{ part.price.toLocaleString() }}</span>
-                    }
+                    <span class="text-[11px] text-stone-400 font-medium">
+                      {{ tuningBrandsForPartCategory(cat).length }} แบรนด์
+                    </span>
                   </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- STEP 2: เลือกแบรนด์ของแต่งในหมวดนั้น -->
+          @if (partStep() === 'brand') {
+            <div class="space-y-3 animate-in fade-in duration-200">
+              <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-stone-400">หมวดหมู่:</span>
+                  <span class="text-sm font-bold text-white tracking-wide">{{ selectedCategory() }}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-stone-300 font-semibold">
+                    {{ tuningBrandsForPartCategory(selectedCategory()).length }} แบรนด์
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  (click)="backToPartCategories()"
+                  class="text-xs text-stone-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+                >
+                  <app-icon name="back" class="!size-3" />
+                  <span>ย้อนกลับไปเลือกหมวดหมู่</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Card 1: เพิ่มแบรนด์ -->
+                <button
+                  type="button"
+                  (click)="openTuningBrandModal()"
+                  class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow-sm p-4 text-center select-none"
+                  [title]="'เพิ่มแบรนด์ใหม่ในหมวด ' + selectedCategory()"
+                >
+                  <div class="size-10 rounded-full border border-white/30 group-hover:border-white group-hover:bg-white/5 flex items-center justify-center text-white transition-all">
+                    <app-icon name="plus" class="!size-4" />
+                  </div>
+                  <span class="text-[11px] font-semibold text-stone-300 group-hover:text-white">
+                    เพิ่มแบรนด์
+                  </span>
+                </button>
+
+                <!-- Card 2+: แบรนด์ในหมวดนี้ (Typography/Text-only) -->
+                @for (brandName of tuningBrandsForPartCategory(selectedCategory()); track brandName) {
+                  <div
+                    (click)="selectPartTuningBrand(brandName)"
+                    class="aspect-square rounded-2xl bg-[#141414] border border-white/10 hover:border-white/30 hover:bg-[#181818] flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group relative select-none shadow-sm"
+                    [title]="'ดูชิ้นส่วนของ ' + brandName"
+                  >
+                    <button
+                      type="button"
+                      (click)="confirmDeleteTuningBrand(brandName, $event)"
+                      class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                      title="ลบแบรนด์นี้"
+                    >
+                      <app-icon name="trash" class="!size-3" />
+                    </button>
+                    <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-[#ce281a] transition-colors truncate max-w-full block mb-1">
+                      {{ brandName }}
+                    </span>
+                    <span class="text-[10px] text-stone-500">คลิกเพื่อดูชิ้นส่วน</span>
+                  </div>
+                }
+
+                @for (_ of tuningBrandPlaceholders(); track $index) {
+                  <div class="aspect-square rounded-2xl bg-[#151515] border border-white/[.04] opacity-70 pointer-events-none"></div>
+                }
+              </div>
+
+              @if (tuningBrandsForPartCategory(selectedCategory()).length === 0) {
+                <div class="rounded-xl border border-dashed border-white/10 bg-[#161616]/60 p-6 text-center text-xs text-stone-400">
+                  ยังไม่มีแบรนด์สำหรับหมวด {{ selectedCategory() }} — คลิกปุ่ม (+) "เพิ่มแบรนด์" เพื่อเริ่มสร้างรายการชิ้นส่วน
                 </div>
               }
+            </div>
+          }
 
-              <!-- Empty Grid Slot Placeholders -->
-              @for (_ of partPlaceholders(); track $index) {
-                <div class="aspect-square rounded-2xl bg-[#151515] border border-white/[.04] opacity-70 pointer-events-none"></div>
+          <!-- STEP 3: รายการชิ้นส่วน Part จริงสำหรับแบรนด์และหมวดที่เลือก -->
+          @if (partStep() === 'parts') {
+            <div class="space-y-3 animate-in fade-in duration-200">
+              <div class="bg-[#191919] border border-white/10 px-5 py-3 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-stone-400">หมวดหมู่:</span>
+                  <span class="text-xs font-semibold text-white">{{ selectedCategory() }}</span>
+                  <span class="text-stone-500">/</span>
+                  <span class="text-xs text-stone-400">แบรนด์:</span>
+                  <span class="text-sm font-bold text-white tracking-wide">{{ selectedTuningBrand() }}</span>
+                </div>
+                <button
+                  type="button"
+                  (click)="backToPartBrands()"
+                  class="text-xs text-stone-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+                >
+                  <app-icon name="back" class="!size-3" />
+                  <span>ย้อนกลับไปเลือกแบรนด์</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Card 1: แบรนด์ที่เลือก (ขอบเขียว, คลิกเพื่อแก้ไขชื่อ) -->
+                <div
+                  (click)="openEditTuningBrandModal(selectedTuningBrand()!)"
+                  class="aspect-square rounded-2xl bg-[#141414] border-2 border-emerald-500/60 hover:border-emerald-400 relative flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group select-none shadow-sm"
+                  title="คลิกเพื่อแก้ไขชื่อแบรนด์"
+                >
+                  <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-emerald-300 transition-colors truncate max-w-full block mb-1">
+                    {{ selectedTuningBrand() }}
+                  </span>
+                  <span class="text-[10px] text-stone-400">คลิกเพื่อแก้ไขชื่อ</span>
+                  <div class="absolute bottom-2 inset-x-2 flex items-center justify-center text-[9px] text-emerald-300 bg-black/70 backdrop-blur-sm py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>แก้ไขแบรนด์</span>
+                  </div>
+                  <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" title="Active Tuning Brand"></span>
+                </div>
+
+                <!-- Card 2: (+) เพิ่มชิ้นส่วน -->
+                <button
+                  type="button"
+                  (click)="openPartModal()"
+                  class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow-sm p-4 text-center select-none"
+                  title="เพิ่มชิ้นส่วนใหม่"
+                >
+                  <div class="size-10 rounded-full border border-white/30 group-hover:border-white group-hover:bg-white/5 flex items-center justify-center text-white transition-all">
+                    <app-icon name="plus" class="!size-4" />
+                  </div>
+                  <span class="text-[11px] font-semibold text-stone-300 group-hover:text-white">
+                    เพิ่มชิ้นส่วน
+                  </span>
+                </button>
+
+                <!-- Card 3+: รายการชิ้นส่วน Part (คลิกเพื่อแก้ไขรูปและชื่อ) -->
+                @for (part of partsForSelectedPartBrandAndCategory(); track part.id) {
+                  <div
+                    (click)="openEditPartModal(part)"
+                    class="aspect-square rounded-2xl bg-[#191919] border border-white/10 hover:border-white/30 relative overflow-hidden flex flex-col justify-between transition-all hover:scale-[1.02] group select-none shadow-sm cursor-pointer"
+                    [title]="'คลิกเพื่อแก้ไขรูปและชื่อ: ' + part.name"
+                  >
+                    <div class="absolute top-2 left-2 size-7 rounded-lg bg-black/60 text-stone-400 group-hover:text-emerald-400 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-10" title="แก้ไขชิ้นส่วน">
+                      <app-icon name="edit" class="!size-3" />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="confirmDeletePart(part, $event)"
+                      class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                      title="ลบชิ้นส่วนนี้"
+                    >
+                      <app-icon name="trash" class="!size-3" />
+                    </button>
+                    <div class="w-full h-full overflow-hidden flex items-center justify-center bg-black/40">
+                      <img
+                        [src]="part.image || part.image_url"
+                        [alt]="part.name"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        (error)="$any($event.target).src = 'assets/car_pic.png'"
+                      />
+                    </div>
+                    <div class="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm py-2 px-2 text-center border-t border-white/10">
+                      <span class="text-xs font-semibold text-white tracking-wide truncate block">
+                        {{ part.name }}
+                      </span>
+                      @if (part.price) {
+                        <span class="text-[10px] text-stone-400 block">฿{{ part.price.toLocaleString() }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @for (_ of partPlaceholders(); track $index) {
+                  <div class="aspect-square rounded-2xl bg-[#151515] border border-white/[.04] opacity-70 pointer-events-none"></div>
+                }
+              </div>
+
+              @if (partsForSelectedPartBrandAndCategory().length === 0) {
+                <div class="rounded-xl border border-dashed border-white/10 bg-[#161616]/60 p-6 text-center text-xs text-stone-400">
+                  ยังไม่มีชิ้นส่วนสำหรับ {{ selectedCategory() }} ภายใต้แบรนด์ {{ selectedTuningBrand() }} — คลิกปุ่ม (+) เพื่อเพิ่มชิ้นส่วนแรก
+                </div>
               }
             </div>
-
-            @if (partsForSelectedTuningBrand().length === 0) {
-              <div class="rounded-xl border border-dashed border-white/10 bg-[#161616]/60 p-6 text-center text-xs text-stone-400">
-                ยังไม่มีชิ้นส่วนภายใต้แบรนด์ {{ selectedTuningBrand() }} — คลิกปุ่ม (+) เพื่อเพิ่มชิ้นส่วนแรก
-              </div>
-            }
-          </div>
+          }
         }
       </div>
     </div>
@@ -986,41 +1188,62 @@
             />
           </div>
 
-          <!-- File Upload Dropzone (Part Image) -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-stone-300">
-              อัปโหลดรูปภาพชิ้นส่วน (JPG, PNG, WebP สูงสุด 10MB) <span class="text-red-400">*</span>
-            </label>
-            <div
-              class="relative rounded-xl border-2 border-dashed border-white/15 bg-[#121212] p-4 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group"
-              (click)="partFileInput.click()"
-            >
-              <input
-                #partFileInput
-                type="file"
-                accept="image/png, image/jpeg, image/webp"
-                class="hidden"
-                (change)="onPartFileChange($event)"
-              />
+          <!-- Multi-angle Image Upload Dropzones -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-semibold text-stone-300">
+                อัปโหลดรูปภาพตามมุมมองของรถ <span class="text-red-400">*</span>
+              </label>
+              <span class="text-[10px] text-stone-400">
+                จำเป็นต้องมีครบทั้ง {{ getRequiredAngles(newPartCategory()).length }} มุม
+              </span>
+            </div>
 
-              @if (partFilePreview()) {
-                <div class="flex flex-col items-center gap-2">
-                  <img
-                    [src]="partFilePreview()"
-                    alt="Preview"
-                    class="max-h-32 max-w-full rounded-lg object-contain shadow-md"
-                  />
-                  <p class="text-[11px] text-stone-400 truncate max-w-xs">
-                    {{ selectedPartFile()?.name }} <span class="text-[#ce281a]">(คลิกเพื่อเปลี่ยนรูป)</span>
-                  </p>
-                </div>
-              } @else {
-                <div class="flex flex-col items-center justify-center py-3 text-stone-400 group-hover:text-stone-300">
-                  <app-icon name="plus" class="!size-6 text-stone-500 group-hover:text-[#ce281a] mb-1.5 transition-colors" />
-                  <p class="text-xs font-medium">คลิกเพื่อเลือกไฟล์รูปพาร์ตจากเครื่อง</p>
-                  <p class="text-[10px] text-stone-500 mt-0.5">
-                    จัดเก็บเข้า Storage: catalog/.../{{ partTab() === 'bodykit' ? 'BodyKit' : 'Part' }}/...
-                  </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              @for (angle of getRequiredAngles(newPartCategory()); track angle.key) {
+                <div class="rounded-xl border border-white/10 bg-[#121212] p-3 space-y-2">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-stone-200">{{ angle.label }}</span>
+                    @if (partAngleFiles().has(angle.key)) {
+                      <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <app-icon name="check" class="!size-2.5" />
+                        พร้อมอัปโหลด
+                      </span>
+                    } @else {
+                      <span class="text-[10px] text-amber-400 font-semibold">ต้องระบุ *</span>
+                    }
+                  </div>
+
+                  <div
+                    class="relative rounded-lg border-2 border-dashed border-white/15 bg-black/40 p-3 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group flex flex-col items-center justify-center min-h-[96px]"
+                    (click)="angleInput.click()"
+                  >
+                    <input
+                      #angleInput
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      class="hidden"
+                      (change)="onPartAngleFileChange(angle.key, $event)"
+                    />
+
+                    @if (partAnglePreviews().get(angle.key); as previewUrl) {
+                      <div class="flex flex-col items-center gap-1.5">
+                        <img
+                          [src]="previewUrl"
+                          [alt]="angle.label"
+                          class="max-h-20 max-w-full rounded object-contain shadow"
+                        />
+                        <span class="text-[10px] text-stone-400 truncate max-w-[140px]">
+                          {{ partAngleFiles().get(angle.key)?.name }}
+                        </span>
+                      </div>
+                    } @else {
+                      <div class="flex flex-col items-center justify-center text-stone-400 group-hover:text-stone-300">
+                        <app-icon name="plus" class="!size-5 text-stone-500 group-hover:text-[#ce281a] mb-1 transition-colors" />
+                        <span class="text-[11px] font-medium">เลือกไฟล์ {{ angle.key }}.png</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               }
             </div>
@@ -1278,4 +1501,166 @@
       </div>
     </div>
   }
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MODAL: EDIT PART (In-place Part & Image Editing)           -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  @if (editPartModalOpen() && editingPart()) {
+    <div class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150" (click)="closeEditPartModal()">
+      <div class="w-full max-w-md bg-[#181818] border border-white/15 rounded-2xl p-6 shadow-2xl space-y-4 text-white max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between pb-3 border-b border-white/10">
+          <h3 class="font-bold text-base text-white">
+            แก้ไขข้อมูลชิ้นส่วน
+            <span class="text-xs text-stone-400 font-normal">
+              ({{ editingPart()?.name }})
+            </span>
+          </h3>
+          <button type="button" (click)="closeEditPartModal()" class="text-stone-400 hover:text-white cursor-pointer">
+            <app-icon name="close" class="!size-4" />
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Context Preview Summary -->
+          <div class="p-3 rounded-xl bg-[#121212] border border-white/10 text-xs space-y-1">
+            <div class="flex justify-between">
+              <span class="text-stone-400">รุ่นรถ:</span>
+              <span class="font-semibold text-white">{{ selectedCar()?.name }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-stone-400">หมวดหมู่:</span>
+              <span class="font-semibold text-stone-200">{{ editingPart()?.category }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-stone-400">แบรนด์ของแต่ง:</span>
+              <span class="font-semibold text-[#ce281a]">{{ editingPart()?.manufacturer || selectedTuningBrand() || 'Custom' }}</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-stone-300 mb-1.5">ชื่อชิ้นงาน / แบบชุดแต่ง <span class="text-red-400">*</span></label>
+            <input
+              type="text"
+              [ngModel]="editingPartName()"
+              (ngModelChange)="editingPartName.set($event)"
+              placeholder="ระบุชื่อชิ้นส่วน"
+              class="h-10 w-full bg-[#121212] border border-white/15 rounded-xl px-3.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-stone-300 mb-1.5">ราคาโดยประมาณ (บาท - ตัวเลือก)</label>
+            <input
+              type="number"
+              [ngModel]="editingPartPrice()"
+              (ngModelChange)="editingPartPrice.set($event)"
+              placeholder="เช่น 45000"
+              class="h-10 w-full bg-[#121212] border border-white/15 rounded-xl px-3.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
+            />
+          </div>
+
+          <!-- Multi-angle Image Upload Dropzones (Optional when editing: if none uploaded, keeps existing) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-semibold text-stone-300">
+                แก้ไขรูปภาพชิ้นส่วน
+              </label>
+              <span class="text-[10px] text-stone-400">
+                (หากไม่เลือกรูปใหม่ จะใช้รูปเดิม)
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              @for (angle of getRequiredAngles(editingPart()?.category); track angle.key) {
+                <div class="rounded-xl border border-white/10 bg-[#121212] p-3 space-y-2">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-stone-200">{{ angle.label }}</span>
+                    @if (editPartAngleFiles().has(angle.key)) {
+                      <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <app-icon name="check" class="!size-2.5" />
+                        รูปใหม่
+                      </span>
+                    } @else {
+                      <span class="text-[10px] text-stone-400 font-medium">รูปเดิม</span>
+                    }
+                  </div>
+
+                  <div
+                    class="relative rounded-lg border-2 border-dashed border-white/15 bg-black/40 p-3 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group flex flex-col items-center justify-center min-h-[96px]"
+                    (click)="editAngleInput.click()"
+                  >
+                    <input
+                      #editAngleInput
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      class="hidden"
+                      (change)="onEditPartAngleFileChange(angle.key, $event)"
+                    />
+
+                    @if (editPartAnglePreviews().get(angle.key); as previewUrl) {
+                      <div class="flex flex-col items-center gap-1.5">
+                        <img
+                          [src]="previewUrl"
+                          [alt]="angle.label"
+                          class="max-h-20 max-w-full rounded object-contain shadow"
+                        />
+                        <span class="text-[10px] text-emerald-400 truncate max-w-[140px]">
+                          {{ editPartAngleFiles().get(angle.key)?.name }}
+                        </span>
+                      </div>
+                    } @else if (editingPart()?.image || editingPart()?.image_url) {
+                      <div class="flex flex-col items-center gap-1.5">
+                        <img
+                          [src]="editingPart()!.image || editingPart()!.image_url"
+                          [alt]="angle.label"
+                          class="max-h-20 max-w-full rounded object-contain shadow opacity-80"
+                        />
+                        <span class="text-[10px] text-stone-400 group-hover:text-stone-300">คลิกเพื่อเปลี่ยนรูป</span>
+                      </div>
+                    } @else {
+                      <div class="flex flex-col items-center justify-center text-stone-400 group-hover:text-stone-300">
+                        <app-icon name="plus" class="!size-5 text-stone-500 group-hover:text-[#ce281a] mb-1 transition-colors" />
+                        <span class="text-[11px] font-medium">อัปโหลดรูปใหม่ ({{ angle.key }})</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Uploading Spinner Feedback -->
+          @if (isUploading()) {
+            <div class="flex items-center gap-2 text-xs text-amber-400 justify-center py-1">
+              <app-icon name="spinner" class="!size-4 animate-spin text-[#ce281a]" />
+              <span>{{ uploadProgressText() }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+          <button
+            type="button"
+            (click)="closeEditPartModal()"
+            [disabled]="isUploading()"
+            class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            (click)="saveEditPart()"
+            [disabled]="isUploading()"
+            class="px-5 py-2 rounded-xl bg-[#ce281a] hover:bg-red-600 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-[#ce281a]/30 transition-colors cursor-pointer flex items-center gap-2"
+          >
+            @if (isUploading()) {
+              <app-icon name="spinner" class="!size-3 animate-spin text-white" />
+            }
+            <span>บันทึกการแก้ไข</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>
