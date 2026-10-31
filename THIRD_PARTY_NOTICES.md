@@ -60,3 +60,12 @@ when WebGL is unavailable.
 Source: https://github.com/DavidHDev/react-bits/blob/main/src/content/Components/SpecularButton/SpecularButton.jsx
 CSS: https://github.com/DavidHDev/react-bits/blob/main/src/content/Components/SpecularButton/SpecularButton.css
 Copyright (c) 2026 David Haz. The license reproduced above applies.
+# Vehicle model reference database
+
+The adapted model database is licensed under ODbL 1.0, separate from application code.
+Attribution: [vehicle-makes-models](https://github.com/gor3a/vehicle-makes-models)
+and [autoevolution.com](https://www.autoevolution.com/).
+Changes include filtering to 28 brands, keeping model names only (removing engines,
+generations, years and chassis information), and adding official model names.
+The complete adapted snapshot is available from the model selector's download link
+at `/api/catalog/models/export`. Original notice: Backend `data/models/raw/LICENSE-DATA`.
