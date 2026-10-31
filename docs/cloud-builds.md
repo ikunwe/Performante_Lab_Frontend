@@ -1,3 +1,5 @@
+> New User selections now use Storage path IDs. See [Storage user catalog](storage-user-catalog.md). The generated asset metadata below remains for historical reference-model builds only.
+
 # Account builds
 
 Create Build and My Builds now use the backend API; there is no localStorage write

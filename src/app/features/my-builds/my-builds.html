@@ -8,12 +8,12 @@
 </div>
 @if (store.error()) {
 <p role="alert" class="mb-5 text-xs text-amber-200/70">{{ store.error() }}</p>
-<button type="button" (click)="store.load()" [disabled]="store.loading()" class="mb-4 min-h-9 cursor-pointer rounded-lg border border-white/15 px-4 text-xs disabled:cursor-wait">ลองโหลดอีกครั้ง</button>
+<button type="button" (click)="store.load()" [disabled]="store.loading()" class="mb-4 min-h-9 cursor-pointer rounded-lg border border-white/15 px-4 text-xs disabled:cursor-not-allowed">ลองโหลดอีกครั้ง</button>
 }
 <p role="status" class="mb-4 text-xs text-stone-400">{{ message() }}</p>
 @if (store.loading() || !store.loaded()) {
-<p class="py-8 text-xs text-stone-500">กำลังโหลด Build...</p>
-}
+<app-loading-skeleton label="กำลังโหลด Build ของคุณ" />
+} @else {
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
   @for (build of visibleBuilds(); track build.id) {
   <article class="overflow-hidden rounded-lg border border-white/10 bg-[#171717]">
@@ -45,6 +45,7 @@
         name="plus" /></span><span class="text-xs">Create your next build</span>
   </button>
 </div>
+}
 @if (store.loaded() && !store.loading() && !store.error() && !visibleBuilds().length) {
 <p class="mt-5 text-xs text-stone-500">
   {{
@@ -117,9 +118,7 @@
         <button type="button" (click)="brandDirectory.load(brandDirectory.scope(), true)"
           [disabled]="brandDirectory.loading()" [attr.aria-busy]="brandDirectory.loading()"
           class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[11px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
-          @if (brandDirectory.loading()) {
-          <app-icon name="spinner" class="!size-3 animate-spin motion-reduce:animate-none" />
-          }
+          <app-icon name="rotate" class="!size-3 motion-reduce:animate-none" [class.animate-spin]="brandDirectory.loading()" />
           {{ brandDirectory.loading() ? 'กำลังโหลด…' : 'โหลดรายการใหม่' }}
         </button>
       </div>
@@ -159,9 +158,7 @@
         </button>
         } @empty {
         @if (brandDirectory.loading()) {
-        <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">
-          กำลังโหลดรายการยี่ห้อรถ…
-        </p>
+        <app-loading-skeleton class="col-span-full" variant="brand" [count]="10" label="กำลังโหลดรายการยี่ห้อรถ" />
         } @else if (!brandDirectory.error()) {
         <p class="col-span-full py-8 text-center text-xs text-stone-500">
           ไม่พบยี่ห้อรถที่ค้นหา
@@ -182,15 +179,14 @@
             <button type="button" (click)="modelDirectory.load(activeBrand.id, true)"
               [disabled]="modelDirectory.loading()" [attr.aria-busy]="modelDirectory.loading()"
               class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[11px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
-              @if (modelDirectory.loading()) { <app-icon name="spinner" class="!size-3 animate-spin" /> }
+              <app-icon name="rotate" class="!size-3 motion-reduce:animate-none" [class.animate-spin]="modelDirectory.loading()" />
               {{ modelDirectory.loading() ? 'กำลังโหลด…' : 'โหลดรุ่นใหม่' }}
             </button>
           </div>
           @if (modelDirectory.error()) { <p role="status"
             class="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{{
             modelDirectory.error() }}</p> }
-          <p class="mb-4 text-[10px] leading-5 text-stone-500">{{ modelList().length }} รุ่น · ข้อมูลหลายตลาด
-            ยังไม่ยืนยันการติดตั้งพาร์ตในไทย · ช่องที่ขาดจะระบุว่ายังไม่มีข้อมูล</p>
+          <p class="mb-4 text-[10px] leading-5 text-stone-500">{{ modelList().length }} รุ่น · เลือกรุ่นรถเพื่อดูชุดแต่งและพาร์ทที่มีในแค็ตตาล็อก</p>
 
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
             @for (model of modelList(); track model.id) {
@@ -207,18 +203,10 @@
 
               </span>
             </button>
-            } @empty { <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">{{
-              modelDirectory.loading() ? 'กำลังโหลดรายการรุ่นรถ…' : modelDirectory.error() ?
-              'กดโหลดรุ่นใหม่เพื่อลองอีกครั้ง' : 'ไม่พบรุ่นรถที่ค้นหา' }}</p> }
+            } @empty { @if (modelDirectory.loading()) { <app-loading-skeleton class="col-span-full" variant="model" [count]="6" label="กำลังโหลดรายการรุ่นรถ" /> } @else { <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">{{ modelDirectory.error() ? 'กดโหลดรุ่นใหม่เพื่อลองอีกครั้ง' : 'ไม่พบรุ่นรถที่ค้นหา' }}</p> } }
           </div>
 
-          <p class="mt-5 text-[9px] leading-5 text-stone-600">ข้อมูลดัดแปลงจาก <a
-              href="https://github.com/gor3a/vehicle-makes-models" target="_blank" rel="noopener noreferrer"
-              class="cursor-pointer underline hover:text-stone-300">vehicle-makes-models</a> และ autoevolution.com
-            เสริมจากผู้ผลิต · ODbL 1.0
-            @if (modelDirectory.exportUrl()) { · <a [href]="modelDirectory.exportUrl()"
-              class="cursor-pointer underline hover:text-stone-300">ดาวน์โหลดชุดข้อมูลที่ดัดแปลง</a> }
-          </p>
+
         </div>
         }
         }
@@ -351,12 +339,16 @@
     </section>
     }
     }
+    @if (car()?.storagePath) {
+      <p class="mt-5 text-[10px] leading-relaxed text-stone-500">ภาพรถต้นแบบและภาพพาร์ทแสดงแยกกัน เลือกดูภาพสินค้าได้จากรายการของแต่ง</p>
+    } @else {
     <p class="mt-5 text-[10px] leading-relaxed text-stone-600">
       ภาพด้านหน้าเปลี่ยนตาม Front Bumper และภาพด้านหลังเปลี่ยนตาม Rear Bumper
       ล้อเปลี่ยนภาพเฉียงหน้าและเฉียงหลัง 45° ตามชุดภาพที่เตรียมไว้
       สปอยเลอร์เปลี่ยนภาพเฉียงหน้า เฉียงหลัง และหลังตรง
       มุมที่ยังไม่มีภาพครบจะแสดงภาพที่มีพร้อมแจ้งกำกับ · ภาพจำลองยังไม่ยืนยันเงื่อนไขติดตั้งจริง
     </p>
+    }
   </div>
 
   <aside id="build-summary" aria-label="สรุปรายการแต่ง"
@@ -494,7 +486,7 @@
               : modalKind() === 'change-car'
                 ? confirmCarChange()
                 : confirmDiscard()
-        " [disabled]="store.deleting()" [attr.aria-busy]="store.deleting()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs disabled:cursor-wait disabled:opacity-50">
+        " [disabled]="store.deleting()" [attr.aria-busy]="store.deleting()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs disabled:cursor-not-allowed disabled:opacity-50">
       @if (store.deleting()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังลบ… } @else { {{ modalKind() === 'delete' ? 'ยืนยันลบ' : 'ยืนยัน' }} }
     </button>
   </div>

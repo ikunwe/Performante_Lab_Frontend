@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { LoadingSkeleton } from '../../shared/ui/loading-skeleton/loading-skeleton';
 import { Icon } from '../../shared/ui/icon/icon';
 import {
   catalogBrandLogos,
@@ -24,7 +25,6 @@ import {
 import { BuildsStore, SavedBuild } from './builds.store';
 import { BrandDirectory, CarBrand } from '../../core/catalog/brand-directory';
 import { LogoBackdrop } from '../../shared/ui/brand-logo/logo-backdrop';
-import { supplementalBrandLogos } from '../../core/catalog/supplemental-brand-logos';
 import { modelImage } from '../../core/catalog/car-images';
 import { partsForCar, preparedPreview, preparedViewState } from '../../core/catalog/prepared-parts';
 import { viewsForCar } from '../../core/catalog/car-views';
@@ -37,7 +37,7 @@ import {
 
 @Component({
   selector: 'app-my-builds',
-  imports: [Icon, DatePipe, LogoBackdrop],
+  imports: [LoadingSkeleton, Icon, DatePipe, LogoBackdrop],
   templateUrl: './my-builds.html',
   host: { class: 'block' },
 })
@@ -55,6 +55,7 @@ export class MyBuilds {
         .find((item) => this.brandKey(item.name) === this.brandKey(this.brand() ?? '')) ?? null,
   );
   readonly modelList = computed(() => {
+    if (this.modelDirectory.loading()) return [];
     const query = this.modelQuery().trim().toLowerCase();
     return this.modelDirectory
       .models()
@@ -98,6 +99,7 @@ export class MyBuilds {
   readonly baseline = signal('');
   readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('buildDialog');
   readonly brands = computed(() => {
+    if (this.brandDirectory.loading()) return [];
     const query = this.brandQuery().trim().toLowerCase();
     return this.brandDirectory
       .brands()
@@ -107,28 +109,27 @@ export class MyBuilds {
           [brand.name, ...brand.aliases].some((name) => name.toLowerCase().includes(query)),
       );
   });
-  readonly logos = catalogBrandLogos;
+  get logos() {
+    return catalogBrandLogos();
+  }
   readonly categories = partCategories;
   readonly car = computed(() =>
     this.referenceCar()?.id === this.carId()
       ? this.referenceCar()
-      : (catalogCars.find((car) => car.id === this.carId()) ?? null),
+      : (catalogCars().find((car) => car.id === this.carId()) ?? null),
   );
   readonly brandCars = computed(() =>
-    catalogCars.filter((car) => this.brandKey(car.brand) === this.brandKey(this.brand() ?? '')),
+    catalogCars().filter((car) => this.brandKey(car.brand) === this.brandKey(this.brand() ?? '')),
   );
   private brandKey(name: string): string {
     return name.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
   brandLogo(brand: CarBrand): string | null {
     if (this.brokenBrandLogos().includes(brand.id)) return null;
-    const local = Object.keys(this.logos).find(
-      (name) => this.brandKey(name) === this.brandKey(brand.name),
-    );
-    return local ? this.logos[local] : (supplementalBrandLogos[brand.id] ?? brand.logoUrl);
+    return brand.logoUrl;
   }
   hasDemoCars(brand: CarBrand): boolean {
-    return catalogCars.some((car) => this.brandKey(car.brand) === this.brandKey(brand.name));
+    return catalogCars().some((car) => this.brandKey(car.brand) === this.brandKey(brand.name));
   }
   yearLabel(start: number | null, end: number | null): string {
     if (start === null && end === null) return 'ยังไม่มีข้อมูลปี';
@@ -138,29 +139,56 @@ export class MyBuilds {
   readonly availableParts = computed(() => partsForCar(this.car()));
   readonly selectedView = signal<CarViewId>('front45');
   readonly carViews = computed(() => viewsForCar(this.car()));
-  readonly activeView = computed(() => this.carViews().find(view => view.view === this.selectedView()) ?? this.carViews()[0] ?? null);
-  readonly previewState = computed(() => preparedViewState(this.car(), this.partIds(), this.activeView()?.view ?? 'front45'));
+  readonly activeView = computed(
+    () =>
+      this.carViews().find((view) => view.view === this.selectedView()) ??
+      this.carViews()[0] ??
+      null,
+  );
+  readonly previewState = computed(() =>
+    preparedViewState(this.car(), this.partIds(), this.activeView()?.view ?? 'front45'),
+  );
   readonly hasPreparedPreview = computed(() => !!this.previewState().image);
   readonly missingPartView = computed(() => this.previewState().missing.length > 0);
-  readonly previewImage = computed(() => this.previewState().image ?? this.activeView()?.url ?? this.carImage(this.car()));
+  readonly previewImage = computed(
+    () => this.previewState().image ?? this.activeView()?.url ?? this.carImage(this.car()),
+  );
   viewImage(view: CarViewId): string | null {
-    return preparedPreview(this.car(), this.partIds(), view) ?? this.carViews().find(item => item.view === view)?.url ?? null;
+    return (
+      preparedPreview(this.car(), this.partIds(), view) ??
+      this.carViews().find((item) => item.view === view)?.url ??
+      null
+    );
   }
   selectView(view: CarViewId): void {
-    if (this.carViews().some(item => item.view === view)) this.selectedView.set(view);
+    if (this.carViews().some((item) => item.view === view)) this.selectedView.set(view);
   }
   buildImage(build: SavedBuild): string | null {
     const car = this.carFor(build);
-    return preparedPreview(car, build.partIds) ?? preparedPreview(car, build.partIds, 'rear45') ?? this.carImage(car);
+    return (
+      preparedPreview(car, build.partIds) ??
+      preparedPreview(car, build.partIds, 'rear45') ??
+      this.carImage(car)
+    );
   }
   carImage(car: CatalogCar | null | undefined): string | null {
     if (!car) return null;
+    if (car.storagePath) return car.image || null;
     const ref = car.reference;
-    return ref ? (viewsForCar(car)[0]?.url ?? modelImage(ref.brandId, ref.modelName, ref.generationName ? { name: ref.generationName, yearStart: ref.yearStart } : undefined)) : car.image || null;
+    return ref
+      ? (viewsForCar(car)[0]?.url ??
+          modelImage(
+            ref.brandId,
+            ref.modelName,
+            ref.generationName ? { name: ref.generationName, yearStart: ref.yearStart } : undefined,
+          ))
+      : car.image || null;
   }
   chooseModel(model: VehicleModel): void {
     if (model.brandId !== this.selectedBrand()?.id) return;
-    this.chooseReference(model, null);
+    const car = catalogCars().find((car) => car.id === model.id);
+    if (car) this.chooseCar(car);
+    else this.chooseReference(model, null);
   }
   chooseReference(model: VehicleModel, generation: VehicleGeneration | null): void {
     const brand = this.selectedBrand();
@@ -244,7 +272,9 @@ export class MyBuilds {
     return JSON.stringify([this.carId(), [...this.partIds()].sort()]);
   }
   carFor(build: SavedBuild): CatalogCar | undefined {
-    return build.carSnapshot ?? catalogCars.find((car) => car.id === build.carId);
+    if (build.carId.startsWith('storage-car:'))
+      return catalogCars().find((car) => car.id === build.carId) ?? build.carSnapshot;
+    return build.carSnapshot ?? catalogCars().find((car) => car.id === build.carId);
   }
   startNew(sourceId: string | null = null): void {
     if (this.editing() && this.dirty()) {
@@ -256,7 +286,7 @@ export class MyBuilds {
   private beginNew(sourceId: string | null): void {
     this.selectedView.set('front45');
     this.referenceCar.set(null);
-    const car = catalogCars.find((car) => car.id === sourceId);
+    const car = catalogCars().find((car) => car.id === sourceId);
     this.editingId.set(null);
     this.carId.set(car?.id ?? null);
     this.brand.set(car?.brand ?? null);
@@ -327,10 +357,9 @@ export class MyBuilds {
       } else if (part.category === 'spoilers') {
         if (!['front45', 'rear45', 'rear'].includes(currentView)) this.selectedView.set('rear45');
       } else {
-      const rear = part.category === 'rear';
-      const sameSide = rear ? ['rear', 'rear45'] : ['front', 'front45'];
-      if (!sameSide.includes(currentView))
-        this.selectedView.set(rear ? 'rear45' : 'front45');
+        const rear = part.category === 'rear';
+        const sameSide = rear ? ['rear', 'rear45'] : ['front', 'front45'];
+        if (!sameSide.includes(currentView)) this.selectedView.set(rear ? 'rear45' : 'front45');
       }
     }
     if (part.category === 'bodykits') {

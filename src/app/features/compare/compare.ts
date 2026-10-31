@@ -1,4 +1,5 @@
-import { Component, computed, signal } from '@angular/core';
+import { StorageCatalogStore } from '../../core/catalog/storage-catalog';
+import { Component, computed, signal, inject, effect } from '@angular/core';
 import { Icon } from '../../shared/ui/icon/icon';
 import {
   catalogCars,
@@ -15,21 +16,32 @@ type Side = 'left' | 'right';
   host: { class: 'block' },
 })
 export class Compare {
-  readonly brands = [...new Set(catalogCars.map((car) => car.brand))];
-  readonly brandLogos = catalogBrandLogos;
+  readonly directory = inject(StorageCatalogStore);
+  constructor() {
+    void this.directory.load();
+    effect(() => {
+      if (!this.brands.includes(this.brand())) this.brand.set(this.brands[0]);
+    });
+  }
+  get brands() {
+    return [...new Set(catalogCars().map((car) => car.brand))];
+  }
+  get brandLogos() {
+    return catalogBrandLogos();
+  }
   readonly categories = partCategories;
   readonly sides = ['left', 'right'] as const;
   readonly brand = signal(this.brands[0]);
-  readonly carId = signal(catalogCars[0].id);
+  readonly carId = signal(catalogCars()[0]?.id ?? '');
   readonly category = signal(partCategories[0].id);
   readonly selection = signal<Record<Side, string>>({ left: '', right: '' });
   readonly brandIndex = computed(() => this.brands.indexOf(this.brand()));
-  readonly cars = computed(() => catalogCars.filter((car) => car.brand === this.brand()));
+  readonly cars = computed(() => catalogCars().filter((car) => car.brand === this.brand()));
   readonly car = computed(
     () => this.cars().find((car) => car.id === this.carId()) ?? this.cars()[0],
   );
   readonly parts = computed(() =>
-    catalogParts.filter(
+    catalogParts().filter(
       (part) => part.carId === this.car()?.id && part.category === this.category(),
     ),
   );
@@ -45,7 +57,7 @@ export class Compare {
   chooseBrand(name: string): void {
     if (!this.brands.includes(name)) return;
     this.brand.set(name);
-    this.carId.set(this.cars()[0].id);
+    this.carId.set(this.cars()[0]?.id ?? '');
     this.reset();
   }
   stepBrand(step: number): void {

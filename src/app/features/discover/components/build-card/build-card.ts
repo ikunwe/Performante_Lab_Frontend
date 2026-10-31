@@ -11,6 +11,7 @@ import { ShowcaseBuild } from '../../discover.data';
 export class BuildCard {
   readonly build = input.required<ShowcaseBuild>();
   readonly saved = input(false);
+  readonly busy = input(false);
   readonly details = output<ShowcaseBuild>();
   readonly save = output<ShowcaseBuild>();
   readonly copy = output<ShowcaseBuild>();

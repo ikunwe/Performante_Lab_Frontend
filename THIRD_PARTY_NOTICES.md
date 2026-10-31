@@ -67,5 +67,7 @@ Attribution: [vehicle-makes-models](https://github.com/gor3a/vehicle-makes-model
 and [autoevolution.com](https://www.autoevolution.com/).
 Changes include filtering to 28 brands, keeping model names only (removing engines,
 generations, years and chassis information), and adding official model names.
-The complete adapted snapshot is available from the model selector's download link
-at `/api/catalog/models/export`. Original notice: Backend `data/models/raw/LICENSE-DATA`.
+The retained complete adapted snapshot, including attribution, is available in
+Backend `data/models/car-models.json`. Original notice: Backend
+`data/models/raw/LICENSE-DATA`. The current Storage catalog does not use this
+reference dataset for new vehicle selections; it remains for historical Builds.

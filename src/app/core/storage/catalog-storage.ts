@@ -1,3 +1,4 @@
+import { notifyStorageCatalogChanged } from '../catalog/storage-catalog';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface StorageBrandItem {
@@ -103,7 +104,10 @@ export class CatalogStorageHelper {
    * Helper สำหรับแปลงชื่อให้อยู่ในรูปแบบที่ปลอดภัยสำหรับ Storage Path
    */
   static sanitize(text: string): string {
-    return text.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    return text
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9_\-\.]/g, '');
   }
 
   /**
@@ -124,15 +128,14 @@ export class CatalogStorageHelper {
     upsert = true,
   ): Promise<{ ok: boolean; url?: string; error?: string }> {
     try {
-      const { error } = await client.storage
-        .from(this.BUCKET)
-        .upload(path, file, {
-          upsert,
-          contentType: file.type || undefined,
-          cacheControl: '3600',
-        });
+      const { error } = await client.storage.from(this.BUCKET).upload(path, file, {
+        upsert,
+        contentType: file.type || undefined,
+        cacheControl: '3600',
+      });
 
       if (error) throw error;
+      notifyStorageCatalogChanged();
 
       const { data: publicData } = client.storage.from(this.BUCKET).getPublicUrl(path);
       return { ok: true, url: publicData.publicUrl };
@@ -163,9 +166,7 @@ export class CatalogStorageHelper {
           let logoUrl = this.getPublicUrl(client, `${brandName}/logo.png`);
           try {
             const { data: files } = await storage.list(brandName, { limit: 50 });
-            const logoFile = files?.find((f) =>
-              /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name),
-            );
+            const logoFile = files?.find((f) => /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name));
             if (logoFile) {
               logoUrl = this.getPublicUrl(client, `${brandName}/${logoFile.name}`);
             }
@@ -213,9 +214,7 @@ export class CatalogStorageHelper {
           let imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/CarPicture.jpg`);
           try {
             const { data: files } = await storage.list(`${safeBrand}/${modelName}`, { limit: 20 });
-            const picFile = files?.find((f) =>
-              /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name),
-            );
+            const picFile = files?.find((f) => /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name));
             if (picFile) {
               imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/${picFile.name}`);
             }
@@ -268,9 +267,7 @@ export class CatalogStorageHelper {
           let logoUrl = this.getPublicUrl(client, `${path}/${workshopName}/logo.png`);
           try {
             const { data: files } = await storage.list(`${path}/${workshopName}`, { limit: 20 });
-            const logoFile = files?.find((f) =>
-              /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name),
-            );
+            const logoFile = files?.find((f) => /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name));
             if (logoFile) {
               logoUrl = this.getPublicUrl(client, `${path}/${workshopName}/${logoFile.name}`);
             }
@@ -335,4 +332,3 @@ export class CatalogStorageHelper {
     }
   }
 }
-
