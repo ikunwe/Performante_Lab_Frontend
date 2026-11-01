@@ -556,8 +556,11 @@ export class AdminService {
           const brandName = data.name;
           const rawModels = data.details?.modelCatalog?.models || [];
           const mapped: RealCarModelItem[] = rawModels.map((m: any) => {
-            // ใช้ 45_front.png เป็นรูปรถหลักตามข้อกำหนดล่าสุด
-            const storageCarImage = `https://oxzejsgfazbjjqopkzuf.supabase.co/storage/v1/object/public/catalog/${brandName}/${m.name}/45_front.png`;
+            const storageCarImage =
+              m.imageUrl ||
+              m.image_url ||
+              m.image ||
+              `https://oxzejsgfazbjjqopkzuf.supabase.co/storage/v1/object/public/catalog/${brandName}/${m.name}/45_front.png`;
 
             return {
               id: m.id || `${brandId}-${m.name}`,
@@ -1217,6 +1220,102 @@ export class AdminService {
 
     this.catalogParts.update((list) =>
       list.filter((p) => p.category?.toLowerCase() !== categoryName.toLowerCase()),
+    );
+    return { ok: true };
+  }
+
+  // ลบแบรนด์รถยนต์ (car_brands, car_brand_reference & recursive storage cleanup)
+  async deleteCarBrand(
+    brandId: string,
+    brandName: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const client = await this.getClient();
+    const safeBrand = CatalogStorageHelper.sanitize(brandName);
+
+    if (client) {
+      try {
+        // 1. ลบโฟลเดอร์แบรนด์ออกจาก Storage 'catalog' แบบ Recursive
+        await CatalogStorageHelper.deleteFolderRecursively(client, safeBrand);
+
+        // 2. ลบออกจากฐานข้อมูล
+        if (typeof client.from === 'function') {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(brandId);
+          if (isUuid) {
+            await client.from('car_brands').delete().eq('id', brandId);
+            await client.from('car_brand_reference').delete().eq('id', brandId);
+          }
+          await client.from('car_brands').delete().ilike('name', brandName);
+          await client.from('car_brand_reference').delete().ilike('name', brandName);
+        }
+      } catch (err: any) {
+        console.warn('[AdminService] deleteCarBrand error:', err);
+        return { ok: false, error: err?.message || 'ลบแบรนด์ไม่สำเร็จ' };
+      }
+    }
+
+    this.catalogBrands.update((list) =>
+      list.filter((b) => b.id !== brandId && b.name.toLowerCase() !== brandName.toLowerCase()),
+    );
+    return { ok: true };
+  }
+
+  // ลบรุ่นรถยนต์ (car_models, car_parts & recursive storage cleanup)
+  async deleteCarModel(
+    carId: string,
+    brandName: string,
+    carName: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const client = await this.getClient();
+    const safeBrand = CatalogStorageHelper.sanitize(brandName);
+    const safeModel = CatalogStorageHelper.sanitize(carName);
+
+    if (client) {
+      try {
+        // 1. ลบโฟลเดอร์รุ่นรถ (พร้อม BodyKit และ Part ภายใน) ออกจาก Storage 'catalog'
+        const folderPath = `${safeBrand}/${safeModel}`;
+        await CatalogStorageHelper.deleteFolderRecursively(client, folderPath);
+
+        // 2. ลบออกจากตาราง car_models และ car_parts
+        if (typeof client.from === 'function') {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(carId);
+          if (isUuid) {
+            await client.from('car_models').delete().eq('id', carId);
+          }
+          await client.from('car_models').delete().ilike('name', carName);
+          await client
+            .from('car_parts')
+            .delete()
+            .or(`car_model_id.eq.${carId},car_model_id.eq.${carName},car_model_id.eq.${safeModel}`);
+
+          // ลบออกจาก car_brand_reference modelCatalog ถ้ามี
+          try {
+            const { data: brandData } = await client
+              .from('car_brand_reference')
+              .select('id, details')
+              .ilike('name', brandName)
+              .single();
+
+            if (brandData?.details?.modelCatalog?.models) {
+              brandData.details.modelCatalog.models = brandData.details.modelCatalog.models.filter(
+                (m: any) => m.id !== carId && m.name.toLowerCase() !== carName.toLowerCase(),
+              );
+              await client
+                .from('car_brand_reference')
+                .update({ details: brandData.details })
+                .eq('id', brandData.id);
+            }
+          } catch (refErr) {
+            console.warn('[AdminService] car_brand_reference cleanup warning:', refErr);
+          }
+        }
+      } catch (err: any) {
+        console.warn('[AdminService] deleteCarModel error:', err);
+        return { ok: false, error: err?.message || 'ลบรุ่นรถไม่สำเร็จ' };
+      }
+    }
+
+    this.catalogModels.update((list) =>
+      list.filter((c) => c.id !== carId && c.name.toLowerCase() !== carName.toLowerCase()),
     );
     return { ok: true };
   }

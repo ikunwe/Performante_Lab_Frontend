@@ -245,6 +245,41 @@ describe('CatalogStorageHelper', () => {
       expect(models[1].imageUrl).toBe('https://test.supabase.co/catalog/Ferrari/488-Pista/CarPicture.jpg');
     });
 
+    it('detects 45_front.jpg as primary image over fallback', async () => {
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockImplementation(() => ({
+            list: vi.fn().mockImplementation((path: string) => {
+              if (path === 'Ferrari') {
+                return Promise.resolve({
+                  data: [{ name: 'dog', id: null, metadata: null }],
+                  error: null,
+                });
+              }
+              if (path === 'Ferrari/dog') {
+                return Promise.resolve({
+                  data: [
+                    { name: '45_front.jpg', id: 'img3', metadata: { mimetype: 'image/jpeg' } },
+                    { name: 'front.jpg', id: 'img4', metadata: { mimetype: 'image/jpeg' } },
+                  ],
+                  error: null,
+                });
+              }
+              return Promise.resolve({ data: [], error: null });
+            }),
+            getPublicUrl: vi.fn().mockImplementation((filePath: string) => ({
+              data: { publicUrl: `https://test.supabase.co/catalog/${filePath}` },
+            })),
+          })),
+        },
+      } as any;
+
+      const models = await CatalogStorageHelper.listModels(mockClient, 'Ferrari');
+      expect(models.length).toBe(1);
+      expect(models[0].name).toBe('dog');
+      expect(models[0].imageUrl).toBe('https://test.supabase.co/catalog/Ferrari/dog/45_front.jpg');
+    });
+
     it('lists workshops and items under BodyKit or Part correctly', async () => {
       const mockClient = {
         storage: {
