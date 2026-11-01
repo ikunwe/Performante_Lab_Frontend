@@ -1,6 +1,5 @@
 import type { CatalogCar } from '../../features/catalog/catalog.data';
-import { carViewManifest, CarViewEntry, CarViewId } from './car-view-manifest';
-
+export type CarViewId = 'front45' | 'front' | 'rear45' | 'rear' | 'side';
 const labels: Record<CarViewId, string> = {
   front45: 'เฉียงหน้า 45°',
   front: 'หน้าตรง',
@@ -9,35 +8,9 @@ const labels: Record<CarViewId, string> = {
   rear: 'หลังตรง',
 };
 const order: CarViewId[] = ['front45', 'front', 'side', 'rear45', 'rear'];
-const normalize = (value: string) =>
-  value
-    .normalize('NFKD')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-export function createCarViewResolver(entries: readonly CarViewEntry[]) {
-  return (car: CatalogCar | null | undefined) => {
-    if (car?.storagePath) {
-      return order
-        .filter((view) => !!car.views?.[view])
-        .map((view) => ({
-          view,
-          url: car.views![view]!,
-          label: labels[view],
-        }));
-    }
-    const ref = car?.reference;
-    if (!ref || ref.generationId) return [];
-    return entries
-      .filter(
-        (entry) =>
-          entry.brandId === ref.brandId &&
-          entry.model === normalize(ref.modelName) &&
-          entry.variant === 'default' &&
-          !entry.wheelVariant &&
-          !entry.spoilerVariant,
-      )
-      .map((entry) => ({ ...entry, label: labels[entry.view] }))
-      .sort((a, b) => order.indexOf(a.view) - order.indexOf(b.view));
-  };
+/** Angles are supplied by Storage metadata; never fabricate a local-image fallback. */
+export function viewsForCar(car: CatalogCar | null | undefined) {
+  return order
+    .filter((view) => /^https?:\/\//i.test(car?.views?.[view] || ''))
+    .map((view) => ({ view, url: car!.views![view]!, label: labels[view] }));
 }
-export const viewsForCar = createCarViewResolver(carViewManifest);

@@ -571,7 +571,7 @@
                         [src]="part.image || part.image_url"
                         [alt]="part.name"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        (error)="$any($event.target).src = 'assets/car_pic.png'"
+                        (error)="$any($event.target).hidden = true" (load)="$any($event.target).hidden = false"
                       />
                     </div>
                     <div class="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm py-2 px-2 text-center border-t border-white/10">
@@ -790,7 +790,7 @@
                         [src]="part.image || part.image_url"
                         [alt]="part.name"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        (error)="$any($event.target).src = 'assets/car_pic.png'"
+                        (error)="$any($event.target).hidden = true" (load)="$any($event.target).hidden = false"
                       />
                     </div>
                     <div class="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm py-2 px-2 text-center border-t border-white/10">
@@ -1574,7 +1574,7 @@
                           [src]="existingUrl"
                           [alt]="angle.label"
                           class="max-h-20 max-w-full rounded object-contain shadow opacity-80"
-                          (error)="$any($event.target).src = (selectedCar()?.image_url || 'assets/car_pic.png')"
+                          (error)="$any($event.target).hidden = true" (load)="$any($event.target).hidden = false"
                         />
                         <span class="text-[10px] text-stone-400 group-hover:text-stone-300">คลิกเพื่อเปลี่ยนรูป</span>
                       </div>
@@ -1736,7 +1736,7 @@
                           [src]="getExistingPartAngleUrl(editingPart(), angle.key)"
                           [alt]="angle.label"
                           class="max-h-20 max-w-full rounded object-contain shadow opacity-80"
-                          (error)="$any($event.target).src = (editingPart()?.image_url || 'assets/car_pic.png')"
+                          (error)="$any($event.target).hidden = true" (load)="$any($event.target).hidden = false"
                         />
                         <span class="text-[10px] text-stone-400 group-hover:text-stone-300">คลิกเพื่อเปลี่ยนรูป</span>
                       </div>
@@ -1747,6 +1747,15 @@
                       </div>
                     }
                   </div>
+                  @if (existingPartAngleUrls().get(angle.key); as source) {
+                    <app-part-mask-upload [source]="source" [mask]="existingPartMasks().get(angle.key) || ''"
+                      [modelName]="selectedCar()?.name || ''" [category]="editingPart()?.category || ''" [angle]="angle.key"
+                      [automatic]="hasAutomaticPartClips(selectedCar()?.name || '')"
+                      [reference]="maskDefaultViews().get(angle.key) || ''" [layer]="existingPartLayers().get(angle.key) || ''"
+                      (layerSaved)="setPartLayer(angle.key, $event)"
+                      [disabled]="isUploading() || editPartAngleFiles().has(angle.key) || editingPartName() !== editingPart()?.name"
+                      (saved)="setPartMask(angle.key, $event)" />
+                  }
                 </div>
               }
             </div>

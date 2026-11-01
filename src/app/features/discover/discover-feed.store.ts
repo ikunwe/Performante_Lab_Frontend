@@ -21,6 +21,17 @@ export function validBuild(value: unknown): value is ShowcaseBuild {
     Number.isFinite(row.budget) &&
     typeof row.isOwn === 'boolean' &&
     typeof row.isPublic === 'boolean' &&
+    (row.partIds === undefined ||
+      (Array.isArray(row.partIds) && row.partIds.every((id) => typeof id === 'string'))) &&
+    (row.partDetails === undefined ||
+      (Array.isArray(row.partDetails) &&
+        row.partDetails.every(
+          (part) =>
+            !!part &&
+            typeof part.id === 'string' &&
+            typeof part.name === 'string' &&
+            (part.category === null || typeof part.category === 'string'),
+        ))) &&
     Array.isArray(row.parts) &&
     row.parts.every((part) => typeof part === 'string')
   );
@@ -57,8 +68,8 @@ export class DiscoverFeedStore {
     this.loading.set(false);
     this.error.set('');
   }
-  setLikeCount(id:string,likes:number):void {
-    this.builds.update(rows=>rows.map(row=>row.id===id ? {...row,likes} : row));
+  setLikeCount(id: string, likes: number): void {
+    this.builds.update((rows) => rows.map((row) => (row.id === id ? { ...row, likes } : row)));
   }
   async load(force = false): Promise<void> {
     await this.auth.initialize();

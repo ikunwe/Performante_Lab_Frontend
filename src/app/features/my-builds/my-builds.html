@@ -19,7 +19,7 @@
   <article class="overflow-hidden rounded-lg border border-white/10 bg-[#171717]">
     <button type="button" (click)="editBuild(build)" [attr.aria-label]="'เปิด Build ' + build.name"
       class="block aspect-[1.7] w-full cursor-pointer overflow-hidden bg-[radial-gradient(ellipse,#444,#111)]">
-      @if (buildImage(build); as image) { <img [src]="image" [alt]="carFor(build)?.name" width="1280" height="960"
+      @if (savedLayerPlan(build); as plan) { <div class="h-full w-full p-3"><app-build-preview [plan]="plan" [label]="build.name" /></div> } @else if (buildImage(build); as image) { <img [src]="image" [alt]="carFor(build)?.name" width="1280" height="960"
         class="h-full w-full object-contain object-center p-3" />
       } @else { <app-icon name="car" class="!size-12 text-stone-600" /> }
     </button>
@@ -220,7 +220,7 @@
     @if (car(); as currentCar) {
     <div class="mb-7 overflow-hidden rounded-lg border border-white/10 bg-[#151515]">
       <div class="relative aspect-[2.8] overflow-hidden bg-[radial-gradient(ellipse,#444,#111_75%)]">
-        @if (previewImage(); as image) { <img [src]="image" [alt]="currentCar.name + (hasPreparedPreview() ? ' พร้อมพาร์ทที่เลือก' : ' รถเดิม')" width="1280" height="960"
+        @if (layerPlan(); as plan) { <div class="h-full w-full p-4"><app-build-preview [plan]="plan" [label]="currentCar.name + (hasPreparedPreview() ? ' พร้อมพาร์ทที่เลือก' : ' รถเดิม')" /></div> } @else if (previewImage(); as image) { <img [src]="image" [alt]="currentCar.name + (hasPreparedPreview() ? ' พร้อมพาร์ทที่เลือก' : ' รถเดิม')" width="1280" height="960"
           class="h-full w-full object-contain object-center p-4" /> } @else { <div
           class="flex h-full items-center justify-center"><app-icon name="car" class="!size-16 text-stone-600" /></div>
         }<span class="absolute left-3 top-3 rounded-lg bg-black/40 px-2 py-1 text-[8px] text-stone-400">{{ hasPreparedPreview() ? 'SELECTED PART PREVIEW' : 'BASE CAR PREVIEW' }}</span>
@@ -235,13 +235,13 @@
           <button type="button" (click)="selectView(view.view)" [attr.aria-pressed]="activeView()?.view === view.view"
             [attr.aria-label]="'มุมมอง ' + view.label"
             class="min-w-[88px] shrink-0 cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-black/20 p-2 text-[10px] text-stone-400 hover:border-white/30 aria-pressed:border-red-400/70 aria-pressed:bg-red-500/10 aria-pressed:text-white">
-            <img [src]="viewImage(view.view)" alt="" width="120" height="60" loading="lazy" decoding="async" class="mb-2 h-10 w-full object-contain" />
+            @if (planForView(view.view); as plan) { <div class="mb-2 h-10 w-full"><app-build-preview [plan]="plan" [label]="view.label" /></div> } @else { <img [src]="viewImage(view.view)" alt="" width="120" height="60" loading="lazy" decoding="async" class="mb-2 h-10 w-full object-contain" /> }
             {{ view.label }}
           </button>
           }
         </div>
         @if (missingPartView()) {
-        <p role="status" class="mt-3 text-[10px] leading-5 text-amber-200/80">ภาพมุมนี้ยังแสดงรายการแต่งได้ไม่ครบ · ยังไม่มีภาพของชุดที่เลือก รายการแต่งยังเลือกไว้อยู่</p>
+        <p role="status" class="mt-3 text-[10px] leading-5 text-amber-200/80">ภาพมุมนี้ยังแสดงรายการแต่งได้ไม่ครบ · บางพาร์ทยังไม่มีภาพมุมนี้ หรือยังไม่ได้กำหนดบริเวณตัดสำหรับรุ่นนี้ รายการแต่งยังเลือกไว้อยู่</p>
         } @else if (activeView(); as view) {
         <p class="mt-3 text-[10px] text-stone-500">{{ view.label }} · {{ hasPreparedPreview() ? 'ภาพพร้อมพาร์ทที่เลือก' : 'ภาพรถเดิม' }}</p>
         }

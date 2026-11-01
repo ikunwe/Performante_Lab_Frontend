@@ -12,7 +12,7 @@ export interface RequestRecord {
   modelName: string;
   manufacturer: string;
   source: string;
-  status: 'Pending' | 'Accepted' | 'Rejected';
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Cancelled';
   images: string[];
   author: string;
   createdAt: string;
@@ -100,6 +100,14 @@ export class RequestsApi {
     body.append('data', JSON.stringify(data));
     for (const file of images) body.append('images', file, file.name);
     return (await this.call<{ request: RequestRecord }>('/api/requests', 'POST', body)).request;
+  }
+  async cancel(id: string): Promise<RequestRecord> {
+    return (
+      await this.call<{ request: RequestRecord }>(
+        '/api/requests/' + encodeURIComponent(id) + '/cancel',
+        'PATCH',
+      )
+    ).request;
   }
   async review(id: string, status: 'Accepted' | 'Rejected'): Promise<RequestRecord> {
     return (

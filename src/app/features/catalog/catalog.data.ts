@@ -30,6 +30,10 @@ export interface PartCategory {
   icon: string;
 }
 export interface CatalogPart {
+  /** Full photo aligned to the default frame by the Admin mask editor. */
+  layerViews?: CatalogViews;
+  /** Alpha PNG: opaque only in the region replaced by this part. */
+  masks?: CatalogViews;
   views?: CatalogViews;
   storagePath?: string;
   manufacturerLogo?: string | null;
@@ -51,6 +55,16 @@ export const partCategories: PartCategory[] = [
   { id: 'exhaust', name: 'Exhaust', label: 'ท่อไอเสีย', icon: 'parts' },
   { id: 'suspension', name: 'Suspension', label: 'ช่วงล่าง', icon: 'parts' },
   { id: 'others', name: 'Other Parts', label: 'พาร์ทอื่น ๆ', icon: 'parts' },
+  { id: 'spoilers', name: 'Spoilers', label: 'สปอยเลอร์', icon: 'parts' },
+];
+
+
+/** Categories supported by both the builder and part comparison. */
+export const buildPartCategories: PartCategory[] = [
+  { id: 'bodykits', name: 'Full Body Kits', label: 'ชุดแต่งรอบคัน', icon: 'car' },
+  { id: 'front', name: 'Front Bumper', label: 'กันชนหน้า', icon: 'front' },
+  { id: 'rear', name: 'Rear Bumper', label: 'กันชนหลัง', icon: 'rear' },
+  { id: 'wheels', name: 'Wheels', label: 'ล้อ', icon: 'wheel' },
   { id: 'spoilers', name: 'Spoilers', label: 'สปอยเลอร์', icon: 'parts' },
 ];
 

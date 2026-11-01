@@ -35,7 +35,7 @@ export interface AdminRequestItem {
   tag: string;
   likes: string;
   image: string;
-  status: 'Pending' | 'Accepted' | 'Rejected';
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Cancelled';
   category: string;
   description: string;
   requestedAt: string;
@@ -247,7 +247,7 @@ export class AdminService {
   readonly requestsError=signal('');
   readonly requestBusyId=signal<string|null>(null);
   readonly requestsSearch = signal('');
-  readonly requestsStatusFilter = signal<'All' | 'Pending' | 'Accepted' | 'Rejected'>('All');
+  readonly requestsStatusFilter = signal<'All' | 'Pending' | 'Accepted' | 'Rejected' | 'Cancelled'>('All');
   readonly selectedRequest = signal<AdminRequestItem | null>(null);
 
   readonly filteredRequests = computed(() => {
@@ -585,7 +585,7 @@ export class AdminService {
                         if (itemEntries) {
                           await Promise.all(
                             itemEntries.map(async (iEntry) => {
-                              if (iEntry.name.startsWith('.')) return;
+                              if (iEntry.name.startsWith('.') || /\.(mask|layer)\./i.test(iEntry.name)) return;
                               const partName = iEntry.name.replace(/\.[^/.]+$/, '');
                               let imageUrl = '';
 
@@ -595,12 +595,13 @@ export class AdminService {
                                   { limit: 20 },
                                 );
                                 if (angleFiles && angleFiles.length > 0) {
+                                  const photos = angleFiles.filter(f => !/\.(mask|layer)\./i.test(f.name));
                                   const primaryAngle =
-                                    angleFiles.find((f) => /^45_front\./i.test(f.name)) ||
-                                    angleFiles.find((f) => /^45_Back\./i.test(f.name)) ||
-                                    angleFiles.find((f) => /^front\./i.test(f.name)) ||
-                                    angleFiles.find((f) => /^Back\./i.test(f.name)) ||
-                                    angleFiles.find((f) => /\.(png|jpe?g|webp)$/i.test(f.name));
+                                    photos.find((f) => /^45_front\./i.test(f.name)) ||
+                                    photos.find((f) => /^45_Back\./i.test(f.name)) ||
+                                    photos.find((f) => /^front\./i.test(f.name)) ||
+                                    photos.find((f) => /^Back\./i.test(f.name)) ||
+                                    photos.find((f) => /\.(png|jpe?g|webp)$/i.test(f.name));
                                   if (primaryAngle) {
                                     imageUrl = CatalogStorageHelper.getPublicUrl(
                                       client,
@@ -1234,7 +1235,7 @@ export class AdminService {
     const mapped = mapBrand({
       id: brand.id || `b-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: brand.name.trim(),
-      logo_url: brand.logo_url || brand.logoUrl || 'assets/brands/ferrari.png',
+      logo_url: brand.logo_url || brand.logoUrl || '',
       is_custom_bg: brand.is_custom_bg ?? brand.isCustomBg ?? false,
     });
     this.catalogBrands.update((list) => [...list, mapped]);
@@ -1255,7 +1256,7 @@ export class AdminService {
       id: car.id || `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       brand_id: car.brand_id || car.brandId || '',
       name: car.name.trim(),
-      image_url: car.image_url || car.image || 'assets/car_pic.png',
+      image_url: car.image_url || car.image || '',
       body_type: car.body_type || car.bodyType || 'Coupe',
     });
     this.catalogModels.update((list) => [...list, mapped]);
@@ -1279,7 +1280,7 @@ export class AdminService {
       category: part.category || 'Full Body Kits',
       name: part.name.trim(),
       manufacturer: part.manufacturer || 'Custom',
-      image_url: part.image_url || part.image || 'assets/car_pic.png',
+      image_url: part.image_url || part.image || '',
       price: part.price ?? 0,
     });
     this.catalogParts.update((list) => [...list, mapped]);

@@ -1,6 +1,6 @@
 > New Builds are private by default. Owners can publish or unpublish them from My Builds → ตั้งค่าการเผยแพร่. Editing car/parts keeps the existing visibility.
 
-> New User selections now use Storage path IDs. See [Storage user catalog](storage-user-catalog.md). The generated asset metadata below remains for historical reference-model builds only.
+> New User selections now use Storage path IDs. See [Storage user catalog](storage-user-catalog.md). The frontend no longer ships local vehicle/part assets or generated asset metadata.
 
 # Account builds
 
@@ -23,7 +23,7 @@ The existing schema is reused, without a new SQL migration:
 | tag | carId (stable model reference or demo car ID) |
 | car_name | canonical car name |
 | parts | selected part IDs |
-| image_url | server-resolved asset cover URL |
+| image_url | server-resolved catalog cover URL |
 | created_at / updated_at | createdAt / updatedAt |
 
 The API reconstructs carSnapshot from its canonical model reference data. It never
@@ -31,15 +31,14 @@ trusts a client car name, snapshot, image URL, owner or publication setting. His
 rows with unknown tags remain visible as basic snapshots; saving requires selecting
 a supported car. Existing non-app rows are not rewritten or deleted automatically.
 
-The generated `assets/build-catalog.json` contains public asset metadata (no image
-bytes or secrets). The watcher and production prebuild generate this and also update
-`../Performante_Lab_Backend/data/build-assets.json` when the sibling backend exists.
-For separate deployment, commit/copy the matching data/build-assets.json to the API
-alongside its model dataset. The API reads asset metadata on demand. Both apps must
-deploy matching car/part IDs; missing assets cause validation failure, not guessed
-compatibility. Backend needs SUPABASE_SECRET_KEY and the existing profiles/builds
-tables. Restart the backend to load the new routes, and restart the frontend once
-to load the updated watcher. No new environment keys or SQL execution are needed.
+The frontend no longer generates asset metadata or writes to the sibling backend.
+Start uses Angular directly and production prebuild only generates auth config.
+Current vehicle/part IDs and photos come from `/api/catalog/storage`; see
+[Storage catalog](storage-user-catalog.md). Existing backend historical reference
+validation/data is retained, but local catalog images are no longer shipped by the
+frontend. Historical rows remain in the database; their local-only photos may be
+unavailable until the owner selects a current Storage vehicle/part. No database
+row, Supabase object or backend dataset is deleted by this cleanup.
 
 API: GET /api/builds?offset=0 (100 per page), POST /api/builds, PUT /api/builds/:id,
 DELETE /api/builds/:id. Creates use a stable UUID per submitted payload so timeout
@@ -48,8 +47,8 @@ Switching accounts clears the list and discards previous account's pending resul
 
 Old local builds under performante-lab.builds.v1 remain untouched. They are not
 automatically uploaded to an account because the old storage was not account-scoped.
-Pricing, likes and image uploads are not part of this change; pictures
-remain static assets and selected combinations retain their preview rules.
+Catalog pictures come from Storage. See [Build layers](build-image-layers.md) for
+current multi-angle part compositing rules.
 
 
 ## Visibility settings

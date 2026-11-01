@@ -141,9 +141,9 @@ src/
 - กดการ์ดรถเพื่อดูภาพรถและหมวด Full Body Kits, Front Bumpers, Rear Bumpers, Wheels, Spoilers
 - ค้นหาชื่อพาร์ต/finish/หมวด และกรองหมวด พร้อม empty state และ Back to all
 - การ์ดพาร์ตเป็นข้อมูลอ่านอย่างเดียว แสดงชื่อ คำอธิบาย Finish และราคาอ้างอิงทันที ไม่มี dialog หรือการเลือกติดตั้งใน Catalog
-- แยก UI ใน features/catalog/catalog.html, logic ใน catalog.ts และข้อมูลตัวอย่างใน catalog.data.ts
-- ข้อมูลยังเป็น concept ไม่มีราคา/compatibility จริง ภาพกันชนเป็นภาพประกอบครอปจาก assets
-- โลโก้ Ferrari และ Lamborghini อยู่ใน assets/brands พร้อมที่มาใน SOURCES.md ส่วนภาพสินค้าเฉพาะยังไม่พร้อม จึงแสดงรอภาพชิ้นส่วนสำหรับล้อ/สปอยเลอร์
+- แยก UI ใน features/catalog/catalog.html, logic ใน catalog.ts และอ่านข้อมูลร่วมจาก StorageCatalogStore
+- โลโก้ รถ และพาร์ทอ่านจาก Supabase ผ่าน /api/catalog/storage พร้อม cache; ไม่มี local catalog fallback
+- ไฟล์ assets คงไว้เฉพาะโลโก้เว็บไซต์และภาพ Home/Login ดูรายละเอียดใน docs/local-assets.md
 
 
 ## Compare ของแต่ง

@@ -8,6 +8,8 @@ export interface ShowcaseBuild {
   image: string;
   budget: number;
   parts: string[];
+  partIds?: string[];
+  partDetails?: { id: string; name: string; category: string | null }[];
   likes?: number;
   isOwn: boolean;
   isPublic: boolean;

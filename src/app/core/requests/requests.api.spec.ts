@@ -60,6 +60,16 @@ describe('Requests transport', () => {
     expect((await api.review('one', 'Accepted')).status).toBe('Accepted');
     expect(request.mock.calls[2][1].method).toBe('PATCH');
   });
+  it('cancels through the authenticated owner endpoint', async () => {
+    const { api, request } = setup();
+    request.mockResolvedValue(
+      new Response(JSON.stringify({ request: { id: 'one', status: 'Cancelled' } })),
+    );
+    expect((await api.cancel('one')).status).toBe('Cancelled');
+    expect(request.mock.calls[0][0]).toBe('https://api.example.test/api/requests/one/cancel');
+    expect(request.mock.calls[0][1].method).toBe('PATCH');
+    expect(request.mock.calls[0][1].headers.Authorization).toBe('Bearer token');
+  });
   it('rejects a response after the account changes', async () => {
     const { api, request, auth } = setup();
     request.mockImplementationOnce(async () => {

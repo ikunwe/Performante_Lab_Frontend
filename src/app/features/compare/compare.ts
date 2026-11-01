@@ -5,7 +5,7 @@ import {
   catalogCars,
   catalogParts,
   catalogBrandLogos,
-  partCategories,
+  buildPartCategories,
 } from '../catalog/catalog.data';
 
 type Side = 'left' | 'right';
@@ -29,11 +29,11 @@ export class Compare {
   get brandLogos() {
     return catalogBrandLogos();
   }
-  readonly categories = partCategories;
+  readonly categories = buildPartCategories;
   readonly sides = ['left', 'right'] as const;
   readonly brand = signal(this.brands[0]);
   readonly carId = signal(catalogCars()[0]?.id ?? '');
-  readonly category = signal(partCategories[0].id);
+  readonly category = signal(buildPartCategories[0].id);
   readonly selection = signal<Record<Side, string>>({ left: '', right: '' });
   readonly brandIndex = computed(() => this.brands.indexOf(this.brand()));
   readonly cars = computed(() => catalogCars().filter((car) => car.brand === this.brand()));

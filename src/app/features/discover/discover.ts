@@ -16,10 +16,11 @@ import {
 import { DecimalPipe } from '@angular/common';
 import { Catalog } from '../catalog/catalog';
 import { MyBuilds } from '../my-builds/my-builds';
-import { catalogCars } from '../catalog/catalog.data';
+import { catalogCars, buildPartCategories } from '../catalog/catalog.data';
 import { Compare } from '../compare/compare';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Icon } from '../../shared/ui/icon/icon';
+import { ShowcaseImage } from './components/showcase-image/showcase-image';
 import { BuildCard } from './components/build-card/build-card';
 import { ShowcaseBuild } from './discover.data';
 import { AuthService } from '../../core/auth/auth.service';
@@ -37,6 +38,7 @@ type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Reque
     RouterLink,
     Icon,
     BuildCard,
+    ShowcaseImage,
     DecimalPipe,
     Catalog,
     Compare,
@@ -188,6 +190,9 @@ export class Discover {
       this.deletingBuild.set(false);
       if (!this.selected()) this.dialog().nativeElement.close();
     }
+  }
+  partCategoryName(category: string | null): string {
+    return buildPartCategories.find(item => item.id === category)?.name || 'ของแต่ง';
   }
   showDetails(build: ShowcaseBuild): void {
     this.selected.set(build);

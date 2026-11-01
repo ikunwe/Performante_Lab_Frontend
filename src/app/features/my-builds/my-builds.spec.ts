@@ -23,11 +23,10 @@ import { vi } from 'vitest';
 import { BUILDS_STORAGE_KEY, BuildsStore } from './builds.store';
 import { BuildsApi } from './builds.api';
 import { MyBuilds } from './my-builds';
+import { BUILD_COMPOSITOR } from '../../shared/ui/build-preview/build-preview';
 import { catalogCars, catalogParts } from '../../testing/catalog.fixture';
 import { BrandDirectory } from '../../core/catalog/brand-directory';
 import { ModelDirectory } from '../../core/catalog/model-directory';
-import { partImageManifest } from '../../testing/part-image-manifest.fixture';
-import { carViewManifest } from '../../testing/car-view-manifest.fixture';
 
 describe('My Builds with the account API', () => {
   let memory: Map<string, string>;
@@ -130,199 +129,27 @@ describe('My Builds with the account API', () => {
     });
   });
 
-  it('switches prepared front bumpers, restores stock and persists the chosen preview', async () => {
-    const fixture = TestBed.createComponent(MyBuilds);
-    const page = fixture.componentInstance;
-    const image = partImageManifest[0];
-    const modelId = image.brandId + ':' + image.model;
-    const car = {
-      id: 'ref:' + modelId,
-      brand: image.brandId,
-      name: image.model,
-      image: '',
-      body: '',
-      reference: {
-        brandId: image.brandId,
-        modelId,
-        generationId: null,
-        modelName: image.model,
-        generationName: null,
-        chassisCodes: [],
-        yearStart: null,
-        yearEnd: null,
-        sourceUrl: 'https://example.com/car',
-      },
-    };
-    page.startNew();
-    page.chooseCar(car);
-    fixture.detectChanges();
-    const stock = page.previewImage();
-    const front = page.partsFor('front');
-    const expectedFront = carViewManifest.find(
-      (entry) => entry.variant === 'frontbumper1' && entry.view === 'front45',
-    )!.url;
-    expect(front.length).toBeGreaterThanOrEqual(2);
-    page.togglePart(front[0]);
-    fixture.detectChanges();
-    expect(page.previewImage()).toBe(expectedFront);
-    expect(
-      fixture.nativeElement
-        .querySelector('[alt="' + car.name + ' พร้อมพาร์ทที่เลือก"]')
-        ?.getAttribute('src'),
-    ).toBe(expectedFront);
-    const rearView = page.carViews().find((view) => view.view === 'rear');
-    expect(rearView).toBeDefined();
-    fixture.nativeElement.querySelector('[aria-label="มุมมอง หลังตรง"]').click();
-    fixture.detectChanges();
-    expect(page.previewImage()).toBe(rearView!.url);
-    expect(page.hasPreparedPreview()).toBe(false);
-    expect(page.partIds()).toEqual([front[0].id]);
-    expect(page.missingPartView()).toBe(false);
-    page.selectView('front45');
-    expect(page.previewImage()).toBe(expectedFront);
-    page.selectView('rear');
-    page.togglePart(front[1]);
-    expect(page.activeView()?.view).toBe('front45');
-    expect(page.partIds()).toEqual([front[1].id]);
-    page.togglePart(front[1]);
-    expect(page.previewImage()).toBe(stock);
-    page.togglePart(front[0]);
-    const rear = page.partsFor('rear');
-    page.togglePart(rear[0]);
-    expect(page.activeView()?.view).toBe('rear45');
-    expect(page.partIds()).toEqual([front[0].id, rear[0].id]);
-    const expectedRear = carViewManifest.find(
-      (entry) => entry.variant === 'rearbumper1' && entry.view === 'rear',
-    )!.url;
-    page.selectView('rear');
-    expect(page.previewImage()).toBe(expectedRear);
-    page.selectView('front');
-    expect(page.previewImage()).toBe(
-      carViewManifest.find((entry) => entry.variant === 'frontbumper1' && entry.view === 'front')!
-        .url,
-    );
-    page.togglePart(front[1]);
-    expect(page.activeView()?.view).toBe('front');
-    expect(page.missingPartView()).toBe(true);
-    page.selectView('rear');
-    expect(page.previewImage()).toBe(expectedRear);
-    page.togglePart(front[0]);
-    page.selectView('front45');
-    const store = TestBed.inject(BuildsStore);
-    expect(
-      (
-        await store.save({
-          name: 'Civic front',
-          carId: car.id,
-          carSnapshot: car,
-          partIds: page.partIds(),
-        })
-      ).ok,
-    ).toBe(true);
-    store.builds.set([]);
-    await store.load();
-    expect(store.error()).toBe('');
-    const saved = store.builds()[0];
-    expect(page.buildImage(saved)).toBe(expectedFront);
-    page.editBuild(saved);
-    expect(page.selectedParts()[0].id).toBe(front[0].id);
-    expect(page.previewImage()).toBe(expectedFront);
-    const otherCar = { ...car, reference: { ...car.reference, modelName: 'Different model' } };
-    expect(
-      (
-        await store.save({
-          name: 'Wrong fitment',
-          carId: car.id,
-          carSnapshot: otherCar,
-          partIds: [front[0].id],
-        })
-      ).ok,
-    ).toBe(false);
-    const wheel = page.partsFor('wheels')[0];
-    expect(wheel).toBeDefined();
-    page.selectView('rear45');
-    page.togglePart(wheel);
-    expect(page.activeView()?.view).toBe('rear45');
-    expect(page.previewImage()).toBe(
-      carViewManifest.find(
-        (entry) =>
-          entry.variant === 'rearbumper1' &&
-          entry.wheelVariant === 'wheel1' &&
-          entry.view === 'rear45',
-      )!.url,
-    );
-    page.selectView('front45');
-    const frontWheelImage = carViewManifest.find(
-      (entry) =>
-        entry.variant === 'frontbumper1' &&
-        entry.wheelVariant === 'wheel1' &&
-        entry.view === 'front45',
-    )!.url;
-    expect(page.previewImage()).toBe(frontWheelImage);
-    expect(page.missingPartView()).toBe(false);
-    expect(
-      (
-        await store.save({
-          id: saved.id,
-          name: 'Civic wheels',
-          carId: car.id,
-          carSnapshot: car,
-          partIds: page.partIds(),
-        })
-      ).ok,
-    ).toBe(true);
-    store.builds.set([]);
-    await store.load();
-    page.editBuild(store.builds()[0]);
-    expect(page.previewImage()).toBe(frontWheelImage);
-    page.togglePart(wheel);
-    expect(page.previewImage()).toBe(expectedFront);
-    page.selectView('front');
-    page.togglePart(wheel);
-    expect(page.activeView()?.view).toBe('front45');
-    const spoiler = page.partsFor('spoilers')[0];
-    expect(spoiler).toBeDefined();
-    expect(page.carViews().length).toBe(4);
-    page.togglePart(spoiler);
-    expect(page.missingPartView()).toBe(true); // The supplied images have no wheel + spoiler combination yet.
-    expect(page.previewImage()).toBe(frontWheelImage);
-    page.togglePart(wheel);
-    const frontSpoiler = carViewManifest.find(
-      (entry) =>
-        entry.variant === 'frontbumper1' &&
-        entry.spoilerVariant === 'spoiler1' &&
-        entry.view === 'front45',
-    )!.url;
-    expect(page.previewImage()).toBe(frontSpoiler);
-    expect(page.missingPartView()).toBe(false);
-    page.selectView('rear');
-    const rearSpoiler = carViewManifest.find(
-      (entry) =>
-        entry.variant === 'rearbumper1' &&
-        entry.spoilerVariant === 'spoiler1' &&
-        entry.view === 'rear',
-    )!.url;
-    expect(page.previewImage()).toBe(rearSpoiler);
-    expect(
-      (
-        await store.save({
-          id: saved.id,
-          name: 'Civic spoiler',
-          carId: car.id,
-          carSnapshot: car,
-          partIds: page.partIds(),
-        })
-      ).ok,
-    ).toBe(true);
-    store.builds.set([]);
-    await store.load();
-    page.editBuild(store.builds()[0]);
-    expect(page.previewImage()).toBe(frontSpoiler);
-    page.removePart(spoiler.id);
-    expect(page.previewImage()).toBe(expectedFront);
-    page.selectView('front');
-    page.togglePart(spoiler);
-    expect(page.activeView()?.view).toBe('rear45');
+  it('uses cloud angle photos and part IDs, restores the default and persists selections without local assets', async () => {
+    TestBed.overrideProvider(BUILD_COMPOSITOR,{useValue:vi.fn().mockRejectedValue(new Error('Renderer tested separately'))});
+    const base='https://test.supabase.co/storage/v1/object/public/catalog/Honda/Civic/';
+    const car={id:'storage-car:civic',storagePath:'Honda/Civic',modelName:'Civic',name:'Honda Civic',brand:'Honda',body:'',image:base+'45_front.png',views:{front45:base+'45_front.png',front:base+'front.png',rear45:base+'45_Back.png',rear:base+'Back.png'}};
+    const parts=['front','rear','wheels'].map(category=>({id:'storage-part:'+category,storagePath:'Honda/Civic/Part/'+category,carId:car.id,category,name:category,description:'',finish:'Test',crop:'full' as const,previewImage:base+category+'/45_front.png',views:{front45:base+category+'/45_front.png',front:base+category+'/front.png',rear45:base+category+'/45_Back.png',rear:base+category+'/Back.png'}}));
+    storageCatalogData.update(data=>({...data,cars:[...data.cars,car],parts:[...data.parts,...parts]}));
+    const fixture=TestBed.createComponent(MyBuilds),page=fixture.componentInstance;
+    fixture.detectChanges();page.startNew();page.chooseCar(car);
+    expect(page.previewImage()).toBe(car.views.front45);
+    page.togglePart(parts[0]);expect(page.previewImage()).toBe(parts[0].views.front45);
+    page.togglePart(parts[2]);expect(page.layerPlan()?.layers.map(layer=>layer.id)).toEqual([parts[2].id]);expect(page.missingPartView()).toBe(false);
+    page.selectView('rear');expect(page.previewImage()).toBe(car.views.rear);
+    page.togglePart(parts[1]);expect(page.activeView()?.view).toBe('rear');expect(page.previewImage()).toBe(parts[1].views.rear);
+    const store=TestBed.inject(BuildsStore);
+    expect((await store.save({name:'Cloud Civic',carId:car.id,partIds:page.partIds()})).ok).toBe(true);
+    store.builds.set([]);await store.load();page.editBuild(store.builds()[0]);
+    expect(page.partIds().sort()).toEqual(parts.map(part=>part.id).sort());
+    page.removePart(parts[0].id);page.removePart(parts[2].id);page.selectView('front45');
+    expect(page.previewImage()).toBe(car.views.front45);
+    expect(page.carImage({...car,id:'old',storagePath:undefined,image:'assets/List_Car/Honda/civic.png'})).toBeNull();
+    fixture.destroy();
   });
 
   it('saves, reloads, updates and deletes a build without changing its identity', async () => {

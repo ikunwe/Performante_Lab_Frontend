@@ -27,7 +27,7 @@ export const storageCatalogData = signal<StorageCatalogData>({
   fetchedAt: '',
   expiresAt: '',
 });
-const PREFIX = 'performante.storage-catalog.v2:';
+const PREFIX = 'performante.storage-catalog.v4:';
 const CHANGED = 'performante-storage-catalog-changed';
 const TTL = 5 * 60 * 1000;
 export function notifyStorageCatalogChanged(): void {
@@ -86,7 +86,7 @@ export function validStorageCatalog(value: unknown): value is StorageCatalogData
         typeof p.name === 'string' &&
         typeof p.category === 'string' &&
         image(p.previewImage) &&
-        validViews(p.views),
+        validViews(p.views) && validViews(p.masks) && validViews(p.layerViews),
     )
   );
 }

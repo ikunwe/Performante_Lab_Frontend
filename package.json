@@ -4,19 +4,14 @@
   "scripts": {
     "config:auth": "node scripts/write-auth-config.mjs",
     "prestart": "npm run config:auth",
-    "prebuild": "npm run config:auth && npm run assets:cars && npm run assets:parts && npm run assets:views && npm run assets:builds",
+    "prebuild": "npm run config:auth",
     "prewatch": "npm run config:auth",
     "ng": "ng",
-    "start": "node scripts/run-with-car-images.mjs serve",
+    "start": "ng serve",
     "build": "ng build",
-    "watch": "node scripts/run-with-car-images.mjs build --watch --configuration development",
+    "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:Performante_Lab_Frontend": "node dist/Performante_Lab_Frontend/server/server.mjs",
-    "assets:cars": "node scripts/write-car-image-manifest.mjs",
-    "assets:parts": "node scripts/write-part-image-manifest.mjs",
-    "assets:views": "node scripts/write-car-view-manifest.mjs",
-    "assets:builds": "node scripts/write-build-catalog.mjs",
-    "test:assets": "node --test scripts/car-image-watch.test.mjs"
+    "serve:ssr:Performante_Lab_Frontend": "node dist/Performante_Lab_Frontend/server/server.mjs"
   },
   "private": true,
   "packageManager": "npm@11.17.0",

@@ -277,10 +277,10 @@ describe('Admin Portal Features', () => {
     beforeEach(() => {
       adminService = TestBed.inject(AdminService);
       adminService.catalogBrands.set([
-        mapBrand({ id: 'b-toyota', name: 'Toyota', slug: 'toyota', logo_url: 'assets/brands/toyota.svg' }),
-        mapBrand({ id: 'b-mercedes', name: 'Mercedes-Benz', slug: 'mercedes-benz', logo_url: 'assets/brands/mercedes.svg' }),
-        mapBrand({ id: 'b-ferrari', name: 'Ferrari', slug: 'ferrari', logo_url: 'assets/brands/ferrari.png', is_custom_bg: true }),
-        mapBrand({ id: 'b-honda', name: 'Honda', slug: 'honda', logo_url: 'assets/brands/honda.svg' }),
+        mapBrand({ id: 'b-toyota', name: 'Toyota', slug: 'toyota', logo_url: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/toyota.svg' }),
+        mapBrand({ id: 'b-mercedes', name: 'Mercedes-Benz', slug: 'mercedes-benz', logo_url: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/mercedes.svg' }),
+        mapBrand({ id: 'b-ferrari', name: 'Ferrari', slug: 'ferrari', logo_url: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/ferrari.png', is_custom_bg: true }),
+        mapBrand({ id: 'b-honda', name: 'Honda', slug: 'honda', logo_url: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/honda.svg' }),
       ]);
       adminService.catalogModels.set([
         mapCarModel({ id: 'c-488-pista', brand_id: 'b-ferrari', name: 'Ferrari 488 Pista', slug: 'ferrari-488-pista', image_url: 'assets/car_pic.png', body_type: 'Coupe' }),
@@ -449,7 +449,7 @@ describe('Admin Portal Features', () => {
       // Add Brand
       const newBrand = adminService.addBrand({
         name: 'Porsche',
-        logoUrl: 'assets/brands/porsche.png',
+        logoUrl: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/porsche.png',
         isCustomBg: false,
       });
       expect(adminService.editBrands().length).toBe(initialBrandsCount + 1);

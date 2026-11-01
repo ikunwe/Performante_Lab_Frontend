@@ -24,7 +24,7 @@ describe('User Requests UI', async () => {
         },
         {
           provide: RequestsApi,
-          useValue: { list: vi.fn().mockResolvedValue([]), submit: vi.fn() },
+          useValue: { list: vi.fn().mockResolvedValue([]), submit: vi.fn(), cancel: vi.fn() },
         },
         {
           provide: StorageCatalogStore,
@@ -59,6 +59,39 @@ describe('User Requests UI', async () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  it('confirms cancellation, keeps Pending on failure and updates only after the server responds', async () => {
+    const fixture = await create(), page = fixture.componentInstance;
+    const request = { id: 'request-1', title: 'Add FL5', kind: 'part' as const, status: 'Pending' as const,
+      description: '', brandName: 'Honda', modelName: 'Civic', manufacturer: '', source: '', images: [], author: 'Driver', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    page.submitted.set([request]); page.tab.set('mine');
+    fixture.detectChanges();
+    const api = TestBed.inject(RequestsApi);
+    page.requestCancel(request);
+    expect(api.cancel).not.toHaveBeenCalled();
+    vi.mocked(api.cancel).mockRejectedValueOnce(new Error('offline'));
+    await page.confirmCancel(request.id);
+    expect(page.submitted()[0].status).toBe('Pending');
+    expect(page.requestsError()).toBe('offline');
+    let resolve!: (value: any) => void;
+    vi.mocked(api.cancel).mockImplementationOnce(() => new Promise(done => resolve = done));
+    const saving = page.confirmCancel(request.id);
+    fixture.detectChanges();
+    expect(page.cancellingId()).toBe(request.id);
+    expect(fixture.nativeElement.textContent).toContain('กำลังยกเลิก');
+    await page.confirmCancel(request.id);
+    expect(api.cancel).toHaveBeenCalledTimes(2);
+    resolve({ ...request, status: 'Cancelled' }); await saving;
+    fixture.detectChanges();
+    expect(page.submitted()).toEqual([]);
+    expect(page.cancelTarget()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('ยืนยันยกเลิก');
+    vi.mocked(api.list).mockResolvedValueOnce([{ ...request, status: 'Cancelled' }]);
+    await page.loadRequests();
+    expect(page.submitted()).toEqual([]);
+    page.requestCancel({ ...request, status: 'Cancelled' });
+    expect(page.cancelTarget()).toBeNull();
+  });
 
   it('requires title, compatible car context and a photo before review', async () => {
     const page = (await create()).componentInstance;
