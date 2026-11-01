@@ -20,7 +20,7 @@
       @if (auth.user()) {
       <app-account-menu [name]="auth.displayName()" [email]="auth.user()?.email ?? ''" [busy]="auth.busy()"
         [avatarUrl]="auth.avatarUrl()" [complete]="auth.accountComplete()" [showStatus]="true" (profile)="showProfile()"
-        (requests)="showRequests()" (logout)="signOut()" />
+        (liked)="showLiked()" (requests)="showRequests()" (logout)="signOut()" />
       } @else {
       <a routerLink="/login" aria-label="เข้าสู่ระบบ"
         class="flex items-center gap-2 border-l border-white/10 pl-3 text-[11px] text-stone-300 md:pl-5 cursor-pointer"><span
@@ -83,6 +83,7 @@
             {{
             activeTab() === 'Discover'
             ? 'ค้นหาแรงบันดาลใจให้ Build คันต่อไปของคุณ'
+            : activeTab() === 'Liked' ? 'Build สาธารณะที่คุณกด Like เก็บไว้'
             : activeTab() === 'Catalog'
             ? 'ค้นหายี่ห้อ รุ่นรถ และพาร์ตแต่งสำหรับคันต่อไปของคุณ'
             : activeTab() === 'Compare'
@@ -95,9 +96,9 @@
             }}
           </p>
         </div>
-        @if (activeTab() === 'Discover') {
+        @if (activeTab() === 'Discover' || activeTab() === 'Liked') {
         <div class="flex w-full items-center gap-2 sm:w-auto">
-          <button type="button" (click)="feed.load(true)" [disabled]="feed.loading() || !ready()" [attr.aria-busy]="feed.loading()" aria-label="รีเฟรช Build" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><app-icon name="rotate" [class.animate-spin]="feed.loading()" class="!size-3 motion-reduce:animate-none" />รีเฟรช</button>
+          <button type="button" (click)="refreshBuilds()" [disabled]="feedLoading() || !ready() || (activeTab() === 'Liked' && likes.busyIds().length > 0)" [attr.aria-busy]="feedLoading()" aria-label="รีเฟรช Build" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><app-icon name="rotate" [class.animate-spin]="feedLoading()" class="!size-3 motion-reduce:animate-none" />รีเฟรช</button>
 
           <label
             class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-3 sm:w-[210px]"><app-icon
@@ -113,7 +114,7 @@
         }
       </div>
 
-      @if (filtersOpen() && activeTab() === 'Discover') {
+      @if (filtersOpen() && (activeTab() === 'Discover' || activeTab() === 'Liked')) {
       <div id="build-filters"
         class="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-[#151515] p-3">
         @for (item of categories; track item) {
@@ -131,23 +132,24 @@
 
       <p role="status" class="mb-4 text-[11px] text-amber-200/70">{{ status() }}</p>
 
-      @if (activeTab() === 'Discover') {
+      @if (activeTab() === 'Discover' || activeTab() === 'Liked') {
       <div class="mb-4 flex items-center justify-between border-b border-white/[.06] pb-3 text-[10px] text-stone-600">
-        <span>{{ visibleBuilds().length }} BUILDS</span><span>Build สาธารณะจากชุมชน</span>
+        <span>{{ visibleBuilds().length }} BUILDS</span><span>{{ activeTab() === 'Liked' ? 'Build ที่คุณกด Like' : 'Build สาธารณะจากชุมชน' }}</span>
 
       </div>
-      @if (feed.error()) { <p role="alert" class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">{{ feed.error() }}</p> }
-      @if (!ready() || feed.loading()) { <app-loading-skeleton label="กำลังโหลด Build" /> } @else {
+      @if (activeTab() === 'Discover' && likes.error() && !likes.loaded()) {<p role="alert" class="mb-4 rounded-lg border border-amber-500/30 p-3 text-xs text-amber-200">{{ likes.error() }} <button type="button" (click)="likes.load(true)" [disabled]="likes.loading()" class="ml-2 cursor-pointer underline disabled:cursor-not-allowed">ลองโหลด Like อีกครั้ง</button></p>}
+      @if (feedError()) { <p role="alert" class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">{{ feedError() }}</p> }
+      @if (!ready() || feedLoading()) { <app-loading-skeleton label="กำลังโหลด Build" /> } @else {
       <div class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         @for (build of visibleBuilds(); track build.id) {
-        <app-build-card [build]="build" [liked]="liked().includes(build.id)" [busy]="preparingBuild() || deletingBuild()" (like)="toggleLike($event)"
+        <app-build-card [build]="build" [liked]="liked().includes(build.id)" [likeCount]="build.likes ?? 0" [busy]="preparingBuild() || deletingBuild()" [likeBusy]="likes.busyIds().includes(build.id)" [likeDisabled]="likes.loading() || !likes.loaded()" (like)="toggleLike($event)"
           (details)="showDetails($event)" (copy)="openCreate($event)" (remove)="requestDelete($event)" />
         } @empty {
-        @if (ready() && !feed.loading() && !feed.error()) {
+        @if (ready() && !feedLoading() && !feedError()) {
         <div class="col-span-full rounded-lg border border-dashed border-white/10 px-5 py-20 text-center">
           <app-icon name="builds" class="!size-8 text-stone-600" />
           <h2 class="mt-4 text-lg">ยังไม่มี Build ในรายการนี้</h2>
-          <p class="mt-2 text-sm text-stone-500">Discover แสดงเฉพาะ Build สาธารณะ ส่วน Build ส่วนตัวดูได้ใน My Builds</p>
+          <p class="mt-2 text-sm text-stone-500">{{ activeTab() === 'Liked' ? 'กด Like บน Build ที่สนใจ แล้วกลับมาดูได้ที่หน้านี้' : 'Discover แสดงเฉพาะ Build สาธารณะ ส่วน Build ส่วนตัวดูได้ใน My Builds' }}</p>
           @if (!auth.user()) { <a routerLink="/login" [queryParams]="{next:'/discover'}" class="mt-5 inline-block cursor-pointer rounded-lg border border-white/15 px-5 py-3 text-xs">เข้าสู่ระบบเพื่อดู Build ของคุณ</a> }
           <button type="button" (click)="openCreate()"
             class="mt-5 rounded-lg bg-[#ce281a] px-5 py-3 text-xs cursor-pointer disabled:cursor-not-allowed">

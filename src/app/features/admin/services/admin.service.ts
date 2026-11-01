@@ -1,3 +1,5 @@
+import { AdminBuildsApi } from './admin-builds.api';
+import { invalidateDiscoverFeed } from '../../discover/discover-feed.store';
 import { RequestsApi, RequestRecord } from '../../../core/requests/requests.api';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -154,113 +156,6 @@ export function mapPart(row: any): RealPartItem {
   };
 }
 
-const INITIAL_BUILDS: AdminBuildItem[] = [
-  {
-    id: 'b-1',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Sano Widebody Fenders', 'Carbon Fiber Front Lip', 'GT Wing Spoiler', 'Forged 18-inch Wheels'],
-    budget: 245000,
-    category: 'Show',
-    createdAt: '2026-10-28',
-  },
-  {
-    id: 'b-2',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Dual Titanium Exhaust', 'Track Coilovers', 'Roll Cage', 'Cup 2 Tires'],
-    budget: 310000,
-    category: 'Track',
-    createdAt: '2026-10-27',
-  },
-  {
-    id: 'b-3',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Air Suspension Kit', 'Custom 3-piece Wheels', 'Alcantara Interior'],
-    budget: 280000,
-    category: 'Street',
-    createdAt: '2026-10-26',
-  },
-  {
-    id: 'b-4',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Full Carbon Aerodynamic Pack', 'Big Brake Kit 6-Pot'],
-    budget: 350000,
-    category: 'Track',
-    createdAt: '2026-10-25',
-  },
-  {
-    id: 'b-5',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Sano Front Bumper', 'Side Skirts', 'Rear Diffuser'],
-    budget: 190000,
-    category: 'Street',
-    createdAt: '2026-10-24',
-  },
-  {
-    id: 'b-6',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Custom Candy Red Paint', 'Polished Lip Wheels', 'Audio System'],
-    budget: 220000,
-    category: 'Show',
-    createdAt: '2026-10-23',
-  },
-  {
-    id: 'b-7',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Stage 2 Turbo Kit', 'Front Mount Intercooler', 'Oil Cooler'],
-    budget: 420000,
-    category: 'Track',
-    createdAt: '2026-10-22',
-  },
-  {
-    id: 'b-8',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    parts: ['Daily Street Lowering Springs', 'OEM+ Spoiler', 'Enkei RPF1'],
-    budget: 110000,
-    category: 'Street',
-    createdAt: '2026-10-21',
-  },
-];
-
 export const INITIAL_USERS: AdminUserItem[] = [
   {
     id: 'u-1',
@@ -311,6 +206,10 @@ export const INITIAL_EDIT_PARTS: RealPartItem[] = [];
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly auth = inject(AuthService);
+  private readonly buildsApi=inject(AdminBuildsApi);
+  private buildsOwner:string|null=null;
+  private buildsExpires=0;
+  private buildsVersion=0;
   private readonly requestsApi=inject(RequestsApi);
   private readonly createClient = inject(AUTH_CLIENT);
   private readonly loadConfig = inject(AUTH_CONFIG);
@@ -322,7 +221,10 @@ export class AdminService {
   readonly error = signal<string | null>(null);
 
   // Builds state
-  readonly builds = signal<AdminBuildItem[]>(INITIAL_BUILDS);
+  readonly builds = signal<AdminBuildItem[]>([]);
+  readonly buildsLoading=signal(false);
+  readonly buildsError=signal('');
+  readonly buildDeleteBusyId=signal<string|null>(null);
   readonly discoverSearch = signal('');
   readonly discoverTagFilter = signal('All');
   readonly selectedBuild = signal<AdminBuildItem | null>(null);
@@ -1304,35 +1206,19 @@ export class AdminService {
   }
 
   // Real Database Queries
-  async fetchBuilds(): Promise<void> {
-    const client = await this.getClient();
-    if (!client) return;
-    try {
-      const { data, error } = await client
-        .from('builds')
-        .select('*, profiles(username)')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      if (data && data.length > 0) {
-        const mapped: AdminBuildItem[] = data.map((item: any) => ({
-          id: item.id,
-          title: item.title,
-          author: item.profiles?.username || 'Unknown',
-          car: item.car_name,
-          tag: item.tag,
-          likes: item.likes >= 1000 ? `${(item.likes / 1000).toFixed(0)}k+` : `${item.likes || 0}`,
-          image: item.image_url || 'assets/car_pic.png',
-          parts: Array.isArray(item.parts) ? item.parts : [],
-          budget: Number(item.budget) || 0,
-          category: item.category || 'Street',
-          createdAt: item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : '',
-        }));
-        this.builds.set(mapped);
-      }
-    } catch {
-      // Graceful fallback to initial seed builds
-    }
+  async fetchBuilds(force=false): Promise<void> {
+    const owner=this.auth.user()?.id??null;
+    if(owner!==this.buildsOwner){this.buildsOwner=owner;this.buildsExpires=0;++this.buildsVersion;this.builds.set([]);this.buildsLoading.set(false);this.buildDeleteBusyId.set(null);}
+    if(this.buildsLoading()||this.buildDeleteBusyId()||(!force&&Date.now()<this.buildsExpires))return;
+    const version=++this.buildsVersion;
+    this.buildsLoading.set(true);this.buildsError.set('');
+    try{
+      const data=await this.buildsApi.list();
+      if(version!==this.buildsVersion||this.auth.user()?.id!==owner)return;
+      this.builds.set(data.map(item=>({id:item.id,title:item.title,author:item.author,car:item.car,tag:item.carId||'',likes:String(item.likes??0),image:item.image,parts:item.parts,budget:item.budget,category:item.category,createdAt:item.createdAt||''})));
+      this.buildsExpires=Date.now()+5*60*1000;
+    }catch(error){if(version===this.buildsVersion){this.buildsExpires=0;this.buildsError.set(error instanceof Error?error.message:'โหลด Build ไม่สำเร็จ');}}
+    finally{if(version===this.buildsVersion)this.buildsLoading.set(false);}
   }
 
   private mapRequest(item:RequestRecord):AdminRequestItem {
@@ -1441,34 +1327,18 @@ export class AdminService {
     }
   }
 
-  // Actions: Builds with Optimistic UI & Rollback
   async deleteBuild(id: string): Promise<boolean> {
-    const previous = this.builds();
-    const exists = previous.some((b) => b.id === id);
-    if (!exists) return false;
-
-    // Optimistic UI update
-    this.builds.set(previous.filter((b) => b.id !== id));
-    if (this.selectedBuild()?.id === id) {
-      this.selectedBuild.set(null);
-    }
-
-    const client = await this.getClient();
-    if (client) {
-      try {
-        const { error } = await client
-          .from('builds')
-          .update({ is_deleted: true })
-          .eq('id', id);
-        if (error) throw error;
-      } catch (err: any) {
-        // Rollback
-        this.builds.set(previous);
-        this.error.set('ลบ Build ไม่สำเร็จ: ' + (err?.message || 'เครือข่ายขัดข้อง'));
-        return false;
-      }
-    }
-    return true;
+    if(this.buildDeleteBusyId() || this.buildsLoading() || !this.builds().some(build=>build.id===id))return false;
+    const owner=this.auth.user()?.id,version=++this.buildsVersion;
+    this.buildDeleteBusyId.set(id);this.buildsError.set('');
+    try{
+      await this.buildsApi.remove(id);
+      if(this.auth.user()?.id!==owner||version!==this.buildsVersion)return false;
+      this.builds.update(rows=>rows.filter(row=>row.id!==id));
+      if(this.selectedBuild()?.id===id)this.selectedBuild.set(null);
+      invalidateDiscoverFeed();return true;
+    }catch(error){if(this.auth.user()?.id===owner)this.buildsError.set(error instanceof Error?error.message:'ลบ Build ไม่สำเร็จ');return false;}
+    finally{if(version===this.buildsVersion)this.buildDeleteBusyId.set(null);}
   }
 
   async acceptRequest(id:string):Promise<boolean> { return this.reviewRequest(id,'Accepted'); }

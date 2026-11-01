@@ -51,6 +51,13 @@ export const routes: Routes = [
       import('./features/auth/recovery/reset-password').then((m) => m.ResetPassword),
   },
   {
+    path: 'liked',
+    canActivate: [authGuard],
+    title: 'Liked | Performante Lab',
+    data: { tab: 'Liked' },
+    loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
+  },
+  {
     path: 'requests',
     canActivate: [authGuard],
     title: 'Requests | Performante Lab',
