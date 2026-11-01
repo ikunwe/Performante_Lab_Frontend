@@ -8,7 +8,7 @@ export const DISCOVER_FETCH = new InjectionToken<typeof fetch>('DISCOVER_FETCH',
   providedIn: 'root',
   factory: () => fetch.bind(globalThis),
 });
-function validBuild(value: unknown): value is ShowcaseBuild {
+export function validBuild(value: unknown): value is ShowcaseBuild {
   const row = value as ShowcaseBuild;
   return (
     !!row &&
@@ -56,6 +56,9 @@ export class DiscoverFeedStore {
     this.builds.set([]);
     this.loading.set(false);
     this.error.set('');
+  }
+  setLikeCount(id:string,likes:number):void {
+    this.builds.update(rows=>rows.map(row=>row.id===id ? {...row,likes} : row));
   }
   async load(force = false): Promise<void> {
     await this.auth.initialize();

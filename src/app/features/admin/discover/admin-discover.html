@@ -80,20 +80,20 @@
   }
 
   <!-- Global Admin Service Error Alert -->
-  @if (admin.error()) {
+  @if (admin.buildsError()) {
     <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400 flex items-center justify-between animate-in fade-in duration-200">
       <div class="flex items-center gap-2">
         <app-icon name="close" class="!size-4" />
-        <span>{{ admin.error() }}</span>
+        <span>{{ admin.buildsError() }}</span><button type="button" (click)="admin.fetchBuilds(true)" [disabled]="admin.buildsLoading()" class="ml-3 cursor-pointer underline disabled:cursor-not-allowed">ลองโหลดอีกครั้ง</button>
       </div>
-      <button type="button" (click)="admin.error.set(null)" class="text-stone-400 hover:text-white cursor-pointer">
+      <button type="button" (click)="admin.buildsError.set('')" class="text-stone-400 hover:text-white cursor-pointer">
         <app-icon name="close" class="!size-3" />
       </button>
     </div>
   }
 
   <!-- Loading State -->
-  @if (admin.loading()) {
+  @if (admin.buildsLoading()) {
     <div class="flex flex-col items-center justify-center py-24 text-stone-500 space-y-3">
       <app-icon name="spinner" class="!size-7 animate-spin text-[#ce281a]" />
       <span class="animate-pulse text-sm">กำลังโหลดข้อมูลจากฐานข้อมูล...</span>
@@ -261,10 +261,10 @@
           </button>
           <button
             type="button"
-            (click)="executeDelete()"
+            (click)="executeDelete()" [disabled]="!!admin.buildDeleteBusyId()" [attr.aria-busy]="!!admin.buildDeleteBusyId()"
             class="py-2.5 rounded-xl bg-[#ce281a] hover:bg-red-600 text-white text-xs font-bold transition-colors cursor-pointer"
           >
-            ยืนยันการลบ
+            @if (admin.buildDeleteBusyId()) {<app-icon name="spinner" class="mr-2 !size-3 animate-spin" />กำลังลบ…} @else {ยืนยันการลบ}
           </button>
         </div>
       </div>

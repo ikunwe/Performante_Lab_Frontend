@@ -7,7 +7,9 @@ import { Discover } from './discover';
 import { BuildsStore } from '../my-builds/builds.store';
 import { showcaseBuilds as examples } from '../../testing/discover.fixture';
 import { DiscoverFeedStore } from './discover-feed.store';
-import { signal } from '@angular/core';
+import { signal, computed } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
+import { LikesStore } from '../liked/likes.store';
 const showcaseBuilds = examples.map((build) => ({
   ...build,
   id: String(build.id),
@@ -30,22 +32,28 @@ describe('Discover workspace', () => {
             load: async () => {},
           },
         },
+        {provide:LikesStore,useFactory:()=>{
+          const builds=signal<typeof showcaseBuilds>([]);
+          return {builds,ids:computed(()=>new Set(builds().map(b=>b.id))),loading:signal(false),loaded:signal(true),error:signal(''),busyIds:signal<string[]>([]),load:vi.fn().mockResolvedValue(undefined),
+            toggle:vi.fn(async(build:typeof showcaseBuilds[number])=>{builds.update(rows=>rows.some(row=>row.id===build.id)?rows.filter(row=>row.id!==build.id):[...rows,build]);return {ok:true};}),forget:vi.fn()};
+        }},
         provideRouter(routes),
         { provide: AUTH_CLIENT, useValue: async () => null },
       ],
     }),
   );
 
-  it('filters builds by search, category and liked state', () => {
+  it('filters builds by search, category and liked state', async () => {
+    TestBed.inject(AuthService).session.set({user:{id:'account-a'}} as never);
     const page = TestBed.createComponent(Discover).componentInstance;
     page.query.set('Ferrari');
     expect(page.visibleBuilds().every((b) => b.car.includes('Ferrari'))).toBe(true);
     page.category.set('Track');
     expect(page.visibleBuilds().length).toBe(2);
-    page.toggleLike(showcaseBuilds[3]);
+    await page.toggleLike(showcaseBuilds[3]);
     page.likedOnly.set(true);
     expect(page.visibleBuilds().map((b) => b.id)).toEqual(['4']);
-    page.toggleLike(showcaseBuilds[3]);
+    await page.toggleLike(showcaseBuilds[3]);
     expect(page.visibleBuilds()).toEqual([]);
   });
 
@@ -131,6 +139,24 @@ describe('Discover workspace', () => {
     expect(page.feed.builds()).toEqual([]);
     expect(dialog.hasAttribute('open')).toBe(false);
     expect(remove).toHaveBeenCalledWith(own.id);
+  });
+
+  it('renders the Liked workspace with the same cards and supports search', () => {
+    const fixture=TestBed.createComponent(Discover),page=fixture.componentInstance;
+    const likes=TestBed.inject(LikesStore);likes.builds.set([showcaseBuilds[0]]);
+    page.activeTab.set('Liked');
+    expect(page.visibleBuilds().map(build=>build.id)).toEqual([showcaseBuilds[0].id]);
+    page.query.set('missing-build');expect(page.visibleBuilds()).toEqual([]);
+  });
+
+  it('opens /liked directly after session restoration without flashing Discover', async () => {
+    TestBed.overrideProvider(AuthService,{useValue:{
+      ready:signal(true),user:signal({id:'account-a'}),busy:signal(false),apiError:signal(''),apiLoading:signal(false),displayName:signal('Driver'),avatarUrl:signal(''),accountComplete:signal(true),isActive:signal(true),initialize:vi.fn().mockResolvedValue(undefined),
+    }});
+    const harness=await RouterTestingHarness.create('/liked');
+    expect((harness.routeDebugElement!.componentInstance as Discover).activeTab()).toBe('Liked');
+    expect(harness.routeNativeElement!.querySelector('#page-title')?.textContent?.trim()).toBe('Liked');
+    expect(TestBed.inject(DiscoverFeedStore).loading()).toBe(false);
   });
 
 });

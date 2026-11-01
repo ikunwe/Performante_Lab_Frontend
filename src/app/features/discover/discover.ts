@@ -1,3 +1,4 @@
+import { LikesStore } from '../liked/likes.store';
 import { DiscoverFeedStore, discoverRevision } from './discover-feed.store';
 import { StorageCatalogStore } from '../../core/catalog/storage-catalog';
 import {
@@ -29,7 +30,7 @@ import { BuildsStore } from '../my-builds/builds.store';
 import { UserRequests } from '../requests/user-requests';
 import { LoadingSkeleton } from '../../shared/ui/loading-skeleton/loading-skeleton';
 
-type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Requests';
+type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Requests' | 'Liked';
 @Component({
   selector: 'app-discover',
   imports: [
@@ -49,6 +50,7 @@ type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Reque
 export class Discover {
   readonly auth = inject(AuthService);
   readonly feed = inject(DiscoverFeedStore);
+  readonly likes = inject(LikesStore);
   private readonly catalog = inject(StorageCatalogStore);
   readonly ready = signal(this.auth.ready());
   readonly preparingBuild = signal(false);
@@ -72,7 +74,7 @@ export class Discover {
   readonly query = signal('');
   readonly category = signal('All');
   readonly filtersOpen = signal(false);
-  readonly liked = signal<string[]>([]);
+  readonly liked = computed(()=>[...this.likes.ids()]);
   readonly likedOnly = signal(false);
   readonly selected = signal<ShowcaseBuild | null>(null);
   readonly modal = signal<'details' | 'notifications' | 'delete'>('details');
@@ -83,7 +85,7 @@ export class Discover {
   readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   readonly categories = ['All', 'Street', 'Track', 'Show'];
   readonly visibleBuilds = computed(() => {
-    const source = this.feed.builds();
+    const source = this.activeTab() === 'Liked' ? this.likes.builds() : this.feed.builds();
     const search = this.query().trim().toLowerCase();
     return source.filter(
       (b) =>
@@ -100,6 +102,7 @@ export class Discover {
       const tab = this.activeTab();
       this.auth.user();
       discoverRevision();
+      if (ready && (tab === 'Discover' || tab === 'Liked')) untracked(()=>{void this.likes.load();});
       if (ready && tab === 'Discover')
         untracked(() => {
           void this.feed.load();
@@ -110,7 +113,7 @@ export class Discover {
       const owner = this.auth.user()?.id ?? null;
       untracked(() => {
         if (previousOwner !== undefined && previousOwner !== owner) {
-          this.liked.set([]);
+
           this.selected.set(null);
           afterNextRender(
             () => {
@@ -150,13 +153,16 @@ export class Discover {
       'My Builds': '/my-builds',
       Profile: '/profile',
       Requests: '/requests',
+      Liked: '/liked',
     };
     void this.router.navigateByUrl(urls[tab]);
   }
-  toggleLike(build: ShowcaseBuild): void {
-    this.liked.update((ids) =>
-      ids.includes(build.id) ? ids.filter((id) => id !== build.id) : [...ids, build.id],
-    );
+  readonly feedLoading=computed(()=>this.activeTab()==='Liked'?this.likes.loading():this.feed.loading());
+  readonly feedError=computed(()=>this.activeTab()==='Liked'?this.likes.error():this.feed.error());
+  refreshBuilds():void {if(this.activeTab()==='Liked')void this.likes.load(true);else {void this.feed.load(true);void this.likes.load(true);}}
+  async toggleLike(build:ShowcaseBuild):Promise<void> {
+    if(!this.auth.user()){void this.router.navigate(['/login'],{queryParams:{next:this.activeTab()==='Liked'?'/liked':'/discover'}});return;}
+    const result=await this.likes.toggle(build);this.status.set(result.ok?'':result.error || 'บันทึก Like ไม่สำเร็จ');
   }
   requestDelete(build: ShowcaseBuild): void {
     if (!build.isOwn || this.deletingBuild()) return;
@@ -174,7 +180,7 @@ export class Discover {
       const result = await this.injector.get(BuildsStore).remove(build.id);
       if (!result.ok) { this.deleteError.set(result.error); return; }
       this.feed.builds.update(rows => rows.filter(row => row.id !== build.id));
-      this.liked.update(ids => ids.filter(id => id !== build.id));
+      this.likes.forget(build.id);
       this.status.set('ลบ Build แล้ว');
       this.dialog().nativeElement.close();
       this.selected.set(null);
@@ -222,6 +228,10 @@ export class Discover {
   notifications(): void {
     this.modal.set('notifications');
     this.openModal();
+  }
+  showLiked(): void {
+    const open=()=>this.applyTab('Liked');const workspace=this.buildsWorkspace();
+    if(workspace?.editing())workspace.requestLeave(open);else open();
   }
   showRequests(): void {
     const workspace = this.buildsWorkspace();
