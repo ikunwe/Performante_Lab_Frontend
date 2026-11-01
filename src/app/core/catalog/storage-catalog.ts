@@ -27,7 +27,7 @@ export const storageCatalogData = signal<StorageCatalogData>({
   fetchedAt: '',
   expiresAt: '',
 });
-const PREFIX = 'performante.storage-catalog.v1:';
+const PREFIX = 'performante.storage-catalog.v2:';
 const CHANGED = 'performante-storage-catalog-changed';
 const TTL = 5 * 60 * 1000;
 export function notifyStorageCatalogChanged(): void {
@@ -45,6 +45,14 @@ export function validStorageCatalog(value: unknown): value is StorageCatalogData
   const image = (value: unknown) =>
     typeof value === 'string' &&
     /^https?:\/\/[^/]+\/storage\/v1\/object\/public\/catalog\//.test(value);
+  const validViews = (views: unknown) =>
+    views === undefined ||
+    (!!views &&
+      typeof views === 'object' &&
+      Object.entries(views).every(
+        ([key, value]) =>
+          ['front45', 'front', 'side', 'rear45', 'rear'].includes(key) && image(value),
+      ));
   return (
     !!data &&
     data.schemaVersion === 1 &&
@@ -67,7 +75,8 @@ export function validStorageCatalog(value: unknown): value is StorageCatalogData
         c.id.startsWith('storage-car:') &&
         typeof c.storagePath === 'string' &&
         typeof c.name === 'string' &&
-        image(c.image),
+        image(c.image) &&
+        validViews(c.views),
     ) &&
     data.parts.every(
       (p) =>
@@ -76,7 +85,8 @@ export function validStorageCatalog(value: unknown): value is StorageCatalogData
         data.cars.some((c) => c.id === p.carId) &&
         typeof p.name === 'string' &&
         typeof p.category === 'string' &&
-        image(p.previewImage),
+        image(p.previewImage) &&
+        validViews(p.views),
     )
   );
 }

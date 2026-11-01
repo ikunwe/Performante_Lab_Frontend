@@ -32,6 +32,9 @@ export class DiscoverFeedStore {
   private readonly request = inject(DISCOVER_FETCH);
   private owner: string | null | undefined;
   private version = 0;
+  private expires = 0;
+  private snapshotRevision = -1;
+  private pending?: { owner: string | null; revision: number; promise: Promise<void> };
   private controller?: AbortController;
   readonly builds = signal<ShowcaseBuild[]>([]);
   readonly loading = signal(false);
@@ -45,16 +48,32 @@ export class DiscoverFeedStore {
   private switchOwner(owner: string | null): void {
     if (this.owner === owner) return;
     this.owner = owner;
+    this.expires = 0;
+    this.snapshotRevision = -1;
+    this.pending = undefined;
     ++this.version;
     this.controller?.abort();
     this.builds.set([]);
     this.loading.set(false);
     this.error.set('');
   }
-  async load(): Promise<void> {
+  async load(force = false): Promise<void> {
     await this.auth.initialize();
     const owner = this.auth.user()?.id ?? null;
     this.switchOwner(owner);
+    const revision = discoverRevision();
+    if (!force && Date.now() < this.expires && this.snapshotRevision === revision) return;
+    if (this.pending?.owner === owner && this.pending.revision === revision)
+      return this.pending.promise;
+    const promise = this.fetchFeed(owner, revision);
+    this.pending = { owner, revision, promise };
+    try {
+      await promise;
+    } finally {
+      if (this.pending?.promise === promise) this.pending = undefined;
+    }
+  }
+  private async fetchFeed(owner: string | null, revision: number): Promise<void> {
     const version = ++this.version;
     this.controller?.abort();
     const controller = (this.controller = new AbortController());
@@ -93,18 +112,24 @@ export class DiscoverFeedStore {
               page.nextOffset > 10000))
         )
           throw new Error('invalid feed');
-        for (const row of page.builds) rows.set(row.id, row);
+        for (const row of page.builds) if (row.isPublic) rows.set(row.id, row);
         if (!current()) return;
         offset = page.nextOffset;
       }
-      if (current()) this.builds.set([...rows.values()]);
+      if (current()) {
+        this.builds.set([...rows.values()]);
+        this.expires = Date.now() + 5 * 60 * 1000;
+        this.snapshotRevision = revision;
+      }
     } catch {
-      if (current())
+      if (current()) {
+        this.expires = 0;
         this.error.set(
           this.builds().length
             ? 'อัปเดตรายการไม่ได้ กำลังแสดงข้อมูลล่าสุดที่โหลดสำเร็จ'
             : 'โหลดรายการ Build ไม่สำเร็จ กรุณาลองใหม่',
         );
+      }
     } finally {
       if (current()) this.loading.set(false);
     }

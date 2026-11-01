@@ -585,6 +585,9 @@ describe('My Builds with the account API', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const input = fixture.nativeElement.querySelector('#saved-build-name') as HTMLInputElement;
+    expect(page.categories.map(category=>category.id)).toEqual(['bodykits','front','rear','wheels','spoilers']);
+    const category = fixture.nativeElement.querySelector('#saved-build-category') as HTMLSelectElement;
+    category.value = 'Track'; category.dispatchEvent(new Event('change', {bubbles:true}));
     input.value = 'Weekend build';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
@@ -593,9 +596,11 @@ describe('My Builds with the account API', () => {
     await fixture.whenStable();
     expect(save).toHaveBeenCalledOnce();
     expect(page.store.builds()[0].name).toBe('Weekend build');
+    expect(page.store.builds()[0].category).toBe('Track');
     expect(page.editing()).toBe(false);
     expect(dialog.open).toBe(false);
     expect(page.message()).toContain('บันทึก Build ในบัญชี');
+    page.editBuild(page.store.builds()[0]); expect(page.buildCategory()).toBe('Track');
   });
 
   it('confirms changing a car and allows cancelling unsaved exit', async () => {
@@ -728,4 +733,25 @@ describe('My Builds with the account API', () => {
     expect(page.message()).toContain('กรุณาตรวจสอบ');
     expect(JSON.parse(storage.getItem(BUILDS_STORAGE_KEY)!)[0].partIds).toEqual([kit.id, front.id]);
   });
+  it('opens publishing settings and keeps the dialog open if the backend rejects the change', async () => {
+    const fixture=TestBed.createComponent(MyBuilds); fixture.detectChanges(); await fixture.whenStable();
+    const page=fixture.componentInstance;
+    const build={id:'own',name:'My private car',carId:'f8-tributo',partIds:[],isPublic:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    page.store.builds.set([build]);
+    const dialog=fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    Object.defineProperty(dialog,'showModal',{configurable:true,value:()=>dialog.setAttribute('open','')});
+    Object.defineProperty(dialog,'close',{configurable:true,value:()=>dialog.removeAttribute('open')});
+    page.requestVisibility(build); fixture.detectChanges(); await fixture.whenStable();
+    expect(dialog.textContent).toContain('ตั้งค่าการเผยแพร่ Build');
+    expect(dialog.querySelectorAll('input[type=radio]').length).toBe(2);
+    expect(page.visibilityPublic()).toBe(false);
+    page.visibilityPublic.set(true);
+    const save=vi.spyOn(page.store,'setVisibility').mockResolvedValueOnce({ok:false,error:'offline'});
+    await page.saveVisibility(); fixture.detectChanges();
+    expect(dialog.textContent).toContain('offline'); expect(dialog.hasAttribute('open')).toBe(true);
+    save.mockResolvedValueOnce({ok:true}); await page.saveVisibility();
+    expect(dialog.hasAttribute('open')).toBe(false);
+    expect(page.message()).toContain('เผยแพร่');
+  });
+
 });

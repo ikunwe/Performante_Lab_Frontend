@@ -4,6 +4,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
 import { Discover } from './discover';
+import { BuildsStore } from '../my-builds/builds.store';
 import { showcaseBuilds as examples } from '../../testing/discover.fixture';
 import { DiscoverFeedStore } from './discover-feed.store';
 import { signal } from '@angular/core';
@@ -35,16 +36,16 @@ describe('Discover workspace', () => {
     }),
   );
 
-  it('filters builds by search, category and saved state', () => {
+  it('filters builds by search, category and liked state', () => {
     const page = TestBed.createComponent(Discover).componentInstance;
     page.query.set('Ferrari');
     expect(page.visibleBuilds().every((b) => b.car.includes('Ferrari'))).toBe(true);
     page.category.set('Track');
     expect(page.visibleBuilds().length).toBe(2);
-    page.toggleSaved(showcaseBuilds[3]);
-    page.savedOnly.set(true);
+    page.toggleLike(showcaseBuilds[3]);
+    page.likedOnly.set(true);
     expect(page.visibleBuilds().map((b) => b.id)).toEqual(['4']);
-    page.toggleSaved(showcaseBuilds[3]);
+    page.toggleLike(showcaseBuilds[3]);
     expect(page.visibleBuilds()).toEqual([]);
   });
 
@@ -108,4 +109,28 @@ describe('Discover workspace', () => {
     expect(close).toHaveBeenCalledTimes(1);
     expect(dialog.open).toBe(false);
   });
+  it('confirms own-build deletion and retains the dialog and card on failure', async () => {
+    const remove=vi.fn().mockResolvedValueOnce({ok:false,error:'offline'}).mockResolvedValueOnce({ok:true});
+    TestBed.overrideProvider(BuildsStore,{useValue:{remove}});
+    const fixture=TestBed.createComponent(Discover); fixture.detectChanges(); await fixture.whenStable();
+    const page=fixture.componentInstance;
+    const own={...showcaseBuilds[0],isOwn:true};
+    const dialog=fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    Object.defineProperty(dialog,'showModal',{value:()=>dialog.setAttribute('open','')});
+    Object.defineProperty(dialog,'close',{value:()=>dialog.removeAttribute('open')});
+    page.requestDelete(showcaseBuilds[0]); expect(page.modal()).toBe('details');
+    page.feed.builds.set([own]); page.requestDelete(own);
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(remove).not.toHaveBeenCalled();
+    expect(dialog.textContent).toContain('ยืนยันลบ');
+    await page.confirmDelete(); fixture.detectChanges();
+    expect(dialog.textContent).toContain('offline');
+    expect(page.feed.builds()).toHaveLength(1);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    await page.confirmDelete();
+    expect(page.feed.builds()).toEqual([]);
+    expect(dialog.hasAttribute('open')).toBe(false);
+    expect(remove).toHaveBeenCalledWith(own.id);
+  });
+
 });

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { BuildCard } from './build-card';
+import { vi } from 'vitest';
 const build = {
   id: 'database-id',
   title: 'My Civic',
@@ -24,6 +25,16 @@ describe('Database build card', () => {
     expect(text).toContain('ยังไม่ระบุ');
     expect(text).not.toContain('งบประมาณตัวอย่าง');
     expect(text).not.toContain('ใช้เป็นต้นแบบ Build');
+    const usernameRow = fixture.nativeElement.querySelector('app-icon[name="user"]')?.parentElement?.parentElement;
+    expect(usernameRow?.textContent).toContain('driver');
+    expect(usernameRow?.textContent).toContain('ของคุณ');
+    expect(usernameRow?.textContent).toContain('ส่วนตัว');
+    const remove = vi.fn(); fixture.componentInstance.remove.subscribe(remove);
+    const button = fixture.nativeElement.querySelector('button[aria-label="ลบ Build My Civic"]') as HTMLButtonElement;
+    fixture.componentRef.setInput('busy',true); fixture.detectChanges(); button.click();
+    expect(remove).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('busy',false); fixture.detectChanges(); button.click();
+    expect(remove).toHaveBeenCalledWith(build);
   });
   it('keeps public community builds free of own/private badges', () => {
     TestBed.configureTestingModule({ imports: [BuildCard] });
@@ -33,5 +44,6 @@ describe('Database build card', () => {
     expect(fixture.nativeElement.textContent).not.toContain('ของคุณ');
     expect(fixture.nativeElement.textContent).not.toContain('ส่วนตัว');
     expect(fixture.nativeElement.textContent).toContain('ใช้เป็นต้นแบบ Build');
+    expect(fixture.nativeElement.querySelector('button[aria-label^="ลบ Build"]')).toBeNull();
   });
 });

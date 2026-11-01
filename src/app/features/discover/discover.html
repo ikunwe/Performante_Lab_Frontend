@@ -97,7 +97,7 @@
         </div>
         @if (activeTab() === 'Discover') {
         <div class="flex w-full items-center gap-2 sm:w-auto">
-          <button type="button" (click)="feed.load()" [disabled]="feed.loading() || !ready()" [attr.aria-busy]="feed.loading()" aria-label="รีเฟรช Build" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><app-icon name="rotate" [class.animate-spin]="feed.loading()" class="!size-3 motion-reduce:animate-none" />รีเฟรช</button>
+          <button type="button" (click)="feed.load(true)" [disabled]="feed.loading() || !ready()" [attr.aria-busy]="feed.loading()" aria-label="รีเฟรช Build" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><app-icon name="rotate" [class.animate-spin]="feed.loading()" class="!size-3 motion-reduce:animate-none" />รีเฟรช</button>
 
           <label
             class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-3 sm:w-[210px]"><app-icon
@@ -124,8 +124,8 @@
         </button>
         }
         <label class="ml-auto flex cursor-pointer items-center gap-2 text-[11px] text-stone-400"><input type="checkbox"
-            [checked]="savedOnly()" (change)="savedOnly.set($any($event.target).checked)"
-            class="accent-red-500 cursor-pointer disabled:cursor-not-allowed" />เฉพาะที่บันทึก</label>
+            [checked]="likedOnly()" (change)="likedOnly.set($any($event.target).checked)"
+            class="accent-red-500 cursor-pointer disabled:cursor-not-allowed" />เฉพาะที่กด Like</label>
       </div>
       }
 
@@ -133,21 +133,21 @@
 
       @if (activeTab() === 'Discover') {
       <div class="mb-4 flex items-center justify-between border-b border-white/[.06] pb-3 text-[10px] text-stone-600">
-        <span>{{ visibleBuilds().length }} BUILDS</span><span>{{ auth.user() ? 'Build ที่เผยแพร่และ Build ของคุณ' : 'Build ที่เผยแพร่' }}</span>
+        <span>{{ visibleBuilds().length }} BUILDS</span><span>Build สาธารณะจากชุมชน</span>
 
       </div>
       @if (feed.error()) { <p role="alert" class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">{{ feed.error() }}</p> }
       @if (!ready() || feed.loading()) { <app-loading-skeleton label="กำลังโหลด Build" /> } @else {
       <div class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         @for (build of visibleBuilds(); track build.id) {
-        <app-build-card [build]="build" [saved]="saved().includes(build.id)" [busy]="preparingBuild()" (save)="toggleSaved($event)"
-          (details)="showDetails($event)" (copy)="openCreate($event)" />
+        <app-build-card [build]="build" [liked]="liked().includes(build.id)" [busy]="preparingBuild() || deletingBuild()" (like)="toggleLike($event)"
+          (details)="showDetails($event)" (copy)="openCreate($event)" (remove)="requestDelete($event)" />
         } @empty {
         @if (ready() && !feed.loading() && !feed.error()) {
         <div class="col-span-full rounded-lg border border-dashed border-white/10 px-5 py-20 text-center">
           <app-icon name="builds" class="!size-8 text-stone-600" />
           <h2 class="mt-4 text-lg">ยังไม่มี Build ในรายการนี้</h2>
-          <p class="mt-2 text-sm text-stone-500">{{ auth.user() ? 'ลองเปลี่ยนคำค้นหาหรือสร้าง Build แรกของคุณ' : 'เข้าสู่ระบบเพื่อดู Build ของคุณ หรือเลือกดู Build ที่เผยแพร่' }}</p>
+          <p class="mt-2 text-sm text-stone-500">Discover แสดงเฉพาะ Build สาธารณะ ส่วน Build ส่วนตัวดูได้ใน My Builds</p>
           @if (!auth.user()) { <a routerLink="/login" [queryParams]="{next:'/discover'}" class="mt-5 inline-block cursor-pointer rounded-lg border border-white/15 px-5 py-3 text-xs">เข้าสู่ระบบเพื่อดู Build ของคุณ</a> }
           <button type="button" (click)="openCreate()"
             class="mt-5 rounded-lg bg-[#ce281a] px-5 py-3 text-xs cursor-pointer disabled:cursor-not-allowed">
@@ -181,18 +181,23 @@
 
   <dialog aria-labelledby="workspace-modal-title" #dialog
     class="workspace-dialog fixed inset-0 m-auto w-[calc(100%_-_32px)] max-w-lg rounded-lg border border-white/15 bg-[#171717] p-0 text-stone-100"
-    (click)="$event.target === dialog && close()">
+    (click)="$event.target === dialog && close()" (cancel)="deletingBuild() && $event.preventDefault()">
     <div class="p-6">
       <div class="mb-5 flex items-center justify-between gap-4">
         <h2 id="workspace-modal-title" tabindex="-1" autofocus
           class="font-[family-name:var(--font-display)] text-sm outline-none">
-          {{ modal() === 'details' ? 'Build details' : 'Notifications' }}
+          {{ modal() === 'delete' ? 'ลบ Build นี้?' : modal() === 'details' ? 'Build details' : 'Notifications' }}
         </h2>
-        <button type="button" aria-label="ปิดหน้าต่าง" (click)="close()"
+        <button type="button" aria-label="ปิดหน้าต่าง" (click)="close()" [disabled]="deletingBuild()"
           class="flex size-8 items-center justify-center rounded-full hover:bg-white/10 cursor-pointer disabled:cursor-not-allowed">
           <app-icon name="close" />
         </button>
       </div>
+      @if (modal() === 'delete') {
+        <p class="text-sm leading-7 text-stone-300">ยืนยันลบ “{{ selected()?.title }}” ออกจาก My Builds และ Discover หรือไม่?</p>
+        <p role="alert" class="my-4 text-xs text-red-300">{{ deleteError() }}</p>
+        <div class="mt-6 flex gap-3"><button type="button" (click)="close()" [disabled]="deletingBuild()" class="min-h-10 flex-1 cursor-pointer rounded-lg border border-white/15 text-xs disabled:cursor-not-allowed">ยกเลิก</button><button type="button" (click)="confirmDelete()" [disabled]="deletingBuild()" [attr.aria-busy]="deletingBuild()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">@if (deletingBuild()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังลบ… } @else { ยืนยันลบ }</button></div>
+      }
       @if (modal() === 'notifications') {
       <p class="py-10 text-center text-sm text-stone-400">
         ยังไม่มีการแจ้งเตือน<br /><span class="text-xs text-stone-600">เข้าสู่ระบบเพื่อรับการแจ้งเตือนของคุณ</span>

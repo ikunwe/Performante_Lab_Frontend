@@ -1,3 +1,4 @@
+import { RequestsApi } from '../../core/requests/requests.api';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AdminLayout } from './layout/admin-layout';
@@ -38,6 +39,7 @@ describe('Admin Portal Features', () => {
       imports: [AdminLayout, AdminDiscover, AdminRequests, AdminUsers, AdminEditData],
       providers: [
         provideRouter([]),
+        {provide:RequestsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'request-1',title:'Mugen kit',kind:'bodykit',description:'Please add',brandName:'Honda',modelName:'Civic',manufacturer:'Mugen',source:'',images:['https://test/image.png'],author:'Driver',status:'Pending',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}]),review:vi.fn()}},
         { provide: AuthService, useValue: mockAuth },
         { provide: AUTH_CLIENT, useValue: vi.fn().mockResolvedValue(null) },
         {
@@ -88,7 +90,7 @@ describe('Admin Portal Features', () => {
     expect(compiled.textContent).toContain('Delete');
   });
 
-  it('renders AdminRequests with request cards and Accept / Reject buttons', () => {
+  it('renders AdminRequests with request cards and Accept / Reject buttons', async () => {
     const adminService = TestBed.inject(AdminService);
     adminService.loading.set(false);
     const fixture = TestBed.createComponent(AdminRequests);
@@ -96,7 +98,10 @@ describe('Admin Portal Features', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.textContent).toContain('Requests');
-    expect(compiled.textContent).toContain('ชิ้นส่วนที่ User ร้องขอ');
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(compiled.textContent).toContain('คำขอเพิ่มแบรนด์');
+    expect(compiled.textContent).toContain('Mugen kit');
+    expect(compiled.querySelector('img')?.getAttribute('src')).toBe('https://test/image.png');
     expect(compiled.textContent).toContain('Accept');
     expect(compiled.textContent).toContain('Reject');
   });

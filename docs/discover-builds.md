@@ -1,3 +1,5 @@
+> New Builds are private by default. Owners can publish or unpublish them from My Builds → ตั้งค่าการเผยแพร่. Editing car/parts keeps the existing visibility.
+
 # Database Discover feed
 
 Discover reads public.builds through GET /api/discover/builds?offset=0. It no longer
@@ -7,8 +9,8 @@ feed, with a bounded maximum offset of 10000. Latest records sort first by creat
 then ID. Responses use Cache-Control: no-store and are not persisted in localStorage.
 
 Without a token, only is_public=true and is_deleted=false records are returned.
-With a verified Active account token, public records plus that user's own private
-records are returned. Another user's private records remain hidden, including from
+With a verified Active account token, only public records are returned, including
+the viewer's own public Builds. Private Builds remain in My Builds only. Another user's private records remain hidden, including from
 an Admin using this personal Discover endpoint. No user_id query parameter is trusted.
 The service-role client always applies explicit visibility filters before reading rows.
 
@@ -28,3 +30,28 @@ account's last successful rows and show an error. An initial error never inserts
 sample cards. The database schema and existing Build ownership/delete rules are unchanged.
 
 Restart Backend to register the new route. No SQL migration is required.
+
+
+## Visibility settings
+
+My Builds cards show the current private/public status and provide
+ตั้งค่าการเผยแพร่. Changes are confirmed by the server before updating the UI;
+failed requests retain the previous state and can be retried. Discover reloads
+after successful visibility changes.
+
+`PATCH /api/builds/:id/visibility` accepts `{ "isPublic": true | false }`.
+It requires an Active owner's Bearer token, rejects non-boolean values, and
+filters by authenticated user_id and is_deleted=false. It does not require the
+vehicle to remain in the current catalog. Existing Builds keep their flag until
+the owner changes it. No SQL migration or bulk data update is needed.
+
+
+## Navigation cache
+
+The shared feed store reuses an account-scoped memory snapshot for five minutes,
+including empty results. Switching workspace routes does not refetch a fresh
+snapshot. Manual refresh bypasses the TTL; save/delete/visibility changes invalidate
+it immediately. Concurrent loads share a request. Logout/account changes clear
+private snapshots and abort obsolete requests; nothing is persisted to localStorage.
+The workspace initializes its ready state from the restored AuthService state to
+avoid briefly replacing a cached feed with initial-loading placeholders.

@@ -1,3 +1,5 @@
+> New Builds are private by default. Owners can publish or unpublish them from My Builds → ตั้งค่าการเผยแพร่. Editing car/parts keeps the existing visibility.
+
 > New User selections now use Storage path IDs. See [Storage user catalog](storage-user-catalog.md). The generated asset metadata below remains for historical reference-model builds only.
 
 # Account builds
@@ -46,5 +48,31 @@ Switching accounts clears the list and discards previous account's pending resul
 
 Old local builds under performante-lab.builds.v1 remain untouched. They are not
 automatically uploaded to an account because the old storage was not account-scoped.
-This change does not add public sharing, pricing, likes or image uploads; pictures
+Pricing, likes and image uploads are not part of this change; pictures
 remain static assets and selected combinations retain their preview rules.
+
+
+## Visibility settings
+
+My Builds cards show the current private/public status and provide
+ตั้งค่าการเผยแพร่. Changes are confirmed by the server before updating the UI;
+failed requests retain the previous state and can be retried. Discover reloads
+after successful visibility changes.
+
+`PATCH /api/builds/:id/visibility` accepts `{ "isPublic": true | false }`.
+It requires an Active owner's Bearer token, rejects non-boolean values, and
+filters by authenticated user_id and is_deleted=false. It does not require the
+vehicle to remain in the current catalog. Existing Builds keep their flag until
+the owner changes it. No SQL migration or bulk data update is needed.
+
+
+## Build categories
+
+The User editor offers five part sections: Full Body Kits, Front Bumper, Rear Bumper, Wheels,
+and Spoilers. Other product categories and existing saved parts are retained.
+
+The save dialog selects Street / Track / Show for the Build's category. The value
+is sent on create/update and returned on read, shown in My Builds, and used by
+Discover filters. New Builds default to Street. Older clients omitting category
+on an update keep the existing value. The database already has this column and
+constraint; no migration is needed.

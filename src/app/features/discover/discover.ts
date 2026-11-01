@@ -24,6 +24,7 @@ import { ShowcaseBuild } from './discover.data';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountMenu } from '../../shared/ui/account-menu/account-menu';
 import { Profile } from '../profile/profile';
+import { BuildsStore } from '../my-builds/builds.store';
 
 import { UserRequests } from '../requests/user-requests';
 import { LoadingSkeleton } from '../../shared/ui/loading-skeleton/loading-skeleton';
@@ -49,7 +50,7 @@ export class Discover {
   readonly auth = inject(AuthService);
   readonly feed = inject(DiscoverFeedStore);
   private readonly catalog = inject(StorageCatalogStore);
-  readonly ready = signal(false);
+  readonly ready = signal(this.auth.ready());
   readonly preparingBuild = signal(false);
   private readonly injector = inject(Injector);
   private readonly router = inject(Router);
@@ -71,10 +72,12 @@ export class Discover {
   readonly query = signal('');
   readonly category = signal('All');
   readonly filtersOpen = signal(false);
-  readonly saved = signal<string[]>([]);
-  readonly savedOnly = signal(false);
+  readonly liked = signal<string[]>([]);
+  readonly likedOnly = signal(false);
   readonly selected = signal<ShowcaseBuild | null>(null);
-  readonly modal = signal<'details' | 'notifications'>('details');
+  readonly modal = signal<'details' | 'notifications' | 'delete'>('details');
+  readonly deletingBuild = signal(false);
+  readonly deleteError = signal('');
   readonly status = signal('');
   readonly buildsWorkspace = viewChild(MyBuilds);
   readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
@@ -84,9 +87,10 @@ export class Discover {
     const search = this.query().trim().toLowerCase();
     return source.filter(
       (b) =>
+        b.isPublic &&
         (!search || [b.title, b.author, b.car].join(' ').toLowerCase().includes(search)) &&
         (this.category() === 'All' || b.category === this.category()) &&
-        (!this.savedOnly() || this.saved().includes(b.id)),
+        (!this.likedOnly() || this.liked().includes(b.id)),
     );
   });
 
@@ -106,7 +110,7 @@ export class Discover {
       const owner = this.auth.user()?.id ?? null;
       untracked(() => {
         if (previousOwner !== undefined && previousOwner !== owner) {
-          this.saved.set([]);
+          this.liked.set([]);
           this.selected.set(null);
           afterNextRender(
             () => {
@@ -149,10 +153,35 @@ export class Discover {
     };
     void this.router.navigateByUrl(urls[tab]);
   }
-  toggleSaved(build: ShowcaseBuild): void {
-    this.saved.update((ids) =>
+  toggleLike(build: ShowcaseBuild): void {
+    this.liked.update((ids) =>
       ids.includes(build.id) ? ids.filter((id) => id !== build.id) : [...ids, build.id],
     );
+  }
+  requestDelete(build: ShowcaseBuild): void {
+    if (!build.isOwn || this.deletingBuild()) return;
+    this.selected.set(build);
+    this.deleteError.set('');
+    this.modal.set('delete');
+    this.openModal();
+  }
+  async confirmDelete(): Promise<void> {
+    const build = this.selected();
+    if (!build?.isOwn || this.deletingBuild()) return;
+    this.deletingBuild.set(true);
+    this.deleteError.set('');
+    try {
+      const result = await this.injector.get(BuildsStore).remove(build.id);
+      if (!result.ok) { this.deleteError.set(result.error); return; }
+      this.feed.builds.update(rows => rows.filter(row => row.id !== build.id));
+      this.liked.update(ids => ids.filter(id => id !== build.id));
+      this.status.set('ลบ Build แล้ว');
+      this.dialog().nativeElement.close();
+      this.selected.set(null);
+    } finally {
+      this.deletingBuild.set(false);
+      if (!this.selected()) this.dialog().nativeElement.close();
+    }
   }
   showDetails(build: ShowcaseBuild): void {
     this.selected.set(build);
@@ -218,6 +247,7 @@ export class Discover {
     );
   }
   close(): void {
+    if (this.deletingBuild()) return;
     this.dialog().nativeElement.close();
   }
 }

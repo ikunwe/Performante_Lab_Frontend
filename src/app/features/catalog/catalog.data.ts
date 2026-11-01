@@ -1,5 +1,9 @@
 import { storageCatalogData } from '../../core/catalog/storage-catalog';
+export type CatalogViews = Partial<
+  Record<'front45' | 'front' | 'side' | 'rear45' | 'rear', string>
+>;
 export interface CatalogCar {
+  views?: CatalogViews;
   id: string;
   storagePath?: string;
   modelName?: string;
@@ -26,6 +30,7 @@ export interface PartCategory {
   icon: string;
 }
 export interface CatalogPart {
+  views?: CatalogViews;
   storagePath?: string;
   manufacturerLogo?: string | null;
   previewImage?: string;

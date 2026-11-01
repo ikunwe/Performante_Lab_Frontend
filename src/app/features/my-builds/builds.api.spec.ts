@@ -70,4 +70,13 @@ describe('Build API transport', () => {
     await expect(api.remove('account-a', 'one')).rejects.toThrow('บัญชีเปลี่ยนแล้ว');
     expect(request).toHaveBeenCalledTimes(2);
   });
+  it('sends visibility updates to the owner-protected endpoint with a fresh token', async () => {
+    const { api, request } = setup();
+    const visibility = { id: 'one', isPublic: true, updatedAt: new Date().toISOString() };
+    request.mockResolvedValue(new Response(JSON.stringify({ visibility })));
+    expect(await api.setVisibility('account-a', 'one', true)).toEqual(visibility);
+    expect(request.mock.calls[0][0]).toBe('https://api.example.test/api/builds/one/visibility');
+    expect(request.mock.calls[0][1].method).toBe('PATCH');
+    expect(JSON.parse(request.mock.calls[0][1].body)).toEqual({ isPublic: true });
+  });
 });

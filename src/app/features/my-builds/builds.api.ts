@@ -9,6 +9,7 @@ export const BUILD_FETCH = new InjectionToken<typeof fetch>('BUILD_FETCH', {
   factory: () => fetch.bind(globalThis),
 });
 export interface BuildInput {
+  category?: string;
   id?: string;
   name: string;
   carId: string;
@@ -94,6 +95,16 @@ export class BuildsApi {
         )
       : await this.request<{ build: SavedBuild }>(owner, '', 'POST', { ...value, id: createId });
     return data.build;
+  }
+  async setVisibility(
+    owner: string,
+    id: string,
+    isPublic: boolean,
+  ): Promise<{ id: string; isPublic: boolean; updatedAt: string }> {
+    const data = await this.request<{
+      visibility: { id: string; isPublic: boolean; updatedAt: string };
+    }>(owner, '/' + encodeURIComponent(id) + '/visibility', 'PATCH', { isPublic });
+    return data.visibility;
   }
   remove(owner: string, id: string): Promise<void> {
     return this.request(owner, '/' + encodeURIComponent(id), 'DELETE');

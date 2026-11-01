@@ -22,7 +22,7 @@ import {
   CatalogCar,
   CatalogPart,
 } from '../catalog/catalog.data';
-import { BuildsStore, SavedBuild } from './builds.store';
+import { BuildsStore, SavedBuild, buildCategories } from './builds.store';
 import { BrandDirectory, CarBrand } from '../../core/catalog/brand-directory';
 import { LogoBackdrop } from '../../shared/ui/brand-logo/logo-backdrop';
 import { modelImage } from '../../core/catalog/car-images';
@@ -89,10 +89,12 @@ export class MyBuilds {
   readonly partIds = signal<string[]>([]);
   readonly section = signal('car');
   readonly name = signal('');
+  readonly buildCategories = buildCategories;
+  readonly buildCategory = signal<string>('Street');
   readonly query = signal('');
   readonly message = signal('');
   readonly formError = signal('');
-  readonly modalKind = signal<'save' | 'delete' | 'discard' | 'change-car' | 'replace-kit'>('save');
+  readonly modalKind = signal<'save' | 'delete' | 'discard' | 'change-car' | 'replace-kit' | 'visibility'>('save');
   readonly pendingDelete = signal<SavedBuild | null>(null);
   readonly pendingCar = signal<CatalogCar | null>(null);
   readonly pendingKit = signal<CatalogPart | null>(null);
@@ -112,7 +114,7 @@ export class MyBuilds {
   get logos() {
     return catalogBrandLogos();
   }
-  readonly categories = partCategories;
+  readonly categories = partCategories.filter(category => ['bodykits','front','rear','wheels','spoilers'].includes(category.id)).map(category => ({...category,name:({bodykits:'Full Body Kits',front:'Front Bumper',rear:'Rear Bumper',wheels:'Wheels',spoilers:'Spoilers'} as Record<string,string>)[category.id]}));
   readonly car = computed(() =>
     this.referenceCar()?.id === this.carId()
       ? this.referenceCar()
@@ -269,7 +271,7 @@ export class MyBuilds {
     });
   }
   private snapshot(): string {
-    return JSON.stringify([this.carId(), [...this.partIds()].sort()]);
+    return JSON.stringify([this.carId(), [...this.partIds()].sort(), this.buildCategory()]);
   }
   carFor(build: SavedBuild): CatalogCar | undefined {
     if (build.carId.startsWith('storage-car:'))
@@ -293,6 +295,7 @@ export class MyBuilds {
     this.partIds.set([]);
     this.section.set(car ? 'bodykits' : 'car');
     this.name.set('');
+    this.buildCategory.set('Street');
     this.message.set('');
     this.editing.set(true);
     this.baseline.set(this.snapshot());
@@ -310,12 +313,13 @@ export class MyBuilds {
     const legacyConflict = !!kit && build.partIds.length > 1;
     this.partIds.set(legacyConflict ? [kit.id] : [...build.partIds]);
     this.name.set(build.name);
+    this.buildCategory.set(buildCategories.some(category => category === build.category) ? build.category! : 'Street');
     this.section.set('bodykits');
     this.editing.set(true);
     this.message.set('');
     this.baseline.set(this.snapshot());
     if (legacyConflict) {
-      this.baseline.set(JSON.stringify([build.carId, [...build.partIds].sort()]));
+      this.baseline.set(JSON.stringify([build.carId, [...build.partIds].sort(), this.buildCategory()]));
       this.message.set(
         'Build เดิมมีชุดเต็มร่วมกับพาร์ตแยก จึงใช้เฉพาะ Full Body Kit ตามกฎใหม่ กรุณาตรวจสอบแล้ว Save อีกครั้ง',
       );
@@ -401,6 +405,7 @@ export class MyBuilds {
       carSnapshot: this.car()?.reference ? this.car()! : undefined,
       id: this.editingId() ?? undefined,
       name: this.name(),
+      category: this.buildCategory(),
       carId: this.carId()!,
       partIds: this.partIds(),
     });
@@ -411,6 +416,25 @@ export class MyBuilds {
     this.closeDialog();
     this.showList();
     this.message.set('บันทึก Build ในบัญชีของคุณแล้ว');
+  }
+  readonly visibilityBuild = signal<SavedBuild | null>(null);
+  readonly visibilityPublic = signal(false);
+  requestVisibility(build: SavedBuild): void {
+    if (this.store.saving() || this.store.deleting()) return;
+    this.visibilityBuild.set(build);
+    this.visibilityPublic.set(build.isPublic === true);
+    this.formError.set('');
+    this.modalKind.set('visibility');
+    this.openDialog();
+  }
+  async saveVisibility(): Promise<void> {
+    const build = this.visibilityBuild();
+    if (!build || this.store.saving() || this.store.deleting()) return;
+    this.formError.set('');
+    const result = await this.store.setVisibility(build.id,this.visibilityPublic());
+    if (!result.ok) { this.formError.set(result.error); return; }
+    this.message.set(this.visibilityPublic() ? 'เผยแพร่ Build บน Discover แล้ว' : 'เปลี่ยน Build เป็นส่วนตัวแล้ว');
+    this.closeDialog();
   }
   requestDelete(build: SavedBuild): void {
     this.pendingDelete.set(build);

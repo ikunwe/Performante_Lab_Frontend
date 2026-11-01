@@ -5,7 +5,10 @@ import { catalogCars, CatalogCar } from '../catalog/catalog.data';
 import { partsForCar } from '../../core/catalog/prepared-parts';
 import { BuildsApi } from './builds.api';
 
+export const buildCategories = ['Street', 'Track', 'Show'] as const;
 export interface SavedBuild {
+  category?: string;
+  isPublic?: boolean;
   id: string;
   name: string;
   carId: string;
@@ -142,6 +145,7 @@ export class BuildsStore {
   async save(input: {
     id?: string;
     name: string;
+    category?: string;
     carId: string;
     carSnapshot?: CatalogCar;
     partIds: string[];
@@ -151,6 +155,9 @@ export class BuildsStore {
     if (!owner) return { ok: false, error: 'กรุณาเข้าสู่ระบบก่อนบันทึก Build' };
     if (this.saving() || this.deleting())
       return { ok: false, error: 'กำลังบันทึกข้อมูล กรุณารอสักครู่' };
+    const category = input.category ?? 'Street';
+    if (!buildCategories.some((item) => item === category))
+      return { ok: false, error: 'กรุณาเลือก Category ที่ถูกต้อง' };
     const name = input.name.trim();
     if (!name || [...name].length > 80)
       return { ok: false, error: 'กรุณาตั้งชื่อ Build 1–80 ตัวอักษร' };
@@ -170,6 +177,7 @@ export class BuildsStore {
       ...(input.id ? { id: input.id } : {}),
       ...(input.carSnapshot ? { carSnapshot: input.carSnapshot } : {}),
       name,
+      category,
       carId: input.carId,
       partIds: [...input.partIds],
     };
@@ -200,6 +208,39 @@ export class BuildsStore {
         ok: false,
         error: error instanceof Error ? error.message : 'บันทึก Build ไม่สำเร็จ รายการแต่งยังอยู่',
       };
+    } finally {
+      if (epoch === this.epoch) this.saving.set(false);
+    }
+  }
+  async setVisibility(id: string, isPublic: boolean): Promise<Result> {
+    const owner = this.api.owner();
+    this.switchOwner(owner);
+    if (!owner) return { ok: false, error: 'กรุณาเข้าสู่ระบบใหม่' };
+    if (this.saving() || this.deleting())
+      return { ok: false, error: 'กำลังบันทึกข้อมูล กรุณารอสักครู่' };
+    if (!this.builds().some((build) => build.id === id))
+      return { ok: false, error: 'ไม่พบ Build ของคุณ' };
+    const epoch = this.epoch;
+    ++this.version;
+    this.loading.set(false);
+    this.saving.set(true);
+    try {
+      const result = await this.api.setVisibility(owner, id, isPublic);
+      if (epoch !== this.epoch || this.api.owner() !== owner)
+        return { ok: false, error: 'บัญชีเปลี่ยนแล้ว กรุณาโหลด Build ใหม่' };
+      if (
+        result.id !== id ||
+        result.isPublic !== isPublic ||
+        !Number.isFinite(Date.parse(result.updatedAt))
+      )
+        throw new Error('ข้อมูลสถานะที่ได้รับไม่ถูกต้อง');
+      this.builds.update((rows) =>
+        rows.map((row) => (row.id === id ? { ...row, ...result } : row)),
+      );
+      invalidateDiscoverFeed();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'เปลี่ยนสถานะไม่สำเร็จ' };
     } finally {
       if (epoch === this.epoch) this.saving.set(false);
     }

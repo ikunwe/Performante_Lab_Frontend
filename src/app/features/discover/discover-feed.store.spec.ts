@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { AuthService } from '../../core/auth/auth.service';
 import { AUTH_CONFIG } from '../../core/auth/auth-client';
-import { DiscoverFeedStore, DISCOVER_FETCH } from './discover-feed.store';
+import { DiscoverFeedStore, DISCOVER_FETCH, invalidateDiscoverFeed } from './discover-feed.store';
 const row = (id: string, isOwn = false, isPublic = true) => ({
   id,
   title: id,
@@ -36,7 +36,8 @@ function setup(owner: string | null = 'a') {
   return { auth, request, store: TestBed.inject(DiscoverFeedStore) };
 }
 describe('Database Discover feed', () => {
-  it('loads public and own private database records across pages using the current session', async () => {
+  afterEach(() => vi.restoreAllMocks());
+  it('loads public records, including own public builds, across pages using the current session', async () => {
     const { store, request } = setup();
     request
       .mockResolvedValueOnce({
@@ -45,7 +46,7 @@ describe('Database Discover feed', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ builds: [row('mine', true, false)], nextOffset: null }),
+        json: async () => ({ builds: [row('mine', true, true)], nextOffset: null }),
       });
     await store.load();
     expect(store.builds().map((b) => b.id)).toEqual(['public', 'mine']);
@@ -77,12 +78,12 @@ describe('Database Discover feed', () => {
     auth.user.set({ id: 'b' });
     request.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ builds: [row('private-b', true, false)], nextOffset: null }),
+      json: async () => ({ builds: [row('private-b', true, true)], nextOffset: null }),
     });
     await store.load();
     done({
       ok: true,
-      json: async () => ({ builds: [row('private-a', true, false)], nextOffset: null }),
+      json: async () => ({ builds: [row('private-a', true, true)], nextOffset: null }),
     });
     await first;
     expect(store.builds().map((b) => b.id)).toEqual(['private-b']);
@@ -94,13 +95,56 @@ describe('Database Discover feed', () => {
     const { store, request } = setup();
     request.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ builds: [row('mine', true, false)], nextOffset: null }),
+      json: async () => ({ builds: [row('mine', true, true)], nextOffset: null }),
     });
     await store.load();
     request.mockResolvedValueOnce({ ok: false });
-    await store.load();
+    await store.load(true);
     expect(store.error()).toBeTruthy();
     expect(store.loading()).toBe(false);
     expect(store.builds()[0].id).toBe('mine');
   });
+  it('reuses the in-memory snapshot on navigation, including empty results, and refreshes on expiry or mutation', async () => {
+    let now = 1000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const { store, request } = setup();
+    request.mockResolvedValue({ ok: true, json: async () => ({ builds: [], nextOffset: null }) });
+    await store.load();
+    await store.load();
+    expect(request).toHaveBeenCalledOnce();
+    expect(store.loading()).toBe(false);
+    now += 5 * 60 * 1000 + 1;
+    await store.load();
+    expect(request).toHaveBeenCalledTimes(2);
+    invalidateDiscoverFeed();
+    await store.load();
+    expect(request).toHaveBeenCalledTimes(3);
+    await store.load(true);
+    expect(request).toHaveBeenCalledTimes(4);
+  });
+  it('shares concurrent refreshes instead of aborting and starting the same request repeatedly', async () => {
+    const { store, request } = setup();
+    let done!: (response: unknown) => void;
+    request.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          done = resolve;
+        }),
+    );
+    const first = store.load();
+    await vi.waitFor(() => expect(request).toHaveBeenCalledOnce());
+    const second = store.load(true);
+    await Promise.resolve();
+    expect(request).toHaveBeenCalledOnce();
+    done({ ok: true, json: async () => ({ builds: [row('public')], nextOffset: null }) });
+    await Promise.all([first, second]);
+    expect(store.builds()[0].id).toBe('public');
+  });
+  it('filters private records from an older backend response, including own private builds', async () => {
+    const {store,request}=setup();
+    request.mockResolvedValue({ok:true,json:async()=>({builds:[row('public'),row('own-public',true,true),row('private',true,false)],nextOffset:null})});
+    await store.load();
+    expect(store.builds().map(b=>b.id)).toEqual(['public','own-public']);
+  });
+
 });

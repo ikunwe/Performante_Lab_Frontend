@@ -7,14 +7,18 @@ by this feature. There are no new migrations or required keys.
 ## Source
 
 - Brand: `catalog/{Brand}/logo.png` (also jpg/jpeg/webp/svg/avif).
-- Model: `catalog/{Brand}/{Model}/CarPicture.jpg` (same image formats).
+- Model: `catalog/{Brand}/{Model}/45_front.jpg`, `front.png`, `45_Back.png`,
+  `Back.png` (same image formats). `CarPicture.*` remains supported for old models.
+- New Admin full kit: `{Brand}/{Model}/BodyKit/{Manufacturer}/{Kit}/{angle}.*`.
+- New Admin part: `{Brand}/{Model}/Part/{Category}/{Manufacturer}/{Part}/{angle}.*`.
+  Categories include Front-Bumper, Rear-Bumper, Wheels, Spoilers, Brakes, Exhaust,
+  and Suspension. Each product folder becomes one item with its available views.
 - Full body kit: `{Brand}/{Model}/BodyKit/{Manufacturer}/{Name}.png`.
 - Separate part: `{Brand}/{Model}/Part/{Manufacturer}/{Name}.png`.
 - Manufacturer `logo.*` is excluded from product cards.
 
-A brand with a logo can exist before it has models. A model is listed when its
-CarPicture file exists. Old random-ID upload namespaces without a brand logo or
-CarPicture model folders are ignored. No files are uploaded, moved, or deleted by
+A brand with a logo can exist before it has models. A model is listed when it has a recognized angle image or a legacy CarPicture file. Old random-ID upload namespaces without a brand logo or
+recognized model folders are ignored. No files are uploaded, moved, or deleted by
 reading the catalog. Folder and file names are the identities; renaming a path
 changes its identity. Replacing bytes at the same path retains its identity.
 
@@ -23,11 +27,16 @@ parts. For `Part`, filenames classify Front-Bumper/Front-Lip, Rear-Bumper/Rear-D
 Wheel, Spoiler/Wing, Brake/Caliper/Rotor, Exhaust, or Suspension/Coilover. Unrecognized
 products appear under Other Parts rather than an invented category.
 
-CarPicture is the vehicle cover. Product images appear in Catalog/Compare/pickers.
-This tree does not define camera angles or prepared multi-part installation photos;
-those are not synthesized from individual product images. Existing local prepared
-views are retained only for historical reference-model builds, not as the source of
-new Storage vehicle selections. Marketing/login graphics remain local assets.
+Vehicle cover priority is 45_front, front, 45_Back, Back, side, then CarPicture.
+Available angles feed the User build view selector. Each image URL points to the
+exact Storage file and includes its updated_at version. Nested product folders
+are grouped into one item rather than displaying every camera angle as a part.
+Legacy flat product-image files remain supported with unchanged IDs.
+
+Part angle photos are returned in each product's views metadata. The folder tree
+does not define images of combinations of multiple selected products; those are
+not synthesized. Existing local prepared views remain only for historical builds.
+Marketing/login graphics and all original vehicle/brand assets remain in place.
 
 ## Implementation
 
