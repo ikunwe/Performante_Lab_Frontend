@@ -308,6 +308,78 @@ describe('CatalogStorageHelper', () => {
       expect(items[1].name).toBe('N-Largo-Widebody');
       expect(items[1].displayName).toBe('N Largo Widebody');
     });
+
+    it('deletes a file successfully from storage', async () => {
+      const mockRemove = vi.fn().mockResolvedValue({ data: [], error: null });
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            remove: mockRemove,
+          }),
+        },
+      } as any;
+
+      const res = await CatalogStorageHelper.deleteFile(mockClient, 'Ferrari/logo.png');
+      expect(res.ok).toBe(true);
+      expect(mockRemove).toHaveBeenCalledWith(['Ferrari/logo.png']);
+    });
+
+    it('deletes a folder and all its contents from storage', async () => {
+      const mockRemove = vi.fn().mockResolvedValue({ data: [], error: null });
+      const mockList = vi.fn().mockResolvedValue({
+        data: [{ name: 'logo.png' }, { name: 'part.png' }, { name: '.hidden' }],
+        error: null,
+      });
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: mockList,
+            remove: mockRemove,
+          }),
+        },
+      } as any;
+
+      const res = await CatalogStorageHelper.deleteFolder(mockClient, 'Ferrari/488-Pista/BodyKit/Novitec');
+      expect(res.ok).toBe(true);
+      expect(mockRemove).toHaveBeenCalledWith([
+        'Ferrari/488-Pista/BodyKit/Novitec/logo.png',
+        'Ferrari/488-Pista/BodyKit/Novitec/part.png',
+      ]);
+    });
+
+    it('removes sibling files with different extensions and legacy CarPicture', async () => {
+      const mockRemove = vi.fn().mockResolvedValue({ data: [], error: null });
+      const mockList = vi.fn().mockResolvedValue({
+        data: [
+          { name: '45_front.png' },
+          { name: '45_front.jpg' },
+          { name: 'CarPicture.jpg' },
+          { name: 'front.png' },
+          { name: 'BodyKit' },
+        ],
+        error: null,
+      });
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: mockList,
+            remove: mockRemove,
+          }),
+        },
+      } as any;
+
+      await CatalogStorageHelper.removeSiblingFiles(
+        mockClient,
+        'Ferrari/488-Pista',
+        '45_front',
+        'jpg',
+      );
+
+      // Should delete 45_front.png and CarPicture.jpg (since baseName is 45_front and keepExt is jpg)
+      expect(mockRemove).toHaveBeenCalledWith([
+        'Ferrari/488-Pista/45_front.png',
+        'Ferrari/488-Pista/CarPicture.jpg',
+      ]);
+    });
   });
 });
-

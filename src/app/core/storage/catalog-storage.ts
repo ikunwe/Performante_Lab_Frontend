@@ -36,6 +36,30 @@ export class CatalogStorageHelper {
   }
 
   /**
+   * สกัด Relative Path ภายใน Bucket 'catalog' จาก URL หรือ Path ใดๆ
+   */
+  static extractStoragePath(urlOrPath: string): string {
+    if (!urlOrPath) return '';
+    try {
+      let clean = urlOrPath.split('?')[0].split('#')[0];
+      const marker = '/storage/v1/object/public/catalog/';
+      const idx = clean.indexOf(marker);
+      if (idx !== -1) {
+        clean = clean.substring(idx + marker.length);
+      } else {
+        const simpleMarker = '/catalog/';
+        const sIdx = clean.indexOf(simpleMarker);
+        if (sIdx !== -1) {
+          clean = clean.substring(sIdx + simpleMarker.length);
+        }
+      }
+      return clean.replace(/^\/+|\/+$/g, '');
+    } catch {
+      return urlOrPath.replace(/^\/+|\/+$/g, '');
+    }
+  }
+
+  /**
    * ดึงนามสกุลไฟล์จาก File Object
    */
   static getFileExtension(file: File): string {
@@ -57,6 +81,14 @@ export class CatalogStorageHelper {
    */
   static getCarPicturePath(brand: string, model: string, ext = 'jpg'): string {
     return `${this.sanitize(brand)}/${this.sanitize(model)}/CarPicture.${this.cleanExt(ext)}`;
+  }
+
+  /**
+   * สร้าง Path รูปรถแยกตาม 4 มุมมอง: {brand}/{model}/{angle}.{ext}
+   * มุมมอง: '45_front', 'front', '45_Back', 'Back'
+   */
+  static getCarAnglePath(brand: string, model: string, angle: string, ext = 'png'): string {
+    return `${this.sanitize(brand)}/${this.sanitize(model)}/${angle}.${this.cleanExt(ext)}`;
   }
 
   /**
@@ -83,6 +115,37 @@ export class CatalogStorageHelper {
     ext = 'png',
   ): string {
     return `${this.sanitize(brand)}/${this.sanitize(model)}/Part/${this.sanitize(partBrand)}/${this.sanitize(typeName)}.${this.cleanExt(ext)}`;
+  }
+
+  /**
+   * สร้าง Path ชุดแต่ง FullBodyKits แยกตามมุมมอง:
+   * {brand}/{model}/BodyKit/{bodyKitBrand}/{kitName}/{angle}.{ext}
+   */
+  static getBodyKitAnglePath(
+    brand: string,
+    model: string,
+    bodyKitBrand: string,
+    kitName: string,
+    angle: string,
+    ext = 'png',
+  ): string {
+    return `${this.sanitize(brand)}/${this.sanitize(model)}/BodyKit/${this.sanitize(bodyKitBrand)}/${this.sanitize(kitName)}/${angle}.${this.cleanExt(ext)}`;
+  }
+
+  /**
+   * สร้าง Path ชิ้นส่วนพาร์ตแต่งแยกตามหมวดหมู่และมุมมอง:
+   * {brand}/{model}/Part/{category}/{partBrand}/{partName}/{angle}.{ext}
+   */
+  static getPartAnglePath(
+    brand: string,
+    model: string,
+    category: string,
+    partBrand: string,
+    partName: string,
+    angle: string,
+    ext = 'png',
+  ): string {
+    return `${this.sanitize(brand)}/${this.sanitize(model)}/Part/${this.sanitize(category)}/${this.sanitize(partBrand)}/${this.sanitize(partName)}/${angle}.${this.cleanExt(ext)}`;
   }
 
   /**
@@ -141,6 +204,69 @@ export class CatalogStorageHelper {
       return { ok: true, url: publicData.publicUrl };
     } catch (err: any) {
       return { ok: false, error: err?.message || 'Upload failed' };
+    }
+  }
+
+  /**
+   * ลบไฟล์มุมมอง/ชื่อเดียวกันที่มีนามสกุลอื่น (เช่น .png, .jpg, .jpeg, .webp) ในโฟลเดอร์เดียวกัน
+   * ป้องกันการเกิดไฟล์ซ้ำซ้อน 2 รูปในมุมเดียวกันเมื่อผู้ใช้อัปโหลดรูปใหม่ที่มีนามสกุลต่างจากรูปเดิม
+   */
+  static async removeSiblingFiles(
+    client: SupabaseClient,
+    folderPath: string,
+    baseName: string,
+    keepExt: string,
+  ): Promise<void> {
+    try {
+      const storage = client?.storage?.from ? client.storage.from(this.BUCKET) : null;
+      if (!storage || typeof storage.list !== 'function' || typeof storage.remove !== 'function') {
+        return;
+      }
+      const cleanFolder = this.extractStoragePath(folderPath);
+      const safeKeepExt = this.cleanExt(keepExt).toLowerCase();
+      const baseLower = baseName.toLowerCase();
+
+      // ดึงรายชื่อไฟล์ในโฟลเดอร์เพื่อเช็คว่ามีไฟล์เดิมที่เป็นชื่อมุมมองเดียวกันแต่นามสกุลต่างกันหรือไม่
+      const { data: files, error } = await storage.list(cleanFolder, { limit: 100 });
+      if (error || !files) {
+        // Fallback: ลบนามสกุลที่อาจซ้ำซ้อนโดยตรง
+        const candidateExts = ['png', 'jpg', 'jpeg', 'webp'].filter((e) => e !== safeKeepExt);
+        const paths = candidateExts.map((e) =>
+          cleanFolder ? `${cleanFolder}/${baseName}.${e}` : `${baseName}.${e}`,
+        );
+        if (baseLower === '45_front') {
+          for (const ext of ['png', 'jpg', 'jpeg', 'webp']) {
+            paths.push(cleanFolder ? `${cleanFolder}/CarPicture.${ext}` : `CarPicture.${ext}`);
+          }
+        }
+        await storage.remove(paths);
+        return;
+      }
+
+      const filesToDelete: string[] = [];
+
+      for (const f of files) {
+        if (!f.name || f.name.startsWith('.')) continue;
+        const dotIdx = f.name.lastIndexOf('.');
+        if (dotIdx === -1) continue;
+
+        const fBase = f.name.substring(0, dotIdx).toLowerCase();
+        const fExt = f.name.substring(dotIdx + 1).toLowerCase();
+
+        // ตรวจสอบว่าเป็นชื่อมุมมองเดียวกัน หรือเป็น CarPicture เดิม (กรณี 45_front)
+        const isTargetBase = fBase === baseLower;
+        const isLegacyCarPicture = baseLower === '45_front' && fBase === 'carpicture';
+
+        if ((isTargetBase && fExt !== safeKeepExt) || isLegacyCarPicture) {
+          filesToDelete.push(cleanFolder ? `${cleanFolder}/${f.name}` : f.name);
+        }
+      }
+
+      if (filesToDelete.length > 0) {
+        await storage.remove(filesToDelete);
+      }
+    } catch (err) {
+      console.warn('[CatalogStorageHelper] removeSiblingFiles warning:', err);
     }
   }
 
@@ -211,7 +337,7 @@ export class CatalogStorageHelper {
       const items = await Promise.all(
         modelFolders.map(async (m) => {
           const modelName = m.name;
-          let imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/CarPicture.jpg`);
+          let imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/45_front.png`);
           try {
             const { data: files } = await storage.list(`${safeBrand}/${modelName}`, { limit: 20 });
             const picFile = files?.find((f) => /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name));
@@ -306,26 +432,53 @@ export class CatalogStorageHelper {
       const { data, error } = await storage.list(path, { limit: 100 });
       if (error || !data) return [];
 
-      const imageFiles = data.filter(
-        (f) =>
-          !f.name.startsWith('.') &&
-          !/^logo\./i.test(f.name) &&
-          /\.(png|jpe?g|webp|svg)$/i.test(f.name),
-      );
+      const result: StoragePartItem[] = [];
 
-      return imageFiles.map((f) => {
-        const parts = f.name.split('.');
-        const ext = parts.pop() || 'png';
-        const rawName = parts.join('.');
-        const displayName = rawName.replace(/[-_]+/g, ' ');
-        const imageUrl = this.getPublicUrl(client, `${path}/${f.name}`);
-        return {
-          name: rawName,
-          displayName,
-          imageUrl,
-          ext,
-        };
-      });
+      for (const f of data) {
+        if (f.name.startsWith('.') || /^logo\./i.test(f.name)) continue;
+
+        // ถ้าเป็นไฟล์รูปภาพโดยตรง
+        if (/\.(png|jpe?g|webp|svg)$/i.test(f.name)) {
+          const parts = f.name.split('.');
+          const ext = parts.pop() || 'png';
+          const rawName = parts.join('.');
+          const displayName = rawName.replace(/[-_]+/g, ' ');
+          const imageUrl = this.getPublicUrl(client, `${path}/${f.name}`);
+          result.push({
+            name: rawName,
+            displayName,
+            imageUrl,
+            ext,
+          });
+        } else if (!f.name.includes('.')) {
+          // ถ้าเป็นโฟลเดอร์ของชุดแต่ง/ชิ้นส่วน (Multi-Angle Folder)
+          try {
+            const { data: subFiles } = await storage.list(`${path}/${f.name}`, { limit: 20 });
+            if (subFiles && subFiles.length > 0) {
+              const primaryFile =
+                subFiles.find((s) => /^45_front\./i.test(s.name)) ||
+                subFiles.find((s) => /^front\./i.test(s.name)) ||
+                subFiles.find((s) => /^45_Back\./i.test(s.name)) ||
+                subFiles.find((s) => /^Back\./i.test(s.name)) ||
+                subFiles.find((s) => /\.(png|jpe?g|webp)$/i.test(s.name));
+              if (primaryFile) {
+                const parts = primaryFile.name.split('.');
+                const ext = parts.pop() || 'png';
+                result.push({
+                  name: f.name,
+                  displayName: f.name.replace(/[-_]+/g, ' '),
+                  imageUrl: this.getPublicUrl(client, `${path}/${f.name}/${primaryFile.name}`),
+                  ext,
+                });
+              }
+            }
+          } catch {
+            // ignore subfolder list error
+          }
+        }
+      }
+
+      return result;
     } catch (err) {
       console.warn('[CatalogStorageHelper] listItems error:', err);
       return [];

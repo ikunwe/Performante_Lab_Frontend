@@ -676,5 +676,120 @@ describe('AdminService', () => {
       expect(res.parts[1].manufacturer).toBe('Brembo');
       expect(service.catalogParts().length).toBe(2);
     });
+
+    it('deletes part item, tuning brand, and category from catalogParts and storage', async () => {
+      service.catalogParts.set([
+        {
+          id: 'p-1',
+          car_model_id: '488-Pista',
+          category: 'Wheels',
+          name: 'Wheel Item 1',
+          manufacturer: 'Enkei',
+          image_url: 'https://test/1.png',
+          price: 10000,
+        },
+        {
+          id: 'p-2',
+          car_model_id: '488-Pista',
+          category: 'Wheels',
+          name: 'Wheel Item 2',
+          manufacturer: 'BBS',
+          image_url: 'https://test/2.png',
+          price: 20000,
+        },
+        {
+          id: 'p-3',
+          car_model_id: '488-Pista',
+          category: 'Exhaust',
+          name: 'Exhaust 1',
+          manufacturer: 'Akrapovic',
+          image_url: 'https://test/3.png',
+          price: 50000,
+        },
+      ]);
+
+      const mockDelete = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+        ilike: vi.fn().mockResolvedValue({ error: null }),
+      });
+      const mockClient = {
+        from: vi.fn().mockReturnValue({
+          delete: mockDelete,
+        }),
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: vi.fn().mockResolvedValue({ data: [], error: null }),
+            remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        },
+      } as any;
+      (service as any).client = mockClient;
+
+      // 1. Delete single part item
+      await service.deletePartItem('p-1');
+      expect(service.catalogParts().some((p) => p.id === 'p-1')).toBe(false);
+      expect(service.catalogParts().length).toBe(2);
+
+      // 2. Delete tuning brand
+      await service.deleteTuningBrand('Ferrari', '488-Pista', 'parts', 'BBS');
+      expect(service.catalogParts().some((p) => p.manufacturer === 'BBS')).toBe(false);
+      expect(service.catalogParts().length).toBe(1);
+
+      // 3. Delete category
+      await service.deletePartCategory('Exhaust', '488-Pista');
+      expect(service.catalogParts().some((p) => p.category === 'Exhaust')).toBe(false);
+      expect(service.catalogParts().length).toBe(0);
+    });
+
+    it('updates car part name, price, and image_url in catalogParts and database', async () => {
+      service.catalogParts.set([
+        {
+          id: 'p-100',
+          car_model_id: '488-Pista',
+          category: 'BodyKit',
+          name: 'Old Name',
+          manufacturer: 'Novitec',
+          image_url: 'https://test/old.png',
+          price: 50000,
+        },
+      ]);
+
+      const mockClient = {
+        from: vi.fn().mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'p-100',
+                    car_model_id: '488-Pista',
+                    category: 'BodyKit',
+                    name: 'New Name',
+                    manufacturer: 'Novitec',
+                    image_url: 'https://test/new.png',
+                    price: 75000,
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+      (service as any).client = mockClient;
+
+      const res = await service.updateCarPart({
+        id: 'p-100',
+        name: 'New Name',
+        price: 75000,
+        image_url: 'https://test/new.png',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(res.data?.name).toBe('New Name');
+      expect(res.data?.price).toBe(75000);
+      expect(service.catalogParts()[0].name).toBe('New Name');
+      expect(service.catalogParts()[0].price).toBe(75000);
+    });
   });
 });
