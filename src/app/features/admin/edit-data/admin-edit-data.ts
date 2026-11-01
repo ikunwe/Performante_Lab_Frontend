@@ -12,6 +12,8 @@ import {
   RealCarModelItem,
   RealPartItem,
 } from '../services/admin.service';
+import { PartMaskUpload } from './part-mask-upload';
+import {hasAutomaticPartClips} from '../../../core/catalog/part-clip-regions';
 import { CatalogStorageHelper } from '../../../core/storage/catalog-storage';
 
 export interface DeleteTarget {
@@ -27,10 +29,11 @@ export interface DeleteTarget {
 
 @Component({
   selector: 'app-admin-edit-data',
-  imports: [CommonModule, FormsModule, Icon],
+  imports: [CommonModule, FormsModule, Icon, PartMaskUpload],
   templateUrl: './admin-edit-data.html',
 })
 export class AdminEditData implements OnInit {
+  readonly hasAutomaticPartClips=hasAutomaticPartClips;
   readonly auth = inject(AuthService);
   readonly admin = inject(AdminService);
 
@@ -1559,6 +1562,15 @@ export class AdminEditData implements OnInit {
   readonly submitAddPart = (): Promise<void> => this.savePart();
 
   // Edit Part Modal Handlers
+  readonly existingPartMasks = signal(new Map<string,string>());
+  readonly existingPartLayers = signal(new Map<string,string>());
+  readonly maskDefaultViews = signal(new Map<string,string>());
+  setPartLayer(angle:string,url:string):void {
+    this.existingPartLayers.update(current=>{const next=new Map(current);next.set(angle,url);return next;});
+  }
+  setPartMask(angle:string,url:string):void {
+    this.existingPartMasks.update(current=>{const next=new Map(current);if(url)next.set(angle,url);else next.delete(angle);return next;});
+  }
   async openEditPartModal(part: RealPartItem): Promise<void> {
     this.editingPart.set(part);
     this.editingPartName.set(part.name);
@@ -1568,6 +1580,9 @@ export class AdminEditData implements OnInit {
     this.editPartAngleFiles.set(new Map());
     this.editPartAnglePreviews.set(new Map());
     this.existingPartAngleUrls.set(new Map());
+    this.existingPartMasks.set(new Map());
+    this.existingPartLayers.set(new Map());
+    this.maskDefaultViews.set(new Map());
     this.editPartModalOpen.set(true);
 
     try {
@@ -1585,13 +1600,30 @@ export class AdminEditData implements OnInit {
         : `${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carName)}/Part/${CatalogStorageHelper.sanitize(category)}/${CatalogStorageHelper.sanitize(tuningBrand)}/${CatalogStorageHelper.sanitize(part.name)}`;
 
       if (client) {
-        const { data: files } = await client.storage.from('catalog').list(folder, { limit: 50 });
+        const defaultFolder=`${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carName)}`;
+        const [{data:files},{data:defaults}]=await Promise.all([
+          client.storage.from('catalog').list(folder,{limit:50}),
+          client.storage.from('catalog').list(defaultFolder,{limit:50}),
+        ]);
+        if(this.editingPart()?.id!==part.id)return;
+        if(defaults){
+          const views=new Map<string,string>();
+          for(const angle of this.getRequiredAngles(category)){
+            const match=defaults.find(f=>new RegExp('^'+angle.key+'\\.(png|jpe?g|webp)$','i').test(f.name));
+            if(match)views.set(angle.key,CatalogStorageHelper.getPublicUrl(client,`${defaultFolder}/${match.name}`)+'?t='+Date.now());
+          }
+          this.maskDefaultViews.set(views);
+        }
         if (files) {
           const map = new Map<string, string>();
           const now = Date.now();
           const requiredAngles = this.getRequiredAngles(category);
           for (const angle of requiredAngles) {
             const regex = new RegExp(`^${angle.key}\\.(png|jpe?g|webp)$`, 'i');
+            const layer = files.find(f=>f.name.toLowerCase() === (angle.key+'.layer.png').toLowerCase());
+            if(layer)this.setPartLayer(angle.key,CatalogStorageHelper.getPublicUrl(client,`${folder}/${layer.name}`)+'?t='+now);
+            const mask = files.find(f=>f.name.toLowerCase() === (angle.key+'.mask.png').toLowerCase());
+            if(mask)this.setPartMask(angle.key,CatalogStorageHelper.getPublicUrl(client,`${folder}/${mask.name}`)+'?t='+now);
             const match = files.find((f) => regex.test(f.name));
             if (match) {
               const url = CatalogStorageHelper.getPublicUrl(client, `${folder}/${match.name}`);
@@ -1614,6 +1646,9 @@ export class AdminEditData implements OnInit {
     this.editPartAngleFiles.set(new Map());
     this.editPartAnglePreviews.set(new Map());
     this.existingPartAngleUrls.set(new Map());
+    this.existingPartMasks.set(new Map());
+    this.existingPartLayers.set(new Map());
+    this.maskDefaultViews.set(new Map());
   }
 
   onEditPartFileChange(event: Event): void {

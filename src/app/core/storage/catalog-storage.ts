@@ -262,12 +262,14 @@ export class CatalogStorageHelper {
     path: string,
     file: File | Blob,
     upsert = true,
+    metadata?:Record<string,unknown>,
   ): Promise<{ ok: boolean; url?: string; error?: string }> {
     try {
       const { error } = await client.storage.from(this.BUCKET).upload(path, file, {
         upsert,
         contentType: file.type || undefined,
         cacheControl: '3600',
+        ...(metadata ? {metadata} : {}),
       });
 
       if (error) throw error;
@@ -508,7 +510,7 @@ export class CatalogStorageHelper {
       const result: StoragePartItem[] = [];
 
       for (const f of data) {
-        if (f.name.startsWith('.') || /^logo\./i.test(f.name)) continue;
+        if (f.name.startsWith('.') || /^logo\./i.test(f.name) || /\.(mask|layer)\./i.test(f.name)) continue;
 
         // ถ้าเป็นไฟล์รูปภาพโดยตรง
         if (/\.(png|jpe?g|webp|svg)$/i.test(f.name)) {
@@ -528,12 +530,13 @@ export class CatalogStorageHelper {
           try {
             const { data: subFiles } = await storage.list(`${path}/${f.name}`, { limit: 20 });
             if (subFiles && subFiles.length > 0) {
+              const photos = subFiles.filter(s => !/\.(mask|layer)\./i.test(s.name));
               const primaryFile =
-                subFiles.find((s) => /^45_front\./i.test(s.name)) ||
-                subFiles.find((s) => /^front\./i.test(s.name)) ||
-                subFiles.find((s) => /^45_Back\./i.test(s.name)) ||
-                subFiles.find((s) => /^Back\./i.test(s.name)) ||
-                subFiles.find((s) => /\.(png|jpe?g|webp)$/i.test(s.name));
+                photos.find((s) => /^45_front\./i.test(s.name)) ||
+                photos.find((s) => /^front\./i.test(s.name)) ||
+                photos.find((s) => /^45_Back\./i.test(s.name)) ||
+                photos.find((s) => /^Back\./i.test(s.name)) ||
+                photos.find((s) => /\.(png|jpe?g|webp)$/i.test(s.name));
               if (primaryFile) {
                 const parts = primaryFile.name.split('.');
                 const ext = parts.pop() || 'png';

@@ -1,11 +1,12 @@
 import { Component, input, output } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Icon } from '../../../../shared/ui/icon/icon';
+import { ShowcaseImage } from '../showcase-image/showcase-image';
 import { ShowcaseBuild } from '../../discover.data';
 
 @Component({
   selector: 'app-build-card',
-  imports: [Icon, DecimalPipe],
+  imports: [Icon, DecimalPipe, ShowcaseImage],
   templateUrl: './build-card.html',
 })
 export class BuildCard {

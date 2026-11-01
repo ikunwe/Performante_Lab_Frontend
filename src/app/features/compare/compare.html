@@ -155,13 +155,25 @@
             class="h-[calc(100%_-_73px)] overflow-hidden rounded-lg border border-white/10 bg-[#151515]"
           >
             <div
-              class="relative aspect-[1.65] overflow-hidden bg-[radial-gradient(ellipse,#3c3c3c,#111_80%)]"
+              class="relative aspect-[1.6] overflow-hidden bg-[radial-gradient(ellipse,#3c3c3c,#111_80%)]"
             >
               @if (part.previewImage) {
                 <img
                   [src]="part.previewImage"
                   [alt]="part.name"
-                  class="h-full w-full object-contain p-3"
+                  loading="lazy"
+                  decoding="async"
+                  [class]="
+                    part.category === 'front'
+                      ? 'absolute right-0 top-1/2 w-[230%] max-w-none -translate-y-[60%]'
+                      : part.category === 'rear'
+                        ? 'absolute left-0 top-1/2 w-[230%] max-w-none -translate-y-[60%]'
+                        : part.category === 'wheels'
+                          ? 'absolute left-1/2 top-1/2 w-[300%] max-w-none -translate-x-[48%] -translate-y-[73%]'
+                          : part.category === 'spoilers'
+                            ? 'absolute left-1/2 top-1/2 w-[250%] max-w-none -translate-x-[25%] -translate-y-[27%]'
+                            : 'h-full w-full object-contain p-2'
+                  "
                 />
               }
             </div>

@@ -141,6 +141,15 @@ describe('Discover workspace', () => {
     expect(remove).toHaveBeenCalledWith(own.id);
   });
 
+  it('labels saved product names with their part category in the details dialog', async () => {
+    const fixture = TestBed.createComponent(Discover), page = fixture.componentInstance;
+    fixture.detectChanges(); await fixture.whenStable();
+    page.selected.set({ ...showcaseBuilds[0], partDetails: [{id:'front',name:'FL5',category:'front'}, {id:'kit',name:'Mugen Kit',category:'bodykits'}] });
+    page.modal.set('details'); fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector('dialog').textContent;
+    expect(text).toContain('Front Bumper'); expect(text).toContain('FL5');
+    expect(text).toContain('Full Body Kits'); expect(text).toContain('Mugen Kit');
+  });
   it('renders the Liked workspace with the same cards and supports search', () => {
     const fixture=TestBed.createComponent(Discover),page=fixture.componentInstance;
     const likes=TestBed.inject(LikesStore);likes.builds.set([showcaseBuilds[0]]);

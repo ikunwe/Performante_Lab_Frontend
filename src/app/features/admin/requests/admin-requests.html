@@ -156,6 +156,8 @@
               >
                 Rejected
               </span>
+            } @else if (req.status === 'Cancelled') {
+              <span class="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-stone-400">Cancelled</span>
             } @else {
               <span
                 class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30"
@@ -237,7 +239,7 @@
                 <button
                   type="button"
                   (click)="handleAccept(req, $event)"
-                  [disabled]="!!admin.requestBusyId() || admin.requestsLoading()"
+                  [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
                   class="h-7 flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Accept
@@ -245,7 +247,7 @@
                 <button
                   type="button"
                   (click)="handleReject(req, $event)"
-                  [disabled]="!!admin.requestBusyId() || admin.requestsLoading()"
+                  [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
                   class="h-7 flex-1 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Reject
@@ -290,7 +292,9 @@
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : req.status === 'Rejected'
                       ? 'bg-rose-500/20 text-rose-400'
-                      : 'bg-amber-500/20 text-amber-400'
+                      : req.status === 'Cancelled'
+                        ? 'bg-white/5 text-stone-400'
+                        : 'bg-amber-500/20 text-amber-400'
                 "
               >
                 {{ req.status }}
@@ -379,7 +383,7 @@
             <button
               type="button"
               (click)="handleAccept(req)"
-              [disabled]="!!admin.requestBusyId() || admin.requestsLoading()"
+              [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
               class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
               Accept คำขอ
@@ -387,7 +391,7 @@
             <button
               type="button"
               (click)="handleReject(req)"
-              [disabled]="!!admin.requestBusyId() || admin.requestsLoading()"
+              [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
               class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
               Reject คำขอ

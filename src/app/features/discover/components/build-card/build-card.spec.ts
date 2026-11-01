@@ -14,6 +14,16 @@ const build = {
   isPublic: false,
 };
 describe('Database build card', () => {
+  it('shows the empty-photo icon for removed local covers or failed remote images and recovers for a new URL',()=>{
+    const fixture=TestBed.createComponent(BuildCard);
+    fixture.componentRef.setInput('build',{...build,image:'assets/List_Car/Honda/civic.png'});fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    fixture.componentRef.setInput('build',build);fixture.detectChanges();
+    fixture.nativeElement.querySelector('img').dispatchEvent(new Event('error'));fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    fixture.componentRef.setInput('build',{...build,image:'https://example.com/new.png'});fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('img')?.getAttribute('src')).toBe('https://example.com/new.png');
+  });
   it('labels an own private build and does not invent an example budget', () => {
     TestBed.configureTestingModule({ imports: [BuildCard] });
     const fixture = TestBed.createComponent(BuildCard);

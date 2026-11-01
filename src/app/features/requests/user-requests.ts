@@ -72,6 +72,8 @@ export class UserRequests {
   readonly submitting = signal(false);
   readonly loadingRequests = signal(false);
   readonly requestsError = signal('');
+  readonly cancelTarget = signal<string | null>(null);
+  readonly cancellingId = signal<string | null>(null);
   private submissionId = '';
   private submissionKey = '';
   private destroyed = false;
@@ -244,6 +246,7 @@ export class UserRequests {
     if (this.draftsReady && this.draftOwner)
       void this.draftStorage.save(this.draftOwner, this.draftSnapshot()).catch(() => {});
     if (this.draftOwner !== owner) {
+      this.cancelTarget.set(null);
       if (this.draftOwner) {
         this.clearEditor();
         this.drafts.set([]);
@@ -322,18 +325,47 @@ export class UserRequests {
     }
   }
   async loadRequests(): Promise<void> {
-    if (this.loadingRequests()) return;
+    if (this.loadingRequests() || this.cancellingId()) return;
     const version = ++this.requestVersion;
     this.loadingRequests.set(true);
     this.requestsError.set('');
     try {
       const rows = await this.api.list();
-      if (!this.destroyed && version === this.requestVersion) this.submitted.set(rows);
+      if (!this.destroyed && version === this.requestVersion) this.submitted.set(rows.filter(row => row.status !== 'Cancelled'));
     } catch (error) {
       if (!this.destroyed && version === this.requestVersion)
         this.requestsError.set(error instanceof Error ? error.message : 'โหลดคำขอไม่สำเร็จ');
     } finally {
       if (!this.destroyed && version === this.requestVersion) this.loadingRequests.set(false);
+    }
+  }
+  requestCancel(request: RequestRecord): void {
+    if (request.status !== 'Pending' || this.cancellingId() || this.loadingRequests()) return;
+    this.cancelTarget.set(request.id);
+    this.requestsError.set('');
+  }
+  async confirmCancel(id: string): Promise<void> {
+    if (
+      this.cancelTarget() !== id ||
+      this.cancellingId() ||
+      !this.submitted().some((row) => row.id === id && row.status === 'Pending')
+    )
+      return;
+    const owner = this.auth.user()?.id;
+    this.cancellingId.set(id);
+    this.requestsError.set('');
+    this.message.set('');
+    try {
+      await this.api.cancel(id);
+      if (this.destroyed || this.auth.user()?.id !== owner) return;
+      this.submitted.update((rows) => rows.filter((row) => row.id !== id));
+      this.cancelTarget.set(null);
+      this.message.set('ยกเลิกคำขอแล้ว');
+    } catch (error) {
+      if (!this.destroyed && this.auth.user()?.id === owner)
+        this.requestsError.set(error instanceof Error ? error.message : 'ยกเลิกคำขอไม่สำเร็จ');
+    } finally {
+      this.cancellingId.set(null);
     }
   }
   async submit(): Promise<void> {

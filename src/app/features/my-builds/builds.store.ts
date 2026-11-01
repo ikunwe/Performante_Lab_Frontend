@@ -2,7 +2,7 @@ import { invalidateDiscoverFeed } from '../discover/discover-feed.store';
 import { StorageCatalogStore } from '../../core/catalog/storage-catalog';
 import { Injectable, afterNextRender, effect, inject, signal, untracked } from '@angular/core';
 import { catalogCars, CatalogCar } from '../catalog/catalog.data';
-import { partsForCar } from '../../core/catalog/prepared-parts';
+import { partsForCar } from '../../core/catalog/catalog-parts';
 import { BuildsApi } from './builds.api';
 
 export const buildCategories = ['Street', 'Track', 'Show'] as const;

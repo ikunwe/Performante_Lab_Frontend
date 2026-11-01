@@ -21,18 +21,19 @@ export class AdminRequests {
   readonly detailsModalRequest = signal<AdminRequestItem | null>(null);
   readonly toastMessage = signal('');
 
-  readonly statuses: ('All' | 'Pending' | 'Accepted' | 'Rejected')[] = [
+  readonly statuses: ('All' | 'Pending' | 'Accepted' | 'Rejected' | 'Cancelled')[] = [
     'All',
     'Pending',
     'Accepted',
     'Rejected',
+    'Cancelled',
   ];
 
   toggleFilters(): void {
     this.filtersOpen.update((v) => !v);
   }
 
-  setStatusFilter(status: 'All' | 'Pending' | 'Accepted' | 'Rejected'): void {
+  setStatusFilter(status: 'All' | 'Pending' | 'Accepted' | 'Rejected' | 'Cancelled'): void {
     this.admin.requestsStatusFilter.set(status);
     this.filtersOpen.set(false);
   }

@@ -1,6 +1,6 @@
 export const catalogBrandLogos: Record<string, string> = {
-  Ferrari: 'assets/brands/ferrari.png',
-  Lamborghini: 'assets/brands/lamborghini.png',
+  Ferrari: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/ferrari.png',
+  Lamborghini: 'https://test.supabase.co/storage/v1/object/public/catalog/brands/lamborghini.png',
 };
 
 export interface CatalogCar {
@@ -36,14 +36,14 @@ export const catalogCars: CatalogCar[] = [
     id: 'f8-tributo',
     brand: 'Ferrari',
     name: 'Ferrari F8 Tributo',
-    image: 'assets/car_pic.png',
+    image: 'https://test.supabase.co/storage/v1/object/public/catalog/Ferrari/car.png',
     body: 'Coupe',
   },
   {
     id: 'revuelto',
     brand: 'Lamborghini',
     name: 'Lamborghini Revuelto',
-    image: 'assets/car_pic_loginpage.jpg',
+    image: 'https://test.supabase.co/storage/v1/object/public/catalog/Lamborghini/car.jpg',
     body: 'Coupe',
   },
 ];

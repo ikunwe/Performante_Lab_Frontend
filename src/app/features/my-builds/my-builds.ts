@@ -18,7 +18,7 @@ import { Icon } from '../../shared/ui/icon/icon';
 import {
   catalogBrandLogos,
   catalogCars,
-  partCategories,
+  buildPartCategories,
   CatalogCar,
   CatalogPart,
 } from '../catalog/catalog.data';
@@ -26,9 +26,11 @@ import { BuildsStore, SavedBuild, buildCategories } from './builds.store';
 import { BrandDirectory, CarBrand } from '../../core/catalog/brand-directory';
 import { LogoBackdrop } from '../../shared/ui/brand-logo/logo-backdrop';
 import { modelImage } from '../../core/catalog/car-images';
-import { partsForCar, preparedPreview, preparedViewState } from '../../core/catalog/prepared-parts';
+import { partsForCar } from '../../core/catalog/catalog-parts';
 import { viewsForCar } from '../../core/catalog/car-views';
-import { CarViewId } from '../../core/catalog/car-view-manifest';
+import { CarViewId } from '../../core/catalog/car-views';
+import { buildLayerPlan, BuildLayerPlan } from '../../core/catalog/build-layers';
+import { BuildPreview } from '../../shared/ui/build-preview/build-preview';
 import {
   ModelDirectory,
   VehicleModel,
@@ -37,7 +39,7 @@ import {
 
 @Component({
   selector: 'app-my-builds',
-  imports: [LoadingSkeleton, Icon, DatePipe, LogoBackdrop],
+  imports: [LoadingSkeleton, Icon, DatePipe, LogoBackdrop, BuildPreview],
   templateUrl: './my-builds.html',
   host: { class: 'block' },
 })
@@ -114,7 +116,7 @@ export class MyBuilds {
   get logos() {
     return catalogBrandLogos();
   }
-  readonly categories = partCategories.filter(category => ['bodykits','front','rear','wheels','spoilers'].includes(category.id)).map(category => ({...category,name:({bodykits:'Full Body Kits',front:'Front Bumper',rear:'Rear Bumper',wheels:'Wheels',spoilers:'Spoilers'} as Record<string,string>)[category.id]}));
+  readonly categories = buildPartCategories;
   readonly car = computed(() =>
     this.referenceCar()?.id === this.carId()
       ? this.referenceCar()
@@ -147,44 +149,43 @@ export class MyBuilds {
       this.carViews()[0] ??
       null,
   );
-  readonly previewState = computed(() =>
-    preparedViewState(this.car(), this.partIds(), this.activeView()?.view ?? 'front45'),
-  );
-  readonly hasPreparedPreview = computed(() => !!this.previewState().image);
+  readonly layerPlan = computed(() => this.planForView(this.activeView()?.view ?? 'front45'));
+  private readonly viewPlans = computed(() => {
+    const car = this.car();
+    const parts = this.availableParts().filter(p => this.partIds().includes(p.id));
+    return new Map(this.carViews().map(view => [view.view, car?.storagePath ? buildLayerPlan(car, parts, view.view) : null]));
+  });
+  planForView(view: CarViewId): BuildLayerPlan | null {
+    return this.viewPlans().get(view) ?? null;
+  }
+  readonly previewState = computed(() => {
+    const plan = this.layerPlan();
+    return plan ? {image:plan.base,missing:plan.missing} : {image:null,missing:[]};
+  });
+  readonly hasPreparedPreview = computed(() => this.layerPlan()?.selected ?? !!this.previewState().image);
   readonly missingPartView = computed(() => this.previewState().missing.length > 0);
   readonly previewImage = computed(
     () => this.previewState().image ?? this.activeView()?.url ?? this.carImage(this.car()),
   );
-  viewImage(view: CarViewId): string | null {
-    return (
-      preparedPreview(this.car(), this.partIds(), view) ??
-      this.carViews().find((item) => item.view === view)?.url ??
-      null
-    );
+  viewImage(view:CarViewId):string|null {
+    return this.planForView(view)?.base ?? this.carViews().find(item=>item.view===view)?.url ?? null;
   }
   selectView(view: CarViewId): void {
     if (this.carViews().some((item) => item.view === view)) this.selectedView.set(view);
   }
-  buildImage(build: SavedBuild): string | null {
-    const car = this.carFor(build);
-    return (
-      preparedPreview(car, build.partIds) ??
-      preparedPreview(car, build.partIds, 'rear45') ??
-      this.carImage(car)
-    );
+  buildImage(build:SavedBuild):string|null { return this.carImage(this.carFor(build)); }
+  savedLayerPlan(build: SavedBuild): BuildLayerPlan | null {
+    return this.savedLayerPlans().get(build.id) ?? null;
   }
-  carImage(car: CatalogCar | null | undefined): string | null {
-    if (!car) return null;
-    if (car.storagePath) return car.image || null;
-    const ref = car.reference;
-    return ref
-      ? (viewsForCar(car)[0]?.url ??
-          modelImage(
-            ref.brandId,
-            ref.modelName,
-            ref.generationName ? { name: ref.generationName, yearStart: ref.yearStart } : undefined,
-          ))
-      : car.image || null;
+  private readonly savedLayerPlans = computed(() => new Map(this.store.builds().map(build => {
+    const car = this.carFor(build);
+    return [build.id, car?.storagePath ? buildLayerPlan(car, partsForCar(car).filter(p => build.partIds.includes(p.id)), viewsForCar(car)[0]?.view ?? 'front45') : null] as const;
+  })));
+  carImage(car:CatalogCar|null|undefined):string|null {
+    if(!car)return null;
+    const current=catalogCars().find(item=>item.id===car.id);
+    const image=current?.image || car.image;
+    return image && /^https?:\/\//i.test(image) ? image : null;
   }
   chooseModel(model: VehicleModel): void {
     if (model.brandId !== this.selectedBrand()?.id) return;

@@ -3,12 +3,7 @@
   <button type="button"
     class="relative block aspect-[1.8] w-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_35%,#535353,#121212_75%)] text-left focus-visible:outline-2 focus-visible:outline-red-400 cursor-pointer disabled:cursor-not-allowed"
     (click)="details.emit(build())" [attr.aria-label]="'ดูรายละเอียด ' + build().title">
-    @if (build().image) {
-    <img [src]="build().image" [alt]="build().car" width="1280" height="960" loading="lazy"
-      class="h-full w-full object-contain p-2" />
-    } @else {
-    <span class="flex h-full items-center justify-center text-stone-500"><app-icon name="car" class="!size-10" /></span>
-    }
+    <app-showcase-image [build]="build()" />
     <span
       class="absolute left-3 top-3 rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[8px] tracking-widest text-white/80 backdrop-blur">{{
       build().category.toUpperCase() }}</span>

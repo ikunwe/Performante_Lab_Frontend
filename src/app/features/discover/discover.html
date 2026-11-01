@@ -207,15 +207,25 @@
       }
       @if (modal() === 'details') {
       @if (selected(); as build) {
-      <img [src]="build.image" [alt]="build.car" width="1280" height="960"
-        class="aspect-[1.9] w-full rounded-lg bg-[radial-gradient(ellipse,#444,#111)] object-contain" />
+      <div class="aspect-[1.9] w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse,#444,#111)]">
+        <app-showcase-image [build]="build" />
+      </div>
       <h3 class="mt-5 text-xl">{{ build.title }}</h3>
       <p class="mt-2 text-xs text-stone-500">
         {{ build.car }} · {{ build.category }} · by {{ build.author }}
       </p>
       <ul class="my-5 space-y-2 text-sm text-stone-300">
-        @for (part of build.parts; track part) {
-        <li class="border-b border-white/5 pb-2">{{ part }}</li>
+        @if (build.partDetails?.length) {
+          @for (part of build.partDetails; track part.id) {
+            <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-white/5 pb-3">
+              <span class="text-xs text-red-300">{{ partCategoryName(part.category) }}</span>
+              <span>{{ part.name }}</span>
+            </li>
+          }
+        } @else {
+          @for (part of build.parts; track $index) {
+            <li class="border-b border-white/5 pb-2">{{ part }}</li>
+          }
         }
       </ul>
       <p class="text-lg text-red-400">

@@ -33,10 +33,19 @@ exact Storage file and includes its updated_at version. Nested product folders
 are grouped into one item rather than displaying every camera angle as a part.
 Legacy flat product-image files remain supported with unchanged IDs.
 
-Part angle photos are returned in each product's views metadata. The folder tree
-does not define images of combinations of multiple selected products; those are
-not synthesized. Existing local prepared views remain only for historical builds.
-Marketing/login graphics and all original vehicle/brand assets remain in place.
+Part angle photos are returned in each product's views metadata. For full-car
+photos, optional `{angle}.mask.png` files in the same product folder are returned
+as `masks`. Admin can draw these regions directly on the existing photo. Optional
+`{angle}.layer.png` aligned frames are returned as `layerViews`. Neither auxiliary
+file becomes a catalog product or cover photo. Create Build uses
+these optional masks to replace only each selected part's region in the matching
+angle. Civic FE also has automatic angle/category clipping profiles, so its normal
+full-car photos can be composed without uploading or drawing masks. The browser
+normalizes transparent photo framing before clipping; no catalog file is written.
+The frontend local catalog images and prepared-view manifests have been removed. See
+[build-image-layers.md](build-image-layers.md) for preparation and limits.
+Marketing/login graphics remain local. Vehicle/brand/part photos are supplied only
+by Storage metadata. See [Local asset cleanup](local-assets.md).
 
 ## Implementation
 
