@@ -34,8 +34,7 @@ export const routes: Routes = [
       {
         path: 'users',
         title: 'Admin Users | Performante Lab',
-        loadComponent: () =>
-          import('./features/admin/users/admin-users').then((m) => m.AdminUsers),
+        loadComponent: () => import('./features/admin/users/admin-users').then((m) => m.AdminUsers),
       },
     ],
   },
@@ -50,6 +49,13 @@ export const routes: Routes = [
     title: 'Reset Password | Performante Lab',
     loadComponent: () =>
       import('./features/auth/recovery/reset-password').then((m) => m.ResetPassword),
+  },
+  {
+    path: 'requests',
+    canActivate: [authGuard],
+    title: 'Requests | Performante Lab',
+    data: { tab: 'Requests' },
+    loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
   },
   {
     path: 'profile',
@@ -87,6 +93,7 @@ export const routes: Routes = [
   {
     path: 'discover',
     title: 'Discover | Performante Lab',
+    data: { tab: 'Discover' },
     loadComponent: () => import('./features/discover/discover').then((m) => m.Discover),
   },
   {

@@ -1,15 +1,16 @@
-# รุ่นรถและ cache — ชื่อรุ่นอย่างเดียว
+# Model catalog cache
 
-ชุดใช้งานปัจจุบัน schemaVersion 2 มี 28 แบรนด์และ 801 ชื่อรุ่น เก็บเฉพาะ id, brandId, name และ sourceUrl ไม่มีปี โฉม รหัสตัวถัง หรือเครื่องยนต์ในรายการที่จัดเก็บ/ส่ง API
+หน้าเลือกรุ่นใช้ `ModelDirectory` กรองรถจาก snapshot ร่วมของ `StorageCatalogStore`
+ตามโฟลเดอร์แบรนด์ จึงไม่ต้องเรียก API แยกต่อแบรนด์
 
-Supabase ใช้ public.car_brand_reference.details.modelCatalog แยกตาม brand ID ในตารางเดิมที่เปิด RLS อ่านผ่าน Backend เท่านั้น โดยสำรองข้อมูลเดิมก่อนแทนที่และอ่านกลับตรวจครบทั้ง 28 แบรนด์ ไม่ต้องรัน SQL เพิ่ม
+แหล่งข้อมูลคือ `GET /api/catalog/storage` ใช้ cache เดียวกับรายการแบรนด์:
+Frontend 5 นาที, Backend 1 นาที และรองรับบังคับรีเฟรช
+รายชื่อ/ภาพรถมาจาก `{Brand}/{Model}/CarPicture.*` ใน bucket `catalog`
 
-GET /api/catalog/models?brandId=honda อ่านรายการรุ่นของแบรนด์นั้น ส่วน /api/catalog/models/export ดาวน์โหลด snapshot ดัดแปลงภายใต้ ODbL 1.0 พร้อม attribution
+API รายการรุ่นและ export แบบเดิมถูกถอดออกแล้ว ข้อมูลอ้างอิงใน Supabase ยังอยู่
+ชุดข้อมูลดัดแปลงพร้อม attribution และใบอนุญาตเก็บไว้ที่ Backend
+`data/models/car-models.json` และ `data/models/raw/LICENSE-DATA`
+ยังเก็บเพื่อรองรับ Build อ้างอิงเก่าและงานดูแลข้อมูลแบบ manual
 
-Backend cache 1 ชั่วโมงต่อแบรนด์ แชร์ in-flight requests และใช้ snapshot เก่าพร้อม backoff 30 วินาทีเมื่อ refresh ล้มเหลว Frontend ใช้ memory/localStorage 1 ชั่วโมง namespace performante-lab.models.v2-names แยกตาม API + Supabase project + brand ID และล้าง cache v1 ของแบรนด์ที่เปิดดูเพื่อไม่เก็บข้อมูลโฉมเดิมซ้ำ
-
-หน้าเลือก: ยี่ห้อ → รูปและชื่อรุ่น → พาร์ต ไม่มีขั้นเลือกโฉมหรือปี ภาพจาก assets/List_Car ยังคงจับคู่ตามชื่อรุ่น รูปที่มีปีในชื่อใช้เป็นภาพตัวแทนของรุ่นโดยไม่เพิ่มปีเข้าฐานข้อมูล Build เดิมที่บันทึกไว้ยังอ่านได้ ข้อมูลพาร์ตของรถที่นำเข้ายังไม่ได้เพิ่ม
-
-อัปเดตจาก Backend ด้วย npm run data:models:offline เพื่อสร้างชุดชื่อรุ่นจาก snapshots หรือ npm run data:models เพื่อดาวน์โหลด snapshots revision เดิม แล้ว npm run data:models:sync เพื่อนำเข้า Supabase สคริปต์ไม่ดึงโฉมหรือปีกลับมาในชุดใช้งาน
-
-หลังเปลี่ยน schema ให้ restart Backend และรีเฟรช Frontend ข้อมูลทั่วโลกยังเป็นรายการอ้างอิง ไม่ใช่หลักฐานว่าแต่ละรุ่นจำหน่ายในไทยหรือใช้พาร์ตร่วมกันได้
+assets รถ แบรนด์ พาร์ท และมุมมองเดิมยังเก็บไว้ ไม่มีการนำเข้าหรือลบภาพอัตโนมัติ
+รายละเอียดระบบปัจจุบัน: [Storage user catalog](storage-user-catalog.md)

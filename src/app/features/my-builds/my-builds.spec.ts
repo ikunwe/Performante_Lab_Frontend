@@ -1,14 +1,33 @@
+import { seedCatalogFixture } from '../../testing/storage-catalog.fixture';
+import { StorageCatalogStore, storageCatalogData } from '../../core/catalog/storage-catalog';
+beforeEach(() => {
+  seedCatalogFixture(true);
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: StorageCatalogStore,
+        useValue: {
+          data: storageCatalogData,
+          load: async () => {},
+          loading: signal(false),
+          error: signal(''),
+          stale: signal(false),
+        },
+      },
+    ],
+  });
+});
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { BUILDS_STORAGE_KEY, BuildsStore } from './builds.store';
 import { BuildsApi } from './builds.api';
 import { MyBuilds } from './my-builds';
-import { catalogCars, catalogParts } from '../catalog/catalog.data';
+import { catalogCars, catalogParts } from '../../testing/catalog.fixture';
 import { BrandDirectory } from '../../core/catalog/brand-directory';
 import { ModelDirectory } from '../../core/catalog/model-directory';
-import { partImageManifest } from '../../core/catalog/part-image-manifest';
-import { carViewManifest } from '../../core/catalog/car-view-manifest';
+import { partImageManifest } from '../../testing/part-image-manifest.fixture';
+import { carViewManifest } from '../../testing/car-view-manifest.fixture';
 
 describe('My Builds with the account API', () => {
   let memory: Map<string, string>;
@@ -58,7 +77,6 @@ describe('My Builds with the account API', () => {
             ]),
             loading: signal(false),
             error: signal(''),
-            exportUrl: signal(''),
             load: vi.fn().mockResolvedValue(undefined),
           },
         },
@@ -348,10 +366,10 @@ describe('My Builds with the account API', () => {
     expect(page.brandCars().map((car) => car.id)).toEqual(['f8-tributo']);
   });
 
-  it('fills a missing logo from local assets even when directory data is cached', async () => {
+  it('does not substitute local logo assets for missing Storage logos', async () => {
     const page = TestBed.createComponent(MyBuilds).componentInstance;
     const brand = { id: 'aion', slug: 'aion', name: 'AION', aliases: [], logoUrl: null };
-    expect(page.brandLogo(brand)).toBe('assets/brands/supplemental/aion-logo.svg');
+    expect(page.brandLogo(brand)).toBeNull();
     expect(page.brandLogo({ ...brand, id: 'tank', name: 'TANK' })).toBeNull();
     page.markBrandLogoBroken('aion');
     expect(page.brandLogo(brand)).toBeNull();
@@ -409,7 +427,7 @@ describe('My Builds with the account API', () => {
     page.brand.set('Toyota');
     const original = page.modelDirectory.models()[0];
     const model = { ...original, generations: original.generations.slice(0, count) };
-    page.modelDirectory.models.set([model]);
+    (page.modelDirectory.models as any).set([model]);
     fixture.detectChanges();
     fixture.nativeElement.querySelector('button[title="Corolla"]').click();
     fixture.detectChanges();
@@ -433,7 +451,7 @@ describe('My Builds with the account API', () => {
         { ...original.generations[0], id: original.id + ':other', name: 'Other generation' },
       ],
     };
-    page.modelDirectory.models.set([model]);
+    (page.modelDirectory.models as any).set([model]);
     fixture.detectChanges();
     fixture.nativeElement.querySelector('button[title="Corolla"]').click();
     fixture.detectChanges();
@@ -523,7 +541,9 @@ describe('My Builds with the account API', () => {
         }),
     );
     fixture.detectChanges();
-    const submit = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const submit = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
     const click = new MouseEvent('click', { bubbles: true, cancelable: true });
     submit.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(false);

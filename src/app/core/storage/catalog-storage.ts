@@ -1,3 +1,4 @@
+import { notifyStorageCatalogChanged } from '../catalog/storage-catalog';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface StorageBrandItem {
@@ -166,7 +167,10 @@ export class CatalogStorageHelper {
    * Helper สำหรับแปลงชื่อให้อยู่ในรูปแบบที่ปลอดภัยสำหรับ Storage Path
    */
   static sanitize(text: string): string {
-    return text.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    return text
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9_\-\.]/g, '');
   }
 
   /**
@@ -187,15 +191,14 @@ export class CatalogStorageHelper {
     upsert = true,
   ): Promise<{ ok: boolean; url?: string; error?: string }> {
     try {
-      const { error } = await client.storage
-        .from(this.BUCKET)
-        .upload(path, file, {
-          upsert,
-          contentType: file.type || undefined,
-          cacheControl: '0',
-        });
+      const { error } = await client.storage.from(this.BUCKET).upload(path, file, {
+        upsert,
+        contentType: file.type || undefined,
+        cacheControl: '3600',
+      });
 
       if (error) throw error;
+      notifyStorageCatalogChanged();
 
       const { data: publicData } = client.storage.from(this.BUCKET).getPublicUrl(path);
       return { ok: true, url: publicData.publicUrl };
@@ -289,9 +292,7 @@ export class CatalogStorageHelper {
           let logoUrl = this.getPublicUrl(client, `${brandName}/logo.png`);
           try {
             const { data: files } = await storage.list(brandName, { limit: 50 });
-            const logoFile = files?.find((f) =>
-              /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name),
-            );
+            const logoFile = files?.find((f) => /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name));
             if (logoFile) {
               logoUrl = this.getPublicUrl(client, `${brandName}/${logoFile.name}`);
             }
@@ -339,9 +340,7 @@ export class CatalogStorageHelper {
           let imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/45_front.png`);
           try {
             const { data: files } = await storage.list(`${safeBrand}/${modelName}`, { limit: 20 });
-            const picFile =
-              files?.find((f) => /^45_front\.(png|jpe?g|webp)$/i.test(f.name)) ||
-              files?.find((f) => /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name));
+            const picFile = files?.find((f) => /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name));
             if (picFile) {
               imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/${picFile.name}`);
             }
@@ -394,9 +393,7 @@ export class CatalogStorageHelper {
           let logoUrl = this.getPublicUrl(client, `${path}/${workshopName}/logo.png`);
           try {
             const { data: files } = await storage.list(`${path}/${workshopName}`, { limit: 20 });
-            const logoFile = files?.find((f) =>
-              /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name),
-            );
+            const logoFile = files?.find((f) => /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name));
             if (logoFile) {
               logoUrl = this.getPublicUrl(client, `${path}/${workshopName}/${logoFile.name}`);
             }
@@ -486,96 +483,5 @@ export class CatalogStorageHelper {
       console.warn('[CatalogStorageHelper] listItems error:', err);
       return [];
     }
-  }
-
-  /**
-   * ลบไฟล์ออกจาก Storage bucket 'catalog'
-   */
-  static async deleteFile(
-    client: SupabaseClient,
-    pathOrUrl: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const storage = client?.storage?.from ? client.storage.from(this.BUCKET) : null;
-      if (!storage || typeof storage.remove !== 'function') {
-        return { ok: false, error: 'Storage not available' };
-      }
-      const path = this.extractStoragePath(pathOrUrl);
-      if (!path) return { ok: true };
-      const { error } = await storage.remove([path]);
-      if (error) throw error;
-      return { ok: true };
-    } catch (err: any) {
-      console.warn('[CatalogStorageHelper] deleteFile error:', err);
-      return { ok: false, error: err?.message || 'Delete failed' };
-    }
-  }
-
-  /**
-   * ลบไฟล์ทั้งหมดในโฟลเดอร์ prefix ออกจาก Storage bucket 'catalog' แบบ Recursive (ครอบคลุมโฟลเดอร์ย่อยทุกระดับ)
-   */
-  static async deleteFolderRecursively(
-    client: SupabaseClient,
-    prefixOrUrl: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const storage = client?.storage?.from ? client.storage.from(this.BUCKET) : null;
-      if (!storage || typeof storage.list !== 'function' || typeof storage.remove !== 'function') {
-        return { ok: false, error: 'Storage not available' };
-      }
-
-      const rootPrefix = this.extractStoragePath(prefixOrUrl);
-      if (!rootPrefix) return { ok: true };
-
-      const filesToDelete: string[] = [];
-
-      const scanDir = async (dirPath: string) => {
-        try {
-          const { data, error } = await storage.list(dirPath, { limit: 100 });
-          if (error || !data) return;
-
-          for (const item of data) {
-            if (!item.name || item.name.startsWith('.')) continue;
-            const fullItemPath = dirPath ? `${dirPath}/${item.name}` : item.name;
-            const isSubfolder = item.id === null || item.metadata === null || !item.name.includes('.');
-            if (isSubfolder) {
-              await scanDir(fullItemPath);
-            } else {
-              filesToDelete.push(fullItemPath);
-            }
-          }
-        } catch (subErr) {
-          console.warn('[CatalogStorageHelper] scanDir warning:', subErr);
-        }
-      };
-
-      await scanDir(rootPrefix);
-
-      // ถ้าไม่พบไฟล์ใน subfolder อาจเป็นเพราะ prefix เป็นไฟล์อยู่แล้ว
-      if (filesToDelete.length === 0) {
-        await storage.remove([rootPrefix]);
-      } else {
-        // ลบไฟล์ทีละ batch ละไม่เกิน 50 ไฟล์
-        for (let i = 0; i < filesToDelete.length; i += 50) {
-          const batch = filesToDelete.slice(i, i + 50);
-          await storage.remove(batch);
-        }
-      }
-
-      return { ok: true };
-    } catch (err: any) {
-      console.warn('[CatalogStorageHelper] deleteFolderRecursively error:', err);
-      return { ok: false, error: err?.message || 'Delete folder failed' };
-    }
-  }
-
-  /**
-   * ลบไฟล์ทั้งหมดในโฟลเดอร์ prefix (alias ไปยัง deleteFolderRecursively)
-   */
-  static async deleteFolder(
-    client: SupabaseClient,
-    prefix: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    return this.deleteFolderRecursively(client, prefix);
   }
 }

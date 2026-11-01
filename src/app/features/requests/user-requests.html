@@ -1,0 +1,419 @@
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+  <div class="flex gap-2" role="group" aria-label="หน้าคำขอ">
+    <button
+      type="button"
+      (click)="tab.set('new')"
+      [attr.aria-pressed]="tab() === 'new'"
+      class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-4 text-xs text-stone-400 hover:text-white aria-pressed:border-red-500/40 aria-pressed:bg-red-500/10 aria-pressed:text-red-300"
+    >
+      <app-icon name="plus" class="!size-3" />สร้างคำขอ
+    </button>
+    <button
+      type="button"
+      (click)="tab.set('mine')"
+      [attr.aria-pressed]="tab() === 'mine'"
+      class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-4 text-xs text-stone-400 hover:text-white aria-pressed:border-red-500/40 aria-pressed:bg-red-500/10 aria-pressed:text-red-300"
+    >
+      <app-icon name="ticket" class="!size-3" />คำขอของฉัน
+      <span class="rounded-lg bg-white/5 px-2 py-0.5 text-[10px]">{{ drafts().length }}</span>
+    </button>
+  </div>
+  <span class="text-[10px] text-stone-500">แบรนด์รถ · รุ่นรถ · BodyKit · Part</span>
+</div>
+
+<p
+  class="mb-5 rounded-lg border border-amber-400/15 bg-amber-400/5 px-4 py-3 text-xs leading-6 text-amber-200/80"
+>
+  <app-icon name="ticket" class="mr-2 !size-3.5" />ขณะนี้เป็นหน้าจอเตรียมคำขอ
+  ฉบับร่างเก็บไว้เฉพาะหน้านี้และยังไม่ได้ส่งให้ผู้ดูแล
+</p>
+@if (message()) {
+  <p
+    role="status"
+    class="mb-5 rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-4 text-xs text-emerald-200"
+  >
+    {{ message() }}
+  </p>
+}
+@if (error()) {
+  <p
+    role="alert"
+    class="mb-5 rounded-lg border border-red-400/30 bg-red-400/5 p-4 text-xs text-red-300"
+  >
+    {{ error() }}
+  </p>
+}
+
+@if (tab() === 'mine') {
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    @for (draft of drafts(); track draft.id) {
+      <article class="overflow-hidden rounded-lg border border-white/10 bg-[#161616]">
+        <div
+          class="relative flex aspect-[1.8] items-center justify-center bg-[radial-gradient(ellipse,#343434,#141414)] p-4"
+        >
+          <img
+            [src]="draft.photos[0].url"
+            [alt]="draft.title"
+            class="max-h-full max-w-full object-contain"
+          /><span
+            class="absolute left-3 top-3 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[9px] text-stone-300"
+            >ฉบับร่าง</span
+          >
+        </div>
+        <div class="space-y-3 p-4">
+          <span class="text-[10px] text-red-300">{{ kindLabel(draft.kind) }}</span>
+          <h2 class="text-sm">{{ draft.title }}</h2>
+          <p class="text-xs text-stone-500">{{ draft.brandName }} {{ draft.modelName }}</p>
+          <p class="text-[10px] text-stone-600">
+            {{ draft.createdAt | date: 'dd/MM/yyyy HH:mm' }} · {{ draft.photos.length }} รูป
+          </p>
+          <button
+            type="button"
+            (click)="editDraft(draft)"
+            class="min-h-9 w-full cursor-pointer rounded-lg border border-white/10 text-xs text-stone-300 hover:bg-white/5"
+          >
+            เปิดฉบับร่าง
+          </button>
+        </div>
+      </article>
+    } @empty {
+      <div
+        class="col-span-full rounded-lg border border-dashed border-white/10 bg-[#121212] px-6 py-20 text-center"
+      >
+        <span
+          class="mx-auto flex size-14 items-center justify-center rounded-lg border border-white/10 bg-white/[.03] text-stone-500"
+          ><app-icon name="ticket" class="!size-6"
+        /></span>
+        <h2 class="mt-5 text-lg">ยังไม่มีคำขอที่เตรียมไว้</h2>
+        <p class="mt-2 text-xs leading-6 text-stone-500">
+          เตรียมชื่อรายการ รายละเอียด และภาพอ้างอิง แล้วตรวจสอบก่อนส่ง
+        </p>
+        <button
+          type="button"
+          (click)="tab.set('new')"
+          class="mt-6 min-h-10 cursor-pointer rounded-lg bg-[#d52d1b] px-5 text-xs hover:bg-red-600"
+        >
+          สร้างคำขอแรก
+        </button>
+      </div>
+    }
+  </div>
+} @else if (reviewing()) {
+  <section class="mx-auto max-w-3xl overflow-hidden rounded-lg border border-white/10 bg-[#161616]">
+    <div class="flex items-start justify-between gap-4 border-b border-white/10 p-6">
+      <div>
+        <p class="text-[9px] tracking-[.2em] text-red-400">REVIEW REQUEST</p>
+        <h2 class="mt-2 text-xl">ตรวจสอบคำขอ</h2>
+        <p class="mt-2 text-xs text-stone-500">ตรวจสอบข้อมูลและรูปอ้างอิงก่อนเก็บฉบับร่าง</p>
+      </div>
+      <span
+        class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] text-stone-400"
+        >ยังไม่ได้ส่ง</span
+      >
+    </div>
+    <div class="space-y-6 p-6">
+      <div>
+        <p class="text-xs text-red-300">{{ selectedKind().label }}</p>
+        <h3 class="mt-2 text-xl">{{ title() }}</h3>
+        @if (needsBrand()) {
+          <p class="mt-2 text-sm text-stone-400">{{ brandName() }} {{ modelName() }}</p>
+        }
+      </div>
+      @if (manufacturer()) {
+        <p class="text-xs text-stone-400">สำนักแต่ง / ผู้ผลิต: {{ manufacturer() }}</p>
+      }
+      @if (description()) {
+        <p class="whitespace-pre-wrap text-sm leading-7 text-stone-300">{{ description() }}</p>
+      }
+      @if (source()) {
+        <a
+          [href]="source()"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block cursor-pointer break-all text-xs text-blue-300 underline"
+          >{{ source() }}</a
+        >
+      }
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        @for (photo of photos(); track photo.id) {
+          <div class="rounded-lg border border-white/10 bg-black/20 p-3">
+            <img
+              [src]="photo.url"
+              [alt]="photo.file.name"
+              class="aspect-square w-full object-contain"
+            />
+            <p class="mt-2 truncate text-[10px] text-stone-500">{{ photo.file.name }}</p>
+          </div>
+        }
+      </div>
+      <div class="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
+        <button
+          type="button"
+          (click)="reviewing.set(false)"
+          class="min-h-10 cursor-pointer rounded-lg border border-white/15 px-5 text-xs text-stone-300 hover:bg-white/5"
+        >
+          กลับไปแก้ไข</button
+        ><button
+          type="button"
+          (click)="saveDraft()"
+          class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-[#d52d1b] px-5 text-xs hover:bg-red-600"
+        >
+          <app-icon name="builds" class="!size-3.5" />บันทึกฉบับร่าง
+        </button>
+      </div>
+    </div>
+  </section>
+} @else {
+  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
+    <form (submit)="$event.preventDefault(); review()" class="space-y-6">
+      <section class="rounded-lg border border-white/10 bg-[#151515] p-5 sm:p-6">
+        <div class="mb-5 flex items-center gap-3">
+          <span
+            class="flex size-8 items-center justify-center rounded-lg bg-red-500/10 text-xs text-red-300"
+            >01</span
+          >
+          <div>
+            <h2 class="text-sm">ต้องการขอเพิ่มอะไร?</h2>
+            <p class="mt-1 text-[11px] text-stone-500">เลือกประเภทเพื่อระบุข้อมูลให้ตรงกับรายการ</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3" role="group" aria-label="ประเภทคำขอ">
+          @for (item of kinds; track item.id) {
+            <button
+              type="button"
+              (click)="chooseKind(item.id)"
+              [attr.aria-pressed]="kind() === item.id"
+              class="relative flex cursor-pointer gap-3 rounded-lg border border-white/10 bg-black/10 p-4 text-left text-stone-400 transition-colors hover:border-white/25 aria-pressed:border-red-500/50 aria-pressed:bg-red-500/[.07] aria-pressed:text-red-300"
+            >
+              <app-icon [name]="item.icon" class="mt-0.5 !size-5" /><span
+                ><span class="block text-xs">{{ item.name }}</span
+                ><span class="mt-1 block text-[11px] text-stone-300">{{ item.label }}</span
+                ><span class="mt-2 block text-[9px] leading-5 text-stone-600">{{
+                  item.note
+                }}</span></span
+              >
+              @if (kind() === item.id) {
+                <app-icon name="check" class="absolute right-3 top-3 !size-3" />
+              }
+            </button>
+          }
+        </div>
+      </section>
+      <section class="space-y-5 rounded-lg border border-white/10 bg-[#151515] p-5 sm:p-6">
+        <div class="flex items-center gap-3">
+          <span
+            class="flex size-8 items-center justify-center rounded-lg bg-white/5 text-xs text-stone-400"
+            >02</span
+          >
+          <div>
+            <h2 class="text-sm">รายละเอียดรายการ</h2>
+            <p class="mt-1 text-[11px] text-stone-500">ชื่อที่ชัดเจนช่วยให้ผู้ดูแลตรวจสอบได้ง่าย</p>
+          </div>
+        </div>
+        <label class="block text-xs text-stone-300"
+          >Title <span class="text-red-400">*</span
+          ><input
+            name="title"
+            [ngModel]="title()"
+            (ngModelChange)="title.set($event)"
+            required
+            maxlength="120"
+            [placeholder]="
+              kind() === 'brand'
+                ? 'เช่น Honda, Toyota หรือชื่อแบรนด์ที่ต้องการเพิ่ม'
+                : 'เช่น Mugen Full BodyKit สำหรับ Civic FE'
+            "
+            class="mt-2 min-h-11 w-full rounded-lg border border-white/10 bg-[#0e0e0e] px-3 text-xs outline-none focus:border-red-400/50"
+        /></label>
+        @if (needsBrand()) {
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block text-xs text-stone-300"
+              >แบรนด์รถ <span class="text-red-400">*</span
+              ><select
+                name="brand"
+                [ngModel]="brandId()"
+                (ngModelChange)="chooseBrand($event)"
+                [disabled]="catalog.loading()"
+                required
+                class="mt-2 min-h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-[#0e0e0e] px-3 text-xs outline-none focus:border-red-400/50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <option value="">
+                  {{ catalog.loading() ? 'กำลังโหลดแบรนด์...' : 'เลือกแบรนด์รถ' }}
+                </option>
+                @for (brand of brands(); track brand.id) {
+                  <option [value]="brand.id">{{ brand.name }}</option>
+                }
+              </select></label
+            >
+            @if (needsModel()) {
+              <label class="block text-xs text-stone-300"
+                >รุ่นรถ <span class="text-red-400">*</span
+                ><select
+                  name="model"
+                  [ngModel]="modelId()"
+                  (ngModelChange)="modelId.set($event)"
+                  [disabled]="catalog.loading() || !brandId()"
+                  required
+                  class="mt-2 min-h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-[#0e0e0e] px-3 text-xs outline-none focus:border-red-400/50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <option value="">เลือกรุ่นรถ</option>
+                  @for (model of models(); track model.id) {
+                    <option [value]="model.id">{{ model.modelName }}</option>
+                  }
+                </select></label
+              >
+            }
+          </div>
+          @if (catalog.error()) {
+            <div
+              role="status"
+              class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/20 p-3 text-xs text-amber-200"
+            >
+              <span>{{ catalog.error() }}</span
+              ><button
+                type="button"
+                (click)="catalog.load(true)"
+                [disabled]="catalog.loading()"
+                class="flex cursor-pointer items-center gap-2 rounded-lg border border-amber-400/20 px-3 py-2 disabled:cursor-not-allowed"
+              >
+                <app-icon name="rotate" [class.animate-spin]="catalog.loading()" />ลองโหลดอีกครั้ง
+              </button>
+            </div>
+          }
+        }
+        @if (needsModel()) {
+          <label class="block text-xs text-stone-300"
+            >สำนักแต่ง / ผู้ผลิต <span class="text-[10px] text-stone-600">ไม่บังคับ</span
+            ><input
+              name="manufacturer"
+              [ngModel]="manufacturer()"
+              (ngModelChange)="manufacturer.set($event)"
+              maxlength="100"
+              placeholder="เช่น Mugen, Enkei, Liberty Walk"
+              class="mt-2 min-h-11 w-full rounded-lg border border-white/10 bg-[#0e0e0e] px-3 text-xs outline-none focus:border-red-400/50"
+          /></label>
+        }
+        <label class="block text-xs text-stone-300"
+          >รายละเอียดเพิ่มเติม<textarea
+            name="description"
+            [ngModel]="description()"
+            (ngModelChange)="description.set($event)"
+            maxlength="2000"
+            rows="4"
+            placeholder="อธิบายรายการที่ต้องการเพิ่ม เช่น รุ่นที่รองรับ ชื่อชุดแต่ง หรือข้อมูลจากผู้ผลิต"
+            class="mt-2 w-full resize-y rounded-lg border border-white/10 bg-[#0e0e0e] p-3 text-xs leading-6 outline-none focus:border-red-400/50"
+          ></textarea
+          ><span class="mt-1 block text-right text-[9px] text-stone-600"
+            >{{ description().length }} / 2,000</span
+          ></label
+        >
+        <label class="block text-xs text-stone-300"
+          >ลิงก์อ้างอิง <span class="text-[10px] text-stone-600">ไม่บังคับ</span
+          ><input
+            name="source"
+            type="url"
+            [ngModel]="source()"
+            (ngModelChange)="source.set($event)"
+            maxlength="1000"
+            placeholder="https://..."
+            class="mt-2 min-h-11 w-full rounded-lg border border-white/10 bg-[#0e0e0e] px-3 text-xs outline-none focus:border-red-400/50"
+        /></label>
+      </section>
+      <section class="rounded-lg border border-white/10 bg-[#151515] p-5 sm:p-6">
+        <div class="mb-5 flex items-center gap-3">
+          <span
+            class="flex size-8 items-center justify-center rounded-lg bg-white/5 text-xs text-stone-400"
+            >03</span
+          >
+          <div>
+            <h2 class="text-sm">รูปภาพอ้างอิง <span class="text-red-400">*</span></h2>
+            <p class="mt-1 text-[11px] text-stone-500">
+              {{
+                kind() === 'brand'
+                  ? 'แนบโลโก้แบรนด์รถที่ต้องการเพิ่ม'
+                  : 'แนบภาพรถหรือชุดแต่งที่ต้องการขอเพิ่ม'
+              }}
+            </p>
+          </div>
+        </div>
+        <label
+          tabindex="0"
+          (keydown.enter)="picker.click()"
+          (dragover)="$event.preventDefault(); dragging.set(true)"
+          (dragleave)="dragging.set(false)"
+          (drop)="onDrop($event)"
+          [class.border-red-400]="dragging()"
+          class="flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/20 bg-black/15 p-5 text-center transition-colors hover:border-red-400/50 focus-visible:outline-2 focus-visible:outline-red-400"
+          ><input
+            #picker
+            type="file"
+            multiple
+            accept="image/png,image/jpeg,image/webp"
+            (change)="onFiles($event)"
+            class="sr-only"
+            aria-label="แนบรูปภาพอ้างอิง"
+          /><app-icon name="upload" class="!size-7 text-stone-500" /><span
+            class="mt-4 text-xs text-stone-300"
+            >ลากรูปมาวาง หรือ <span class="text-red-400">เลือกไฟล์</span></span
+          ><span class="mt-2 text-[10px] leading-5 text-stone-600"
+            >PNG, JPG, WebP · ไม่เกิน 10 MB ต่อรูป · สูงสุด 5 รูป</span
+          ></label
+        >
+        @if (photos().length) {
+          <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            @for (photo of photos(); track photo.id) {
+              <div class="relative overflow-hidden rounded-lg border border-white/10 bg-black/20">
+                <img
+                  [src]="photo.url"
+                  [alt]="photo.file.name"
+                  class="aspect-square w-full object-contain p-3"
+                />
+                <p class="truncate border-t border-white/5 p-2 text-[9px] text-stone-500">
+                  {{ photo.file.name }}
+                </p>
+                <button
+                  type="button"
+                  (click)="removePhoto(photo.id)"
+                  [attr.aria-label]="'ลบรูป ' + photo.file.name"
+                  class="absolute right-2 top-2 flex size-7 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/80 text-stone-300 hover:bg-red-600"
+                >
+                  <app-icon name="close" class="!size-3" />
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <span class="text-[10px] text-stone-600">ตรวจสอบข้อมูลก่อนเก็บเป็นฉบับร่าง</span
+        ><button
+          type="submit"
+          class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg bg-[#d52d1b] px-6 text-xs text-white shadow-[0_5px_22px_#d52d1b20] hover:bg-red-600"
+        >
+          ตรวจสอบคำขอ<app-icon name="arrow" class="!size-3" />
+        </button>
+      </div>
+    </form>
+    <aside
+      class="self-start rounded-lg border border-white/10 bg-[#151515] p-5 xl:sticky xl:top-[100px]"
+    >
+      <span class="flex size-10 items-center justify-center rounded-lg bg-red-500/10 text-red-400"
+        ><app-icon name="ticket" class="!size-5"
+      /></span>
+      <h2 class="mt-4 text-sm">ช่วยเติมแค็ตตาล็อกให้ครบ</h2>
+      <p class="mt-3 text-xs leading-6 text-stone-500">
+        ส่งข้อมูลที่ชัดเจนและภาพอ้างอิง เพื่อให้ผู้ดูแลตรวจสอบรายการที่ต้องการเพิ่มได้ง่ายขึ้น
+      </p>
+      <div
+        class="mt-5 space-y-4 border-t border-white/10 pt-5 text-[11px] leading-6 text-stone-400"
+      >
+        <p><span class="text-stone-200">แบรนด์รถ</span><br />ใช้ชื่อแบรนด์และโลโก้ที่เห็นชัด</p>
+        <p><span class="text-stone-200">BodyKit</span><br />หมายถึงชุดแต่งรอบคันแบบครบชุด</p>
+        <p><span class="text-stone-200">พาร์ทแยก</span><br />ระบุแบรนด์และรุ่นรถที่เกี่ยวข้อง</p>
+      </div>
+      <p class="mt-5 rounded-lg bg-black/20 p-3 text-[10px] leading-5 text-stone-600">
+        รูปในหน้านี้เป็นภาพอ้างอิงสำหรับคำขอ ไม่ได้เพิ่มเข้าแค็ตตาล็อกโดยอัตโนมัติ
+      </p>
+    </aside>
+  </div>
+}

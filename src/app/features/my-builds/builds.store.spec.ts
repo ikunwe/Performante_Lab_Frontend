@@ -1,3 +1,22 @@
+import { seedCatalogFixture } from '../../testing/storage-catalog.fixture';
+import { StorageCatalogStore, storageCatalogData } from '../../core/catalog/storage-catalog';
+beforeEach(() => {
+  seedCatalogFixture(false);
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: StorageCatalogStore,
+        useValue: {
+          data: storageCatalogData,
+          load: async () => {},
+          loading: signal(false),
+          error: signal(''),
+          stale: signal(false),
+        },
+      },
+    ],
+  });
+});
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';

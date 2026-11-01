@@ -30,6 +30,21 @@ describe('Account menu', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('opens Requests from the account dropdown and restores focus', () => {
+    const { fixture, trigger, page } = setup();
+    const requests = vi.fn();
+    page.requests.subscribe(requests);
+    trigger.click();
+    fixture.detectChanges();
+    const button = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((item) => item.textContent?.includes('Requests'))!;
+    button.click();
+    expect(requests).toHaveBeenCalledOnce();
+    expect(page.open()).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('closes for Profile and keeps logout visible while awaiting the result', () => {
     const { fixture, trigger, page } = setup();
     const profile = vi.fn();
@@ -44,7 +59,7 @@ describe('Account menu', () => {
     fixture.detectChanges();
     trigger.click();
     fixture.detectChanges();
-    const logoutButton = fixture.nativeElement.querySelectorAll('button')[2] as HTMLButtonElement;
+    const logoutButton = fixture.nativeElement.querySelectorAll('button')[3] as HTMLButtonElement;
     expect(logoutButton.className).toContain('text-red-400');
     fixture.componentRef.setInput('busy', true);
     fixture.detectChanges();

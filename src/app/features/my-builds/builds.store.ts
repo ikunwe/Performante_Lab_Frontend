@@ -1,3 +1,5 @@
+import { invalidateDiscoverFeed } from '../discover/discover-feed.store';
+import { StorageCatalogStore } from '../../core/catalog/storage-catalog';
 import { Injectable, afterNextRender, effect, inject, signal, untracked } from '@angular/core';
 import { catalogCars, CatalogCar } from '../catalog/catalog.data';
 import { partsForCar } from '../../core/catalog/prepared-parts';
@@ -18,6 +20,7 @@ export const BUILDS_STORAGE_KEY = 'performante-lab.builds.v1';
 @Injectable({ providedIn: 'root' })
 export class BuildsStore {
   private readonly api = inject(BuildsApi);
+  private readonly catalog = inject(StorageCatalogStore);
   private owner: string | null = null;
   private epoch = 0;
   private version = 0;
@@ -40,6 +43,7 @@ export class BuildsStore {
     });
     afterNextRender(() => {
       void this.api.initialize();
+      void this.catalog.load();
     });
   }
 
@@ -58,12 +62,12 @@ export class BuildsStore {
   }
   private validParts(carId: string, ids: unknown, snapshot?: CatalogCar): ids is string[] {
     if (!Array.isArray(ids)) return false;
-    const available = partsForCar(snapshot ?? catalogCars.find((car) => car.id === carId));
+    const available = partsForCar(snapshot ?? catalogCars().find((car) => car.id === carId));
     const parts = ids.map((id) => available.find((part) => part.id === id && part.carId === carId));
     return parts.every(Boolean) && new Set(parts.map((part) => part!.category)).size === ids.length;
   }
   private validCar(carId: string, snapshot?: CatalogCar): boolean {
-    if (catalogCars.some((car) => car.id === carId)) return !snapshot;
+    if (catalogCars().some((car) => car.id === carId)) return !snapshot || snapshot.id === carId;
     const ref = snapshot?.reference;
     const year = (value: unknown) =>
       value === null || (Number.isInteger(value) && Number(value) >= 1880 && Number(value) <= 2100);
@@ -157,7 +161,7 @@ export class BuildsStore {
       return { ok: false, error: 'รถหรือรายการพาร์ทไม่ถูกต้อง กรุณาเลือกใหม่' };
     if (
       input.partIds.length > 1 &&
-      partsForCar(input.carSnapshot ?? catalogCars.find((car) => car.id === input.carId)).some(
+      partsForCar(input.carSnapshot ?? catalogCars().find((car) => car.id === input.carId)).some(
         (part) => input.partIds.includes(part.id) && part.category === 'bodykits',
       )
     )
@@ -185,6 +189,7 @@ export class BuildsStore {
       this.loaded.set(true);
       this.error.set('');
       this.createIds.delete(key);
+      invalidateDiscoverFeed();
       return { ok: true, build };
     } catch (error) {
       if (epoch === this.epoch && this.api.owner() === owner && !this.loaded()) {
@@ -214,6 +219,7 @@ export class BuildsStore {
       if (epoch !== this.epoch || this.api.owner() !== owner)
         return { ok: false, error: 'บัญชีเปลี่ยนแล้ว กรุณาโหลด Build ใหม่' };
       this.builds.update((rows) => rows.filter((row) => row.id !== id));
+      invalidateDiscoverFeed();
       this.error.set('');
       return { ok: true };
     } catch (error) {
