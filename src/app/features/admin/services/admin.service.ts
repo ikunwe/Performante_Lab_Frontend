@@ -1235,6 +1235,7 @@ export class AdminService {
         }
       } catch (err: any) {
         console.warn('[AdminService] deletePartItem error:', err);
+        return { ok: false, error: err?.message || 'ลบข้อมูลไม่สำเร็จ' };
       }
     }
     this.catalogParts.update((list) =>
@@ -1284,6 +1285,7 @@ export class AdminService {
         }
       } catch (err: any) {
         console.warn('[AdminService] deleteTuningBrand error:', err);
+        return { ok: false, error: err?.message || 'ลบข้อมูลไม่สำเร็จ' };
       }
     }
 

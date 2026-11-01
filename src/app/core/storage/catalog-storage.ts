@@ -181,6 +181,79 @@ export class CatalogStorageHelper {
     return data.publicUrl;
   }
 
+  private static deletionPath(path: string): string {
+    const prefix = path.trim().replace(/^\/+|\/+$/g, '');
+    const segments = prefix.split('/');
+    if (
+      !prefix || /[\\\u0000-\u001f?#:]/.test(prefix) ||
+      segments.some(segment => !segment || segment === '.' || segment === '..')
+    ) {
+      throw new Error('กรุณาระบุโฟลเดอร์ภายใน catalog ที่ต้องการลบ');
+    }
+    return prefix;
+  }
+
+  static async deleteFile(client: SupabaseClient, path: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const target = this.deletionPath(path);
+      const { error } = await client.storage.from(this.BUCKET).remove([target]);
+      if (error) throw error;
+      notifyStorageCatalogChanged();
+      return { ok: true };
+    } catch (error: any) {
+      return { ok: false, error: error?.message || 'ลบไฟล์ไม่สำเร็จ' };
+    }
+  }
+
+  static async deleteFolder(client: SupabaseClient, path: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.deleteFolderRecursively(client, path);
+      return { ok: true };
+    } catch (error: any) {
+      return { ok: false, error: error?.message || 'ลบโฟลเดอร์ไม่สำเร็จ' };
+    }
+  }
+
+  /** Delete only objects under an explicit catalog folder, including nested folders. */
+  static async deleteFolderRecursively(client: SupabaseClient, folderPath: string): Promise<void> {
+    const prefix = this.deletionPath(folderPath);
+    const storage = client.storage.from(this.BUCKET);
+    const paths: string[] = [];
+    const folders = [prefix];
+    const pageSize = 1000;
+    // Finish listing before deletion so offsets never skip files after a batch is removed.
+    for (let index = 0; index < folders.length; index++) {
+      const folder = folders[index];
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await storage.list(folder, {
+          limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' },
+        });
+        if (error) throw error;
+        if (!data) throw new Error('โหลดรายการไฟล์เพื่อลบไม่สำเร็จ');
+        for (const entry of data) {
+          if (!entry.name || /[/\\\u0000-\u001f]/.test(entry.name) || entry.name === '.' || entry.name === '..') {
+            throw new Error('พบชื่อไฟล์หรือโฟลเดอร์ที่ไม่ถูกต้อง');
+          }
+          const path = `${folder}/${entry.name}`;
+          if (entry.id === null) folders.push(path);
+          else paths.push(path);
+        }
+        if (data.length < pageSize) break;
+      }
+    }
+    let attemptedRemoval = false;
+    try {
+      for (let offset = 0; offset < paths.length; offset += pageSize) {
+        attemptedRemoval = true;
+        const { error } = await storage.remove(paths.slice(offset, offset + pageSize));
+        if (error) throw error;
+      }
+    } finally {
+      // A failed later batch may still leave earlier batches deleted.
+      if (attemptedRemoval) notifyStorageCatalogChanged();
+    }
+  }
+
   /**
    * อัปโหลดไฟล์ขึ้น Supabase Storage และคืนค่า Public URL
    */

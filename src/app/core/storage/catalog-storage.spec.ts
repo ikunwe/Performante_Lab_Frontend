@@ -344,6 +344,7 @@ describe('CatalogStorageHelper', () => {
       expect(mockRemove).toHaveBeenCalledWith([
         'Ferrari/488-Pista/BodyKit/Novitec/logo.png',
         'Ferrari/488-Pista/BodyKit/Novitec/part.png',
+        'Ferrari/488-Pista/BodyKit/Novitec/.hidden',
       ]);
     });
 
