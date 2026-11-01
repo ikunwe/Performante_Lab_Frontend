@@ -1,3 +1,4 @@
+import { AdminBuildsApi } from './services/admin-builds.api';
 import { RequestsApi } from '../../core/requests/requests.api';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -24,7 +25,7 @@ describe('Admin Portal Features', () => {
 
   beforeEach(async () => {
     mockAuth = {
-      user: signal({ email: 'admin@performante.lab' }),
+      user: signal({ id:'admin-test', email: 'admin@performante.lab' }),
       displayName: signal('Admin User'),
       userRole: signal('SuperAdmin'),
       isAdmin: signal(true),
@@ -39,6 +40,7 @@ describe('Admin Portal Features', () => {
       imports: [AdminLayout, AdminDiscover, AdminRequests, AdminUsers, AdminEditData],
       providers: [
         provideRouter([]),
+        {provide:AdminBuildsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'database-build',title:'Real Build',author:'Driver',car:'Honda Civic',carId:'storage-car:test',parts:[],budget:0,category:'Street',image:'https://test/storage/car.png',likes:5,isPublic:true,isOwn:false}]),remove:vi.fn().mockResolvedValue(undefined)}},
         {provide:RequestsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'request-1',title:'Mugen kit',kind:'bodykit',description:'Please add',brandName:'Honda',modelName:'Civic',manufacturer:'Mugen',source:'',images:['https://test/image.png'],author:'Driver',status:'Pending',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}]),review:vi.fn()}},
         { provide: AuthService, useValue: mockAuth },
         { provide: AUTH_CLIENT, useValue: vi.fn().mockResolvedValue(null) },
@@ -69,7 +71,7 @@ describe('Admin Portal Features', () => {
 
   it('renders loading state when loading is true', () => {
     const adminService = TestBed.inject(AdminService);
-    adminService.loading.set(true);
+    adminService.buildsLoading.set(true);
     const fixture = TestBed.createComponent(AdminDiscover);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -77,7 +79,7 @@ describe('Admin Portal Features', () => {
     expect(compiled.textContent).toContain('กำลังโหลดข้อมูลจากฐานข้อมูล...');
   });
 
-  it('renders AdminDiscover with 4-column cards and action buttons', () => {
+  it('renders AdminDiscover with 4-column cards and action buttons', async () => {
     const adminService = TestBed.inject(AdminService);
     adminService.loading.set(false);
     const fixture = TestBed.createComponent(AdminDiscover);
@@ -85,7 +87,9 @@ describe('Admin Portal Features', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.textContent).toContain('Discover');
+    await fixture.whenStable();fixture.detectChanges();
     expect(compiled.textContent).toContain('ค้นหาหรือดูBuild ของคนอื่นได้');
+    expect(compiled.textContent).toContain('Real Build');
     expect(compiled.textContent).toContain('See Details');
     expect(compiled.textContent).toContain('Delete');
   });

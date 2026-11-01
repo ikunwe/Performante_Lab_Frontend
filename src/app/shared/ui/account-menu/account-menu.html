@@ -39,6 +39,13 @@
     </button>
     <button
       type="button"
+      (click)="chooseLiked()"
+      class="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-xs text-stone-300 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-red-400"
+    >
+      <app-icon name="like" class="!size-3.5" />Liked
+    </button>
+    <button
+      type="button"
       (click)="chooseRequests()"
       class="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-xs text-stone-300 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-red-400"
     >

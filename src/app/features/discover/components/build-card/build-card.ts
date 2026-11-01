@@ -11,6 +11,9 @@ import { ShowcaseBuild } from '../../discover.data';
 export class BuildCard {
   readonly build = input.required<ShowcaseBuild>();
   readonly liked = input(false);
+  readonly likeCount = input(0);
+  readonly likeBusy = input(false);
+  readonly likeDisabled = input(false);
   readonly busy = input(false);
   readonly details = output<ShowcaseBuild>();
   readonly like = output<ShowcaseBuild>();

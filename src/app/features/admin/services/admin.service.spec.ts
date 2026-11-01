@@ -1,3 +1,4 @@
+import { AdminBuildsApi } from './admin-builds.api';
 import { RequestsApi } from '../../../core/requests/requests.api';
 import { TestBed } from '@angular/core/testing';
 import { AdminService, INITIAL_USERS } from './admin.service';
@@ -7,6 +8,8 @@ import { signal } from '@angular/core';
 
 describe('AdminService', () => {
   let service: AdminService;
+  const build={id:'database-build',title:'Rosso Build',author:'Driver',car:'Civic',carId:'ref:honda:civic',parts:[],budget:0,category:'Street',image:'https://test/car.png',likes:5,isPublic:false,isOwn:false};
+  const buildsApi={list:vi.fn(),remove:vi.fn()};
   const request={id:'request-test',title:'New brand',kind:'brand' as const,description:'Details',brandName:'',modelName:'',manufacturer:'',source:'',images:[],author:'Driver',status:'Pending' as const,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   const requestsApi={list:vi.fn(),review:vi.fn()};
   let isAdminSignal = signal(true);
@@ -14,8 +17,9 @@ describe('AdminService', () => {
   let mockSupabaseClient: any;
   let mockLoadConfig: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     requestsApi.list.mockResolvedValue([]);requestsApi.review.mockImplementation(async (_id:string,status:string)=>({...request,status}));
+    buildsApi.list.mockResolvedValue([build]);buildsApi.remove.mockResolvedValue(undefined);
     isAdminSignal.set(true);
     isSuperAdminSignal.set(true);
 
@@ -61,6 +65,7 @@ describe('AdminService', () => {
     TestBed.configureTestingModule({
       providers: [
         AdminService,
+        {provide:AdminBuildsApi,useValue:buildsApi},
         {provide:RequestsApi,useValue:requestsApi},
         {
           provide: AUTH_CLIENT,
@@ -76,13 +81,14 @@ describe('AdminService', () => {
             isAdmin: isAdminSignal,
             isSuperAdmin: isSuperAdminSignal,
             displayName: signal('Super Admin User'),
-            user: signal({ email: 'superadmin@performante.lab' }),
+            user: signal({ id:'admin-test',email: 'superadmin@performante.lab' }),
             userRole: signal('SuperAdmin'),
           },
         },
       ],
     });
     service = TestBed.inject(AdminService);
+    await service.fetchBuilds(true);
     // Seed test users for permission tests
     service.users.set([...INITIAL_USERS]);
   });
@@ -798,6 +804,66 @@ describe('AdminService', () => {
       expect(service.catalogParts()[0].name).toBe('New Name');
       expect(service.catalogParts()[0].price).toBe(75000);
     });
+
+    it('deletes car brand from catalogBrands and storage/database', async () => {
+      service.catalogBrands.set([
+        { id: 'b-1', name: 'Ferrari', slug: 'ferrari', logo_url: '', is_custom_bg: false },
+        { id: 'b-2', name: 'Honda', slug: 'honda', logo_url: '', is_custom_bg: false },
+      ]);
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: vi.fn().mockResolvedValue({ data: [], error: null }),
+            remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        },
+        from: vi.fn().mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+            ilike: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      } as any;
+      (service as any).client = mockClient;
+
+      const res = await service.deleteCarBrand('b-1', 'Ferrari');
+      expect(res.ok).toBe(true);
+      expect(service.catalogBrands().length).toBe(1);
+      expect(service.catalogBrands()[0].name).toBe('Honda');
+    });
+
+    it('deletes car model from catalogModels and storage/database', async () => {
+      service.catalogModels.set([
+        { id: 'c-1', brand_id: 'Ferrari', name: '488-Pista', slug: '488-pista', image_url: '', body_type: 'Coupe' },
+        { id: 'c-2', brand_id: 'Ferrari', name: 'F8', slug: 'f8', image_url: '', body_type: 'Coupe' },
+      ]);
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: vi.fn().mockResolvedValue({ data: [], error: null }),
+            remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        },
+        from: vi.fn().mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+            ilike: vi.fn().mockResolvedValue({ data: null, error: null }),
+            or: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      } as any;
+      (service as any).client = mockClient;
+
+      const res = await service.deleteCarModel('c-1', 'Ferrari', '488-Pista');
+      expect(res.ok).toBe(true);
+      expect(service.catalogModels().length).toBe(1);
+      expect(service.catalogModels()[0].name).toBe('F8');
+    });
   });
   it('shows empty backend request results and never substitutes demonstration requests', async () => {
     requestsApi.list.mockResolvedValueOnce([]);await service.fetchRequests();expect(service.requests()).toEqual([]);
@@ -807,6 +873,18 @@ describe('AdminService', () => {
     requestsApi.review.mockRejectedValueOnce(new Error('offline'));
     expect(await service.acceptRequest(request.id)).toBe(false);
     expect(service.requests()[0].status).toBe('Pending');expect(service.requestsError()).toBe('offline');
+  });
+
+  it('uses empty database results without restoring demonstration builds', async () => {
+    buildsApi.list.mockResolvedValueOnce([]);await service.fetchBuilds(true);expect(service.builds()).toEqual([]);
+  });
+  it('shows errors and keeps only the last real database snapshot on fetch failure', async () => {
+    buildsApi.list.mockRejectedValueOnce(new Error('offline'));await service.fetchBuilds(true);
+    expect(service.builds().map(row=>row.id)).toEqual([build.id]);expect(service.buildsError()).toBe('offline');
+  });
+  it('does not remove a card or report success when backend deletion fails', async () => {
+    buildsApi.remove.mockRejectedValueOnce(new Error('offline'));expect(await service.deleteBuild(build.id)).toBe(false);
+    expect(service.builds()).toHaveLength(1);expect(service.buildsError()).toBe('offline');
   });
 
 });

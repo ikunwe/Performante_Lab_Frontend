@@ -413,7 +413,9 @@ export class CatalogStorageHelper {
           let imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/45_front.png`);
           try {
             const { data: files } = await storage.list(`${safeBrand}/${modelName}`, { limit: 20 });
-            const picFile = files?.find((f) => /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name));
+            const picFile =
+              files?.find((f) => /^45_front\.(png|jpe?g|webp)$/i.test(f.name)) ||
+              files?.find((f) => /^CarPicture\.(jpe?g|png|webp)$/i.test(f.name));
             if (picFile) {
               imageUrl = this.getPublicUrl(client, `${safeBrand}/${modelName}/${picFile.name}`);
             }

@@ -18,9 +18,11 @@ describe('Database build card', () => {
     TestBed.configureTestingModule({ imports: [BuildCard] });
     const fixture = TestBed.createComponent(BuildCard);
     fixture.componentRef.setInput('build', build);
+    fixture.componentRef.setInput('likeCount',42);
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('ของคุณ');
+    expect(fixture.nativeElement.querySelector('button[aria-label*="จำนวน 42"]')?.textContent).toContain('42');
     expect(text).toContain('ส่วนตัว');
     expect(text).toContain('ยังไม่ระบุ');
     expect(text).not.toContain('งบประมาณตัวอย่าง');

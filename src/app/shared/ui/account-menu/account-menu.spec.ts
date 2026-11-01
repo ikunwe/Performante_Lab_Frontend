@@ -59,7 +59,9 @@ describe('Account menu', () => {
     fixture.detectChanges();
     trigger.click();
     fixture.detectChanges();
-    const logoutButton = fixture.nativeElement.querySelectorAll('button')[3] as HTMLButtonElement;
+    const logoutButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('ออกจากระบบ'))!;
     expect(logoutButton.className).toContain('text-red-400');
     fixture.componentRef.setInput('busy', true);
     fixture.detectChanges();
@@ -74,5 +76,19 @@ describe('Account menu', () => {
     fixture.detectChanges();
     expect(logoutButton.textContent).toContain('กำลังออกจากระบบ');
     expect(logoutButton.getAttribute('aria-busy')).toBe('true');
+  });
+  it('offers Liked beside Profile and closes the menu after selection', () => {
+    const { fixture, trigger, page } = setup();
+    const liked = vi.fn();
+    page.liked.subscribe(liked);
+    trigger.click();
+    fixture.detectChanges();
+    const button = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((item) => item.textContent?.trim() === 'Liked')!;
+    expect(button).toBeTruthy();
+    button.click();
+    expect(liked).toHaveBeenCalledOnce();
+    expect(page.open()).toBe(false);
   });
 });

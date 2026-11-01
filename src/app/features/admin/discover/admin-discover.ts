@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, afterNextRender, inject, signal } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Icon } from '../../../shared/ui/icon/icon';
@@ -11,6 +11,11 @@ import { AdminBuildItem, AdminService } from '../services/admin.service';
 })
 export class AdminDiscover {
   readonly admin = inject(AdminService);
+  constructor() {
+    afterNextRender(() => {
+      void this.admin.fetchBuilds();
+    });
+  }
 
   readonly filtersOpen = signal(false);
   readonly detailsModalBuild = signal<AdminBuildItem | null>(null);
@@ -62,4 +67,3 @@ export class AdminDiscover {
     }, 3500);
   }
 }
-

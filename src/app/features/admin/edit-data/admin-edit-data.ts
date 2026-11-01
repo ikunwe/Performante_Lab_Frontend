@@ -15,7 +15,7 @@ import {
 import { CatalogStorageHelper } from '../../../core/storage/catalog-storage';
 
 export interface DeleteTarget {
-  type: 'category' | 'tuningBrand' | 'part';
+  type: 'brand' | 'car' | 'category' | 'tuningBrand' | 'part';
   id?: string;
   name: string;
   brandCount?: number;
@@ -84,6 +84,16 @@ export class AdminEditData implements OnInit {
       next.add(carId);
       return next;
     });
+  }
+
+  handleCarImageError(carId: string, event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img && img.src && !img.dataset['triedJpg'] && img.src.includes('.png')) {
+      img.dataset['triedJpg'] = 'true';
+      img.src = img.src.replace(/\.png(\?.*)?$/i, '.jpg$1');
+      return;
+    }
+    this.onCarImageError(carId);
   }
 
   // Modals visibility
@@ -599,6 +609,26 @@ export class AdminEditData implements OnInit {
   }
 
   // Delete Confirmation Safeguard Handlers
+  confirmDeleteBrand(brand: RealBrandItem, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.deleteTarget.set({
+      type: 'brand',
+      id: brand.id,
+      name: brand.name,
+    });
+    this.confirmDeleteModalOpen.set(true);
+  }
+
+  confirmDeleteCar(car: RealCarModelItem, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.deleteTarget.set({
+      type: 'car',
+      id: car.id,
+      name: car.name,
+    });
+    this.confirmDeleteModalOpen.set(true);
+  }
+
   confirmDeleteCategory(category: string, event?: Event): void {
     if (event) event.stopPropagation();
     const brandCount = this.getBrandsCountForCategory(category);
@@ -656,7 +686,32 @@ export class AdminEditData implements OnInit {
     this.isDeleting.set(true);
 
     try {
-      if (target.type === 'category') {
+      if (target.type === 'brand') {
+        const res = await this.admin.deleteCarBrand(target.id || '', target.name);
+        if (res.ok) {
+          if (this.selectedBrand()?.name.toLowerCase() === target.name.toLowerCase()) {
+            this.selectedBrand.set(null);
+            this.level.set('brands');
+          }
+          this.closeEditBrandModal();
+          this.showToast(`ลบแบรนด์ "${target.name}" เรียบร้อยแล้ว`, 'success');
+        } else {
+          this.showToast(res.error || 'ลบแบรนด์ล้มเหลว', 'error');
+        }
+      } else if (target.type === 'car') {
+        const brandName = brand?.name || '';
+        const res = await this.admin.deleteCarModel(target.id || '', brandName, target.name);
+        if (res.ok) {
+          if (this.selectedCar()?.name.toLowerCase() === target.name.toLowerCase()) {
+            this.selectedCar.set(null);
+            this.level.set('models');
+          }
+          this.closeEditCarModal();
+          this.showToast(`ลบรุ่นรถ "${target.name}" เรียบร้อยแล้ว`, 'success');
+        } else {
+          this.showToast(res.error || 'ลบรุ่นรถล้มเหลว', 'error');
+        }
+      } else if (target.type === 'category') {
         const carName = car?.name || '';
         const res = await this.admin.deletePartCategory(target.name, carName);
         if (res.ok) {
