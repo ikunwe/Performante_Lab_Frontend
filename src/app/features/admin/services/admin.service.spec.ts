@@ -804,6 +804,66 @@ describe('AdminService', () => {
       expect(service.catalogParts()[0].name).toBe('New Name');
       expect(service.catalogParts()[0].price).toBe(75000);
     });
+
+    it('deletes car brand from catalogBrands and storage/database', async () => {
+      service.catalogBrands.set([
+        { id: 'b-1', name: 'Ferrari', slug: 'ferrari', logo_url: '', is_custom_bg: false },
+        { id: 'b-2', name: 'Honda', slug: 'honda', logo_url: '', is_custom_bg: false },
+      ]);
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: vi.fn().mockResolvedValue({ data: [], error: null }),
+            remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        },
+        from: vi.fn().mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+            ilike: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      } as any;
+      (service as any).client = mockClient;
+
+      const res = await service.deleteCarBrand('b-1', 'Ferrari');
+      expect(res.ok).toBe(true);
+      expect(service.catalogBrands().length).toBe(1);
+      expect(service.catalogBrands()[0].name).toBe('Honda');
+    });
+
+    it('deletes car model from catalogModels and storage/database', async () => {
+      service.catalogModels.set([
+        { id: 'c-1', brand_id: 'Ferrari', name: '488-Pista', slug: '488-pista', image_url: '', body_type: 'Coupe' },
+        { id: 'c-2', brand_id: 'Ferrari', name: 'F8', slug: 'f8', image_url: '', body_type: 'Coupe' },
+      ]);
+      const mockClient = {
+        storage: {
+          from: vi.fn().mockReturnValue({
+            list: vi.fn().mockResolvedValue({ data: [], error: null }),
+            remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        },
+        from: vi.fn().mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+            ilike: vi.fn().mockResolvedValue({ data: null, error: null }),
+            or: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      } as any;
+      (service as any).client = mockClient;
+
+      const res = await service.deleteCarModel('c-1', 'Ferrari', '488-Pista');
+      expect(res.ok).toBe(true);
+      expect(service.catalogModels().length).toBe(1);
+      expect(service.catalogModels()[0].name).toBe('F8');
+    });
   });
   it('shows empty backend request results and never substitutes demonstration requests', async () => {
     requestsApi.list.mockResolvedValueOnce([]);await service.fetchRequests();expect(service.requests()).toEqual([]);

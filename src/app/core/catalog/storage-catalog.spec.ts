@@ -18,7 +18,24 @@ const response = () => ({
 });
 describe('Shared Storage catalog cache', () => {
   beforeEach(() => {
-    localStorage.clear();
+    let mockStore: Record<string, string> = {};
+    const mockStorage = {
+      getItem: (key: string) => mockStore[key] ?? null,
+      setItem: (key: string, val: string) => { mockStore[key] = String(val); },
+      removeItem: (key: string) => { delete mockStore[key]; },
+      clear: () => { mockStore = {}; },
+      length: 0,
+      key: (i: number) => Object.keys(mockStore)[i] ?? null,
+    };
+    try {
+      if (typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function') {
+        localStorage.clear();
+      } else {
+        vi.stubGlobal('localStorage', mockStorage);
+      }
+    } catch {
+      vi.stubGlobal('localStorage', mockStorage);
+    }
     storageCatalogData.set({ ...response(), fetchedAt: '' });
   });
   afterEach(() => vi.unstubAllGlobals());

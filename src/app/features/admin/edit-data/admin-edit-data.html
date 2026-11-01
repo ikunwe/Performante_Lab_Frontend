@@ -139,6 +139,16 @@
               <span class="text-xs font-bold text-white text-center tracking-wider uppercase opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-2 inset-x-2 truncate">
                 {{ brand.name }}
               </span>
+
+              <!-- Delete Brand Button -->
+              <button
+                type="button"
+                (click)="confirmDeleteBrand(brand, $event)"
+                class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                title="ลบแบรนด์นี้"
+              >
+                <app-icon name="trash" class="!size-3" />
+              </button>
             </div>
           }
 
@@ -250,7 +260,7 @@
                     [src]="car.image_url"
                     [alt]="car.name"
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    (error)="onCarImageError(car.id)"
+                    (error)="handleCarImageError(car.id, $event)"
                   />
                 } @else {
                   <!-- Neutral Placeholder สำหรับรถที่ยังไม่มีรูปจริง (ห้ามเอารูป Ferrari มาใส่) -->
@@ -260,6 +270,16 @@
                   </div>
                 }
               </div>
+
+              <!-- Delete Car Button -->
+              <button
+                type="button"
+                (click)="confirmDeleteCar(car, $event)"
+                class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                title="ลบรุ่นรถนี้"
+              >
+                <app-icon name="trash" class="!size-3" />
+              </button>
 
               <!-- Bottom Title Banner -->
               <div class="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm py-2 px-2.5 text-center border-t border-white/10">
@@ -351,7 +371,7 @@
               [src]="selectedCar()!.image_url"
               [alt]="selectedCar()?.name"
               class="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
-              (error)="onCarImageError(selectedCar()!.id)"
+              (error)="handleCarImageError(selectedCar()!.id, $event)"
             />
           } @else {
             <div class="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#141414] to-[#1a1a1a] text-stone-500 group-hover:text-stone-300 transition-colors">
@@ -1437,26 +1457,38 @@
           }
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+        <div class="flex items-center justify-between pt-3 border-t border-white/10">
           <button
             type="button"
-            (click)="closeEditBrandModal()"
+            (click)="confirmDeleteBrand(selectedBrand()!, $event)"
             [disabled]="isUploading()"
-            class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+            class="px-4 py-2 rounded-xl border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1.5"
+            title="ลบแบรนด์นี้"
           >
-            ยกเลิก
+            <app-icon name="trash" class="!size-3.5" />
+            <span>ลบแบรนด์นี้</span>
           </button>
-          <button
-            type="button"
-            (click)="saveEditBrand()"
-            [disabled]="isUploading()"
-            class="px-5 py-2 rounded-xl bg-[#ce281a] hover:bg-red-600 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-[#ce281a]/30 transition-colors cursor-pointer flex items-center gap-2"
-          >
-            @if (isUploading()) {
-              <app-icon name="spinner" class="!size-3 animate-spin text-white" />
-            }
-            <span>บันทึกการแก้ไข</span>
-          </button>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              (click)="closeEditBrandModal()"
+              [disabled]="isUploading()"
+              class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              (click)="saveEditBrand()"
+              [disabled]="isUploading()"
+              class="px-5 py-2 rounded-xl bg-[#ce281a] hover:bg-red-600 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-[#ce281a]/30 transition-colors cursor-pointer flex items-center gap-2"
+            >
+              @if (isUploading()) {
+                <app-icon name="spinner" class="!size-3 animate-spin text-white" />
+              }
+              <span>บันทึกการแก้ไข</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1566,26 +1598,38 @@
           }
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+        <div class="flex items-center justify-between pt-3 border-t border-white/10">
           <button
             type="button"
-            (click)="closeEditCarModal()"
+            (click)="confirmDeleteCar(selectedCar()!, $event)"
             [disabled]="isUploading()"
-            class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+            class="px-4 py-2 rounded-xl border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1.5"
+            title="ลบรุ่นรถนี้"
           >
-            ยกเลิก
+            <app-icon name="trash" class="!size-3.5" />
+            <span>ลบรุ่นรถนี้</span>
           </button>
-          <button
-            type="button"
-            (click)="saveEditCar()"
-            [disabled]="isUploading()"
-            class="px-5 py-2 rounded-xl bg-[#ce281a] hover:bg-red-600 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-[#ce281a]/30 transition-colors cursor-pointer flex items-center gap-2"
-          >
-            @if (isUploading()) {
-              <app-icon name="spinner" class="!size-3 animate-spin text-white" />
-            }
-            <span>บันทึกการแก้ไข</span>
-          </button>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              (click)="closeEditCarModal()"
+              [disabled]="isUploading()"
+              class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              (click)="saveEditCar()"
+              [disabled]="isUploading()"
+              class="px-5 py-2 rounded-xl bg-[#ce281a] hover:bg-red-600 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-[#ce281a]/30 transition-colors cursor-pointer flex items-center gap-2"
+            >
+              @if (isUploading()) {
+                <app-icon name="spinner" class="!size-3 animate-spin text-white" />
+              }
+              <span>บันทึกการแก้ไข</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1760,12 +1804,25 @@
 
         <div class="space-y-1.5">
           <h3 class="font-bold text-base text-white">
-            ยืนยันการลบ{{ deleteTarget()?.type === 'tuningBrand' ? 'แบรนด์' : (deleteTarget()?.type === 'category' ? 'หมวดหมู่' : 'ชิ้นส่วน') }}
+            ยืนยันการลบ{{ 
+              deleteTarget()?.type === 'brand' ? 'แบรนด์รถยนต์' : 
+              (deleteTarget()?.type === 'car' ? 'รุ่นรถยนต์' : 
+              (deleteTarget()?.type === 'tuningBrand' ? 'สำนักแต่ง' : 
+              (deleteTarget()?.type === 'category' ? 'หมวดหมู่' : 'ชิ้นส่วน'))) 
+            }}
           </h3>
           <p class="text-xs text-stone-300">
             คุณต้องการลบ <span class="font-bold text-red-400">"{{ deleteTarget()?.name }}"</span> ใช่หรือไม่?
           </p>
-          @if ((deleteTarget()?.partCount ?? 0) > 0) {
+          @if (deleteTarget()?.type === 'brand') {
+            <p class="text-[11px] text-red-400/90 bg-red-500/10 border border-red-500/20 rounded-lg p-2 mt-2 text-left">
+              ⚠️ การลบแบรนด์จะลบรุ่นรถและชิ้นส่วนทั้งหมดของแบรนด์นี้ออกจากระบบและ Storage อย่างถาวร
+            </p>
+          } @else if (deleteTarget()?.type === 'car') {
+            <p class="text-[11px] text-red-400/90 bg-red-500/10 border border-red-500/20 rounded-lg p-2 mt-2 text-left">
+              ⚠️ การลบรุ่นรถจะลบชุดแต่งและชิ้นส่วนทั้งหมดของรุ่นรถนี้ออกจากระบบและ Storage อย่างถาวร
+            </p>
+          } @else if ((deleteTarget()?.partCount ?? 0) > 0) {
             <p class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 mt-2">
               ⚠️ การลบนี้จะลบชิ้นส่วนทั้งหมดจำนวน {{ deleteTarget()?.partCount }} รายการออกจากระบบและ Storage อย่างถาวร
             </p>
