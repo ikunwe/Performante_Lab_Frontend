@@ -1,14 +1,51 @@
+import { signal } from '@angular/core';
+import { seedCatalogFixture } from '../../testing/storage-catalog.fixture';
+import { StorageCatalogStore, storageCatalogData } from '../../core/catalog/storage-catalog';
+beforeEach(() => {
+  seedCatalogFixture(false);
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: StorageCatalogStore,
+        useValue: {
+          data: storageCatalogData,
+          load: async () => {},
+          loading: signal(false),
+          error: signal(''),
+          stale: signal(false),
+        },
+      },
+    ],
+  });
+});
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
 import { Catalog } from './catalog';
-import { catalogCars } from './catalog.data';
+import { catalogCars } from '../../testing/catalog.fixture';
 
 describe('Catalog', () => {
   beforeEach(() =>
     TestBed.configureTestingModule({ imports: [Catalog], providers: [provideRouter(routes)] }),
   );
+
+  it('disables refresh and replaces stale cards with pulse placeholders while waiting', () => {
+    const fixture = TestBed.createComponent(Catalog);
+    const directory = TestBed.inject(StorageCatalogStore);
+    directory.loading.set(true);
+    fixture.detectChanges();
+    const refresh = fixture.nativeElement.querySelector('button[aria-label="รีเฟรชข้อมูล Catalog"]') as HTMLButtonElement;
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.className).toContain('disabled:cursor-not-allowed');
+    expect(refresh.querySelector('svg')?.getAttribute('data-icon')).toBe('rotate');
+    expect(fixture.nativeElement.querySelectorAll('app-loading-skeleton .animate-pulse').length).toBe(8);
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    directory.loading.set(false);
+    fixture.detectChanges();
+    expect(refresh.disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-loading-skeleton')).toBeNull();
+  });
 
   it('filters make/model groups and handles no matches', () => {
     const page = TestBed.createComponent(Catalog).componentInstance;
@@ -46,7 +83,7 @@ describe('Catalog', () => {
     expect(cards.length).toBe(9);
     expect(fixture.nativeElement.querySelector('article button')).toBeNull();
     expect(fixture.nativeElement.querySelector('dialog')).toBeNull();
-    expect(cards[0].textContent).toContain('Finish');
+    expect(cards[0].textContent).toContain('แบรนด์ / สำนักแต่ง');
     expect(cards[0].textContent).toContain('ราคาอ้างอิง');
     expect(cards[0].textContent).toContain('แนวทางชุดแต่งภายนอก');
     expect(fixture.nativeElement.textContent).not.toContain('View details');

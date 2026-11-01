@@ -8,12 +8,12 @@
 </div>
 @if (store.error()) {
 <p role="alert" class="mb-5 text-xs text-amber-200/70">{{ store.error() }}</p>
-<button type="button" (click)="store.load()" [disabled]="store.loading()" class="mb-4 min-h-9 cursor-pointer rounded-lg border border-white/15 px-4 text-xs disabled:cursor-wait">ลองโหลดอีกครั้ง</button>
+<button type="button" (click)="store.load()" [disabled]="store.loading()" class="mb-4 min-h-9 cursor-pointer rounded-lg border border-white/15 px-4 text-xs disabled:cursor-not-allowed">ลองโหลดอีกครั้ง</button>
 }
 <p role="status" class="mb-4 text-xs text-stone-400">{{ message() }}</p>
 @if (store.loading() || !store.loaded()) {
-<p class="py-8 text-xs text-stone-500">กำลังโหลด Build...</p>
-}
+<app-loading-skeleton label="กำลังโหลด Build ของคุณ" />
+} @else {
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
   @for (build of visibleBuilds(); track build.id) {
   <article class="overflow-hidden rounded-lg border border-white/10 bg-[#171717]">
@@ -26,6 +26,9 @@
     <div class="p-3.5">
       <h2 class="truncate text-sm">{{ build.name }}</h2>
       <p class="mt-1 text-[10px] text-stone-500">{{ carFor(build)?.name }}</p>
+      <p class="mt-2 text-[9px] text-stone-500">Category · {{ build.category || 'Street' }}</p>
+      <span class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2 py-1 text-[9px] text-stone-400"><app-icon [name]="build.isPublic ? 'discover' : 'lock'" class="!size-3" />{{ build.isPublic ? 'สาธารณะ' : 'ส่วนตัว' }}</span>
+      <button type="button" (click)="requestVisibility(build)" [disabled]="store.saving() || store.deleting()" [attr.aria-label]="'ตั้งค่าการเผยแพร่ ' + build.name" class="mt-3 flex min-h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/15 px-3 text-[10px] text-stone-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><app-icon name="eye" class="!size-3" />ตั้งค่าการเผยแพร่</button>
       <p class="mt-2 text-[9px] text-stone-600">
         {{ build.partIds.length }} พาร์ต · {{ build.updatedAt | date: 'dd/MM/yyyy' }}
       </p>
@@ -45,6 +48,7 @@
         name="plus" /></span><span class="text-xs">Create your next build</span>
   </button>
 </div>
+}
 @if (store.loaded() && !store.loading() && !store.error() && !visibleBuilds().length) {
 <p class="mt-5 text-xs text-stone-500">
   {{
@@ -117,9 +121,7 @@
         <button type="button" (click)="brandDirectory.load(brandDirectory.scope(), true)"
           [disabled]="brandDirectory.loading()" [attr.aria-busy]="brandDirectory.loading()"
           class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[11px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
-          @if (brandDirectory.loading()) {
-          <app-icon name="spinner" class="!size-3 animate-spin motion-reduce:animate-none" />
-          }
+          <app-icon name="rotate" class="!size-3 motion-reduce:animate-none" [class.animate-spin]="brandDirectory.loading()" />
           {{ brandDirectory.loading() ? 'กำลังโหลด…' : 'โหลดรายการใหม่' }}
         </button>
       </div>
@@ -159,9 +161,7 @@
         </button>
         } @empty {
         @if (brandDirectory.loading()) {
-        <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">
-          กำลังโหลดรายการยี่ห้อรถ…
-        </p>
+        <app-loading-skeleton class="col-span-full" variant="brand" [count]="10" label="กำลังโหลดรายการยี่ห้อรถ" />
         } @else if (!brandDirectory.error()) {
         <p class="col-span-full py-8 text-center text-xs text-stone-500">
           ไม่พบยี่ห้อรถที่ค้นหา
@@ -182,15 +182,14 @@
             <button type="button" (click)="modelDirectory.load(activeBrand.id, true)"
               [disabled]="modelDirectory.loading()" [attr.aria-busy]="modelDirectory.loading()"
               class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[11px] text-stone-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
-              @if (modelDirectory.loading()) { <app-icon name="spinner" class="!size-3 animate-spin" /> }
+              <app-icon name="rotate" class="!size-3 motion-reduce:animate-none" [class.animate-spin]="modelDirectory.loading()" />
               {{ modelDirectory.loading() ? 'กำลังโหลด…' : 'โหลดรุ่นใหม่' }}
             </button>
           </div>
           @if (modelDirectory.error()) { <p role="status"
             class="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{{
             modelDirectory.error() }}</p> }
-          <p class="mb-4 text-[10px] leading-5 text-stone-500">{{ modelList().length }} รุ่น · ข้อมูลหลายตลาด
-            ยังไม่ยืนยันการติดตั้งพาร์ตในไทย · ช่องที่ขาดจะระบุว่ายังไม่มีข้อมูล</p>
+          <p class="mb-4 text-[10px] leading-5 text-stone-500">{{ modelList().length }} รุ่น · เลือกรุ่นรถเพื่อดูชุดแต่งและพาร์ทที่มีในแค็ตตาล็อก</p>
 
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
             @for (model of modelList(); track model.id) {
@@ -207,18 +206,10 @@
 
               </span>
             </button>
-            } @empty { <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">{{
-              modelDirectory.loading() ? 'กำลังโหลดรายการรุ่นรถ…' : modelDirectory.error() ?
-              'กดโหลดรุ่นใหม่เพื่อลองอีกครั้ง' : 'ไม่พบรุ่นรถที่ค้นหา' }}</p> }
+            } @empty { @if (modelDirectory.loading()) { <app-loading-skeleton class="col-span-full" variant="model" [count]="6" label="กำลังโหลดรายการรุ่นรถ" /> } @else { <p role="status" class="col-span-full py-8 text-center text-xs text-stone-500">{{ modelDirectory.error() ? 'กดโหลดรุ่นใหม่เพื่อลองอีกครั้ง' : 'ไม่พบรุ่นรถที่ค้นหา' }}</p> } }
           </div>
 
-          <p class="mt-5 text-[9px] leading-5 text-stone-600">ข้อมูลดัดแปลงจาก <a
-              href="https://github.com/gor3a/vehicle-makes-models" target="_blank" rel="noopener noreferrer"
-              class="cursor-pointer underline hover:text-stone-300">vehicle-makes-models</a> และ autoevolution.com
-            เสริมจากผู้ผลิต · ODbL 1.0
-            @if (modelDirectory.exportUrl()) { · <a [href]="modelDirectory.exportUrl()"
-              class="cursor-pointer underline hover:text-stone-300">ดาวน์โหลดชุดข้อมูลที่ดัดแปลง</a> }
-          </p>
+
         </div>
         }
         }
@@ -351,12 +342,16 @@
     </section>
     }
     }
+    @if (car()?.storagePath) {
+      <p class="mt-5 text-[10px] leading-relaxed text-stone-500">ภาพรถต้นแบบและภาพพาร์ทแสดงแยกกัน เลือกดูภาพสินค้าได้จากรายการของแต่ง</p>
+    } @else {
     <p class="mt-5 text-[10px] leading-relaxed text-stone-600">
       ภาพด้านหน้าเปลี่ยนตาม Front Bumper และภาพด้านหลังเปลี่ยนตาม Rear Bumper
       ล้อเปลี่ยนภาพเฉียงหน้าและเฉียงหลัง 45° ตามชุดภาพที่เตรียมไว้
       สปอยเลอร์เปลี่ยนภาพเฉียงหน้า เฉียงหลัง และหลังตรง
       มุมที่ยังไม่มีภาพครบจะแสดงภาพที่มีพร้อมแจ้งกำกับ · ภาพจำลองยังไม่ยืนยันเงื่อนไขติดตั้งจริง
     </p>
+    }
   </div>
 
   <aside id="build-summary" aria-label="สรุปรายการแต่ง"
@@ -412,7 +407,7 @@
       class="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#ce281a] text-[11px] hover:bg-red-500">
       <app-icon name="builds" class="!size-3.5" />บันทึก Build
     </button>
-    <p class="mt-3 text-center text-[9px] text-stone-600">ตั้งชื่อในขั้นตอนบันทึก</p>
+    <p class="mt-3 text-center text-[9px] text-stone-500">Build ใหม่เป็นส่วนตัว เผยแพร่ภายหลังได้ใน My Builds</p>
     } @else {
     <div class="py-9 text-center text-stone-600">
       <app-icon name="parts" class="!size-8" />
@@ -435,6 +430,8 @@
       {{
       modalKind() === 'save'
       ? 'บันทึก Build ของคุณ'
+      : modalKind() === 'visibility'
+      ? 'ตั้งค่าการเผยแพร่ Build'
       : modalKind() === 'delete'
       ? 'ลบ Build นี้?'
       : modalKind() === 'replace-kit'
@@ -449,15 +446,31 @@
       <app-icon name="close" />
     </button>
   </div>
-  @if (modalKind() === 'save') {
+  @if (modalKind() === 'visibility') {
+    <p class="mb-4 break-words text-sm text-stone-200">{{ visibilityBuild()?.name }}</p>
+    <form (submit)="$event.preventDefault(); saveVisibility()">
+      <fieldset [disabled]="store.saving() || store.deleting()" class="space-y-3 disabled:opacity-60">
+        <legend class="mb-3 text-xs text-stone-400">เลือกผู้ที่มองเห็น Build นี้</legend>
+        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-white/15 bg-white/[.02] p-4 has-checked:border-red-400/50 has-checked:bg-red-500/5"><input type="radio" name="visibility" [checked]="!visibilityPublic()" (change)="visibilityPublic.set(false)" class="mt-1 cursor-pointer accent-red-500 disabled:cursor-not-allowed" /><span><span class="flex items-center gap-2 text-sm"><app-icon name="lock" class="!size-3.5" />ส่วนตัว</span><span class="mt-2 block text-xs leading-6 text-stone-500">เฉพาะคุณที่เห็นในหน้า User และไม่แสดงให้คนอื่นบน Discover</span></span></label>
+        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-white/15 bg-white/[.02] p-4 has-checked:border-red-400/50 has-checked:bg-red-500/5"><input type="radio" name="visibility" [checked]="visibilityPublic()" (change)="visibilityPublic.set(true)" class="mt-1 cursor-pointer accent-red-500 disabled:cursor-not-allowed" /><span><span class="flex items-center gap-2 text-sm"><app-icon name="discover" class="!size-3.5" />สาธารณะบน Discover</span><span class="mt-2 block text-xs leading-6 text-stone-500">คนอื่นเห็นภาพรถ ชื่อ Build และรายการแต่งของคุณได้</span></span></label>
+      </fieldset>
+      <p role="alert" class="my-4 text-xs text-red-300">{{ formError() }}</p>
+      <button type="submit" [disabled]="store.saving() || store.deleting() || visibilityPublic() === (visibilityBuild()?.isPublic === true)" [attr.aria-busy]="store.saving()" class="min-h-11 w-full cursor-pointer rounded-lg bg-[#ce281a] px-4 text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">@if (store.saving()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังบันทึก… } @else { บันทึกสถานะ }</button>
+    </form>
+  } @else if (modalKind() === 'save') {
   <p class="mb-5 text-xs leading-relaxed text-stone-400">
     แต่งเสร็จแล้ว ตั้งชื่อเพื่อเก็บรถและรายการพาร์ตไว้ใน My Builds
+    @if (!editingId()) { <span class="mt-2 block text-amber-200/80">Build ใหม่นี้เป็นส่วนตัว เผยแพร่บน Discover ภายหลังได้</span> }
   </p>
   <form (submit)="$event.preventDefault(); save()">
     <label for="saved-build-name" class="mb-2 block text-xs">ชื่อ Build</label><input id="saved-build-name" type="text"
       required maxlength="80" [value]="name()" [disabled]="store.saving()" (input)="name.set($any($event.target).value)"
       placeholder="เช่น My weekend Ferrari"
       class="min-h-11 w-full rounded-lg border border-white/15 bg-[#111] px-3 text-sm outline-none focus:border-red-400" />
+    <label for="saved-build-category" class="mb-2 mt-4 block text-xs">Category</label>
+    <select id="saved-build-category" [value]="buildCategory()" (change)="buildCategory.set($any($event.target).value)" [disabled]="store.saving()" class="min-h-11 w-full cursor-pointer rounded-lg border border-white/15 bg-[#111] px-3 text-sm outline-none focus:border-red-400 disabled:cursor-not-allowed">
+      @for (category of buildCategories; track category) { <option [value]="category">{{ category }}</option> }
+    </select>
     <p class="my-4 text-[11px] text-stone-500">
       {{ car()?.name }} · {{ selectedParts().length }} พาร์ต
     </p>
@@ -494,7 +507,7 @@
               : modalKind() === 'change-car'
                 ? confirmCarChange()
                 : confirmDiscard()
-        " [disabled]="store.deleting()" [attr.aria-busy]="store.deleting()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs disabled:cursor-wait disabled:opacity-50">
+        " [disabled]="store.deleting()" [attr.aria-busy]="store.deleting()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs disabled:cursor-not-allowed disabled:opacity-50">
       @if (store.deleting()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังลบ… } @else { {{ modalKind() === 'delete' ? 'ยืนยันลบ' : 'ยืนยัน' }} }
     </button>
   </div>

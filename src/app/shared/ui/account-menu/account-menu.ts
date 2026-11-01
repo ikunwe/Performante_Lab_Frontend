@@ -21,6 +21,7 @@ export class AccountMenu {
   readonly complete = input<boolean | null>(null);
   readonly showStatus = input(true);
   readonly profile = output<void>();
+  readonly requests = output<void>();
   readonly logout = output<void>();
   readonly open = signal(false);
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -53,5 +54,11 @@ export class AccountMenu {
   chooseLogout(): void {
     if (this.busy()) return;
     this.logout.emit();
+  }
+
+  chooseRequests(): void {
+    this.open.set(false);
+    this.trigger().nativeElement.focus();
+    this.requests.emit();
   }
 }

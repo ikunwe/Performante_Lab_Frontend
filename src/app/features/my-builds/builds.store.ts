@@ -1,9 +1,14 @@
+import { invalidateDiscoverFeed } from '../discover/discover-feed.store';
+import { StorageCatalogStore } from '../../core/catalog/storage-catalog';
 import { Injectable, afterNextRender, effect, inject, signal, untracked } from '@angular/core';
 import { catalogCars, CatalogCar } from '../catalog/catalog.data';
 import { partsForCar } from '../../core/catalog/prepared-parts';
 import { BuildsApi } from './builds.api';
 
+export const buildCategories = ['Street', 'Track', 'Show'] as const;
 export interface SavedBuild {
+  category?: string;
+  isPublic?: boolean;
   id: string;
   name: string;
   carId: string;
@@ -18,6 +23,7 @@ export const BUILDS_STORAGE_KEY = 'performante-lab.builds.v1';
 @Injectable({ providedIn: 'root' })
 export class BuildsStore {
   private readonly api = inject(BuildsApi);
+  private readonly catalog = inject(StorageCatalogStore);
   private owner: string | null = null;
   private epoch = 0;
   private version = 0;
@@ -40,6 +46,7 @@ export class BuildsStore {
     });
     afterNextRender(() => {
       void this.api.initialize();
+      void this.catalog.load();
     });
   }
 
@@ -58,12 +65,12 @@ export class BuildsStore {
   }
   private validParts(carId: string, ids: unknown, snapshot?: CatalogCar): ids is string[] {
     if (!Array.isArray(ids)) return false;
-    const available = partsForCar(snapshot ?? catalogCars.find((car) => car.id === carId));
+    const available = partsForCar(snapshot ?? catalogCars().find((car) => car.id === carId));
     const parts = ids.map((id) => available.find((part) => part.id === id && part.carId === carId));
     return parts.every(Boolean) && new Set(parts.map((part) => part!.category)).size === ids.length;
   }
   private validCar(carId: string, snapshot?: CatalogCar): boolean {
-    if (catalogCars.some((car) => car.id === carId)) return !snapshot;
+    if (catalogCars().some((car) => car.id === carId)) return !snapshot || snapshot.id === carId;
     const ref = snapshot?.reference;
     const year = (value: unknown) =>
       value === null || (Number.isInteger(value) && Number(value) >= 1880 && Number(value) <= 2100);
@@ -138,6 +145,7 @@ export class BuildsStore {
   async save(input: {
     id?: string;
     name: string;
+    category?: string;
     carId: string;
     carSnapshot?: CatalogCar;
     partIds: string[];
@@ -147,6 +155,9 @@ export class BuildsStore {
     if (!owner) return { ok: false, error: 'กรุณาเข้าสู่ระบบก่อนบันทึก Build' };
     if (this.saving() || this.deleting())
       return { ok: false, error: 'กำลังบันทึกข้อมูล กรุณารอสักครู่' };
+    const category = input.category ?? 'Street';
+    if (!buildCategories.some((item) => item === category))
+      return { ok: false, error: 'กรุณาเลือก Category ที่ถูกต้อง' };
     const name = input.name.trim();
     if (!name || [...name].length > 80)
       return { ok: false, error: 'กรุณาตั้งชื่อ Build 1–80 ตัวอักษร' };
@@ -157,7 +168,7 @@ export class BuildsStore {
       return { ok: false, error: 'รถหรือรายการพาร์ทไม่ถูกต้อง กรุณาเลือกใหม่' };
     if (
       input.partIds.length > 1 &&
-      partsForCar(input.carSnapshot ?? catalogCars.find((car) => car.id === input.carId)).some(
+      partsForCar(input.carSnapshot ?? catalogCars().find((car) => car.id === input.carId)).some(
         (part) => input.partIds.includes(part.id) && part.category === 'bodykits',
       )
     )
@@ -166,6 +177,7 @@ export class BuildsStore {
       ...(input.id ? { id: input.id } : {}),
       ...(input.carSnapshot ? { carSnapshot: input.carSnapshot } : {}),
       name,
+      category,
       carId: input.carId,
       partIds: [...input.partIds],
     };
@@ -185,6 +197,7 @@ export class BuildsStore {
       this.loaded.set(true);
       this.error.set('');
       this.createIds.delete(key);
+      invalidateDiscoverFeed();
       return { ok: true, build };
     } catch (error) {
       if (epoch === this.epoch && this.api.owner() === owner && !this.loaded()) {
@@ -195,6 +208,39 @@ export class BuildsStore {
         ok: false,
         error: error instanceof Error ? error.message : 'บันทึก Build ไม่สำเร็จ รายการแต่งยังอยู่',
       };
+    } finally {
+      if (epoch === this.epoch) this.saving.set(false);
+    }
+  }
+  async setVisibility(id: string, isPublic: boolean): Promise<Result> {
+    const owner = this.api.owner();
+    this.switchOwner(owner);
+    if (!owner) return { ok: false, error: 'กรุณาเข้าสู่ระบบใหม่' };
+    if (this.saving() || this.deleting())
+      return { ok: false, error: 'กำลังบันทึกข้อมูล กรุณารอสักครู่' };
+    if (!this.builds().some((build) => build.id === id))
+      return { ok: false, error: 'ไม่พบ Build ของคุณ' };
+    const epoch = this.epoch;
+    ++this.version;
+    this.loading.set(false);
+    this.saving.set(true);
+    try {
+      const result = await this.api.setVisibility(owner, id, isPublic);
+      if (epoch !== this.epoch || this.api.owner() !== owner)
+        return { ok: false, error: 'บัญชีเปลี่ยนแล้ว กรุณาโหลด Build ใหม่' };
+      if (
+        result.id !== id ||
+        result.isPublic !== isPublic ||
+        !Number.isFinite(Date.parse(result.updatedAt))
+      )
+        throw new Error('ข้อมูลสถานะที่ได้รับไม่ถูกต้อง');
+      this.builds.update((rows) =>
+        rows.map((row) => (row.id === id ? { ...row, ...result } : row)),
+      );
+      invalidateDiscoverFeed();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'เปลี่ยนสถานะไม่สำเร็จ' };
     } finally {
       if (epoch === this.epoch) this.saving.set(false);
     }
@@ -214,6 +260,7 @@ export class BuildsStore {
       if (epoch !== this.epoch || this.api.owner() !== owner)
         return { ok: false, error: 'บัญชีเปลี่ยนแล้ว กรุณาโหลด Build ใหม่' };
       this.builds.update((rows) => rows.filter((row) => row.id !== id));
+      invalidateDiscoverFeed();
       this.error.set('');
       return { ok: true };
     } catch (error) {

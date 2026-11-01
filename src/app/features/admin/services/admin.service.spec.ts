@@ -1,3 +1,4 @@
+import { RequestsApi } from '../../../core/requests/requests.api';
 import { TestBed } from '@angular/core/testing';
 import { AdminService, INITIAL_USERS } from './admin.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -6,12 +7,15 @@ import { signal } from '@angular/core';
 
 describe('AdminService', () => {
   let service: AdminService;
+  const request={id:'request-test',title:'New brand',kind:'brand' as const,description:'Details',brandName:'',modelName:'',manufacturer:'',source:'',images:[],author:'Driver',status:'Pending' as const,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const requestsApi={list:vi.fn(),review:vi.fn()};
   let isAdminSignal = signal(true);
   let isSuperAdminSignal = signal(true);
   let mockSupabaseClient: any;
   let mockLoadConfig: any;
 
   beforeEach(() => {
+    requestsApi.list.mockResolvedValue([]);requestsApi.review.mockImplementation(async (_id:string,status:string)=>({...request,status}));
     isAdminSignal.set(true);
     isSuperAdminSignal.set(true);
 
@@ -57,6 +61,7 @@ describe('AdminService', () => {
     TestBed.configureTestingModule({
       providers: [
         AdminService,
+        {provide:RequestsApi,useValue:requestsApi},
         {
           provide: AUTH_CLIENT,
           useValue: vi.fn().mockResolvedValue(null),
@@ -110,6 +115,7 @@ describe('AdminService', () => {
 
   describe('Requests management', () => {
     it('accepts a request', async () => {
+      requestsApi.list.mockResolvedValueOnce([request]); await service.fetchRequests();
       const reqId = service.requests()[0].id;
       await service.acceptRequest(reqId);
 
@@ -118,6 +124,7 @@ describe('AdminService', () => {
     });
 
     it('rejects a request', async () => {
+      requestsApi.list.mockResolvedValueOnce([request]); await service.fetchRequests();
       const reqId = service.requests()[0].id;
       await service.rejectRequest(reqId);
 
@@ -792,4 +799,14 @@ describe('AdminService', () => {
       expect(service.catalogParts()[0].price).toBe(75000);
     });
   });
+  it('shows empty backend request results and never substitutes demonstration requests', async () => {
+    requestsApi.list.mockResolvedValueOnce([]);await service.fetchRequests();expect(service.requests()).toEqual([]);
+  });
+  it('retains the last request status when Admin review fails', async () => {
+    requestsApi.list.mockResolvedValueOnce([request]);await service.fetchRequests();
+    requestsApi.review.mockRejectedValueOnce(new Error('offline'));
+    expect(await service.acceptRequest(request.id)).toBe(false);
+    expect(service.requests()[0].status).toBe('Pending');expect(service.requestsError()).toBe('offline');
+  });
+
 });

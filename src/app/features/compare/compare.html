@@ -157,34 +157,12 @@
             <div
               class="relative aspect-[1.65] overflow-hidden bg-[radial-gradient(ellipse,#3c3c3c,#111_80%)]"
             >
-              @if (part.category === 'wheels' || part.category === 'spoilers') {
-                <div class="flex h-full items-center justify-center text-stone-600">
-                  <app-icon
-                    [name]="part.category === 'wheels' ? 'wheel' : 'parts'"
-                    class="!size-12"
-                  />
-                </div>
-                <span class="absolute inset-x-0 bottom-2 text-center text-[8px] text-stone-500"
-                  >รอภาพชิ้นส่วน</span
-                >
-              } @else {
+              @if (part.previewImage) {
                 <img
-                  [src]="car()?.image"
-                  [alt]="'ภาพประกอบ ' + part.name"
-                  width="1280"
-                  height="960"
-                  [class]="
-                    part.crop === 'full'
-                      ? 'h-full w-full object-cover'
-                      : part.crop === 'front'
-                        ? 'absolute right-0 top-1/2 w-[230%] max-w-none -translate-y-1/2'
-                        : 'absolute left-0 top-1/2 w-[230%] max-w-none -translate-y-1/2'
-                  "
+                  [src]="part.previewImage"
+                  [alt]="part.name"
+                  class="h-full w-full object-contain p-3"
                 />
-                <span
-                  class="absolute left-2 top-2 rounded-lg bg-black/50 px-2 py-1 text-[7px] tracking-widest text-stone-400"
-                  >CONCEPT PREVIEW</span
-                >
               }
             </div>
             <div class="p-3 sm:p-5">
@@ -202,7 +180,7 @@
                   [class.border-red-400/20]="finishDifferent()"
                 >
                   <dt class="mb-1.5 text-[9px] text-stone-500">
-                    Finish
+                    แบรนด์ / สำนักแต่ง
                     @if (finishDifferent()) {
                       <span class="ml-1 text-red-400">แตกต่างกัน</span>
                     }

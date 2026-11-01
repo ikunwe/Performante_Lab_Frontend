@@ -33,6 +33,10 @@ import {
   faThumbsUp,
   faTrash,
   faShieldHalved,
+  faRotate,
+  faTicket,
+  faImage,
+  faCloudArrowUp,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 
@@ -72,6 +76,11 @@ const icons: Record<string, IconDefinition> = {
   delete: faTrash,
   trash: faTrash,
   shield: faShieldHalved,
+  rotate: faRotate,
+  refresh: faRotate,
+  ticket: faTicket,
+  image: faImage,
+  upload: faCloudArrowUp,
 };
 
 @Component({

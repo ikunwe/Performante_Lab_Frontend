@@ -19,7 +19,8 @@ export function createPreparedPartsResolver(images: readonly PartImageEntry[]) {
 const preparedParts = createPreparedPartsResolver(partImageManifest);
 export function partsForCar(car: CatalogCar | null | undefined): CatalogPart[] {
   if (!car) return [];
-  return [...catalogParts.filter(part => part.carId === car.id), ...preparedParts(car)];
+  if (car.storagePath) return catalogParts().filter(part => part.carId === car.id);
+  return [...catalogParts().filter(part => part.carId === car.id), ...preparedParts(car)];
 }
 export function partForView(parts: readonly CatalogPart[], view: CarViewId): CatalogPart | null {
   const kit = parts.find(part => part.category === 'bodykits');

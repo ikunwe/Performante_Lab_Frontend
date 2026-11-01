@@ -1,4 +1,6 @@
-import { Component, computed, inject, signal, ElementRef } from '@angular/core';
+import { StorageCatalogStore, storageCatalogData } from '../../core/catalog/storage-catalog';
+import { Component, computed, inject, signal, ElementRef, effect } from '@angular/core';
+import { LoadingSkeleton } from '../../shared/ui/loading-skeleton/loading-skeleton';
 import { Icon } from '../../shared/ui/icon/icon';
 import {
   CatalogCar,
@@ -11,14 +13,31 @@ import {
 @Component({
   selector: 'app-catalog',
   host: { class: 'block scroll-mt-[100px]' },
-  imports: [Icon],
+  imports: [LoadingSkeleton, Icon],
   templateUrl: './catalog.html',
 })
 export class Catalog {
   private readonly host = inject(ElementRef<HTMLElement>);
-  readonly cars = catalogCars;
-  readonly brandLogos = catalogBrandLogos;
-  readonly brands = [...new Set(catalogCars.map((car) => car.brand))];
+  readonly directory = inject(StorageCatalogStore);
+  constructor() {
+    void this.directory.load();
+    effect(() => {
+      const selected = this.selectedCar();
+      if (!selected) return;
+      const current = catalogCars().find((car) => car.id === selected.id);
+      if (current && current !== selected) this.selectedCar.set(current);
+      else if (!current && !this.directory.loading()) this.selectedCar.set(null);
+    });
+  }
+  get cars() {
+    return catalogCars();
+  }
+  get brandLogos() {
+    return catalogBrandLogos();
+  }
+  get brands() {
+    return storageCatalogData().brands.map((brand) => brand.name);
+  }
   readonly categories = partCategories;
   readonly selectedCar = signal<CatalogCar | null>(null);
   readonly search = signal('');
@@ -37,13 +56,18 @@ export class Catalog {
             (car.name + ' ' + car.brand).toLowerCase().includes(this.search().trim().toLowerCase()),
         ),
       }))
-      .filter((group) => group.cars.length),
+      .filter(
+        (group) =>
+          group.cars.length ||
+          ((this.brand() === 'All' || this.brand() === group.name) &&
+            group.name.toLowerCase().includes(this.search().trim().toLowerCase())),
+      ),
   );
   readonly sections = computed(() =>
     this.categories
       .map((category) => ({
         ...category,
-        parts: catalogParts.filter(
+        parts: catalogParts().filter(
           (part) =>
             part.carId === this.selectedCar()?.id &&
             part.category === category.id &&

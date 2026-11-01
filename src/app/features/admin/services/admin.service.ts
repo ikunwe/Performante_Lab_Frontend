@@ -1,3 +1,4 @@
+import { RequestsApi, RequestRecord } from '../../../core/requests/requests.api';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -21,6 +22,9 @@ export interface AdminBuildItem {
 }
 
 export interface AdminRequestItem {
+  images?: string[];
+  source?: string;
+  manufacturer?: string;
   id: string;
   title: string;
   author: string;
@@ -257,113 +261,6 @@ const INITIAL_BUILDS: AdminBuildItem[] = [
   },
 ];
 
-const INITIAL_REQUESTS: AdminRequestItem[] = [
-  {
-    id: 'req-1',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Pending',
-    category: 'Body Kit',
-    description: 'ขอเพิ่มพาร์ต Sano Design V2 Widebody kit สำหรับโมเดล Toyota GT86 รุ่นปี 2017+',
-    requestedAt: '2026-10-29',
-  },
-  {
-    id: 'req-2',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Pending',
-    category: 'Exhaust',
-    description: 'ขอชุดท่อไอเสีย Tomei Expreme Ti Titanium Catback',
-    requestedAt: '2026-10-28',
-  },
-  {
-    id: 'req-3',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Accepted',
-    category: 'Suspension',
-    description: 'ขอชุดโช้ค KW Variant 3 Coilovers พร้อมระบบ Rebound damping',
-    requestedAt: '2026-10-27',
-  },
-  {
-    id: 'req-4',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Rejected',
-    category: 'Wheels',
-    description: 'ล้อ Custom 22 นิ้ว (ขนาดเกินสเปกรองรับตัวถังเดิม)',
-    requestedAt: '2026-10-26',
-  },
-  {
-    id: 'req-5',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Pending',
-    category: 'Aero',
-    description: 'ขอสปอยเลอร์ Voltex Type 7 Swan Neck GT Wing คาร์บอนไฟเบอร์',
-    requestedAt: '2026-10-25',
-  },
-  {
-    id: 'req-6',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Pending',
-    category: 'Brakes',
-    description: 'ขอชุดจานเบรก Brembo GT 355mm drilled พร้อม 4-piston calipers',
-    requestedAt: '2026-10-24',
-  },
-  {
-    id: 'req-7',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Accepted',
-    category: 'Interior',
-    description: 'เบาะ Bride Stradia III Carbon Kevlar',
-    requestedAt: '2026-10-23',
-  },
-  {
-    id: 'req-8',
-    title: 'Sano Design body kit on Toyota GT86.',
-    author: 'username',
-    car: 'Toyota GT86',
-    tag: 'Toyota',
-    likes: '1000k+',
-    image: 'assets/car_pic.png',
-    status: 'Pending',
-    category: 'Lighting',
-    description: 'ไฟท้าย Valenti Revo LED Sequential Tail Lights',
-    requestedAt: '2026-10-22',
-  },
-];
-
 export const INITIAL_USERS: AdminUserItem[] = [
   {
     id: 'u-1',
@@ -414,6 +311,7 @@ export const INITIAL_EDIT_PARTS: RealPartItem[] = [];
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly auth = inject(AuthService);
+  private readonly requestsApi=inject(RequestsApi);
   private readonly createClient = inject(AUTH_CLIENT);
   private readonly loadConfig = inject(AUTH_CONFIG);
   private readonly platformId = inject(PLATFORM_ID);
@@ -442,7 +340,10 @@ export class AdminService {
   });
 
   // Requests state
-  readonly requests = signal<AdminRequestItem[]>(INITIAL_REQUESTS);
+  readonly requests = signal<AdminRequestItem[]>([]);
+  readonly requestsLoading=signal(false);
+  readonly requestsError=signal('');
+  readonly requestBusyId=signal<string|null>(null);
   readonly requestsSearch = signal('');
   readonly requestsStatusFilter = signal<'All' | 'Pending' | 'Accepted' | 'Rejected'>('All');
   readonly selectedRequest = signal<AdminRequestItem | null>(null);
@@ -1235,6 +1136,7 @@ export class AdminService {
         }
       } catch (err: any) {
         console.warn('[AdminService] deletePartItem error:', err);
+        return { ok: false, error: err?.message || 'ลบข้อมูลไม่สำเร็จ' };
       }
     }
     this.catalogParts.update((list) =>
@@ -1284,6 +1186,7 @@ export class AdminService {
         }
       } catch (err: any) {
         console.warn('[AdminService] deleteTuningBrand error:', err);
+        return { ok: false, error: err?.message || 'ลบข้อมูลไม่สำเร็จ' };
       }
     }
 
@@ -1432,34 +1335,17 @@ export class AdminService {
     }
   }
 
+  private mapRequest(item:RequestRecord):AdminRequestItem {
+    return {id:item.id,title:item.title,author:item.author,car:[item.brandName,item.modelName].filter(Boolean).join(' ') || 'ไม่ระบุรุ่น',
+      tag:item.kind,likes:'0',image:item.images[0] || '',images:item.images,status:item.status,category:item.kind,
+      description:item.description,requestedAt:item.createdAt,source:item.source,manufacturer:item.manufacturer};
+  }
   async fetchRequests(): Promise<void> {
-    const client = await this.getClient();
-    if (!client) return;
-    try {
-      const { data, error } = await client
-        .from('part_requests')
-        .select('*, profiles(username)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      if (data && data.length > 0) {
-        const mapped: AdminRequestItem[] = data.map((item: any) => ({
-          id: item.id,
-          title: item.title,
-          author: item.profiles?.username || 'Unknown',
-          car: item.car_model,
-          tag: item.tag,
-          likes: '1000k+',
-          image: 'assets/car_pic.png',
-          status: item.status,
-          category: item.category,
-          description: item.description,
-          requestedAt: item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : '',
-        }));
-        this.requests.set(mapped);
-      }
-    } catch {
-      // Graceful fallback to initial seed requests
-    }
+    if (this.requestsLoading() || this.requestBusyId()) return;
+    this.requestsLoading.set(true);this.requestsError.set('');
+    try { this.requests.set((await this.requestsApi.list(true)).map(item=>this.mapRequest(item))); }
+    catch(error) { this.requestsError.set(error instanceof Error ? error.message : 'โหลดคำขอไม่สำเร็จ'); }
+    finally { this.requestsLoading.set(false); }
   }
 
   /**
@@ -1585,53 +1471,17 @@ export class AdminService {
     return true;
   }
 
-  // Actions: Requests with Optimistic UI & Rollback
-  async acceptRequest(id: string): Promise<boolean> {
-    const previous = this.requests();
-    this.requests.update((list) =>
-      list.map((r) => (r.id === id ? { ...r, status: 'Accepted' } : r)),
-    );
-
-    const client = await this.getClient();
-    if (client) {
-      try {
-        const { error } = await client
-          .from('part_requests')
-          .update({ status: 'Accepted' })
-          .eq('id', id);
-        if (error) throw error;
-      } catch (err: any) {
-        // Rollback
-        this.requests.set(previous);
-        this.error.set('อนุมัติคำขอไม่สำเร็จ: ' + (err?.message || 'เครือข่ายขัดข้อง'));
-        return false;
-      }
-    }
-    return true;
-  }
-
-  async rejectRequest(id: string): Promise<boolean> {
-    const previous = this.requests();
-    this.requests.update((list) =>
-      list.map((r) => (r.id === id ? { ...r, status: 'Rejected' } : r)),
-    );
-
-    const client = await this.getClient();
-    if (client) {
-      try {
-        const { error } = await client
-          .from('part_requests')
-          .update({ status: 'Rejected' })
-          .eq('id', id);
-        if (error) throw error;
-      } catch (err: any) {
-        // Rollback
-        this.requests.set(previous);
-        this.error.set('ปฏิเสธคำขอไม่สำเร็จ: ' + (err?.message || 'เครือข่ายขัดข้อง'));
-        return false;
-      }
-    }
-    return true;
+  async acceptRequest(id:string):Promise<boolean> { return this.reviewRequest(id,'Accepted'); }
+  async rejectRequest(id:string):Promise<boolean> { return this.reviewRequest(id,'Rejected'); }
+  private async reviewRequest(id:string,status:'Accepted'|'Rejected'):Promise<boolean> {
+    if (this.requestBusyId() || this.requestsLoading()) return false;
+    this.requestBusyId.set(id);this.requestsError.set('');
+    try {
+      const item=await this.requestsApi.review(id,status);
+      this.requests.update(rows=>rows.map(row=>row.id===id?this.mapRequest(item):row));
+      return true;
+    } catch(error) { this.requestsError.set(error instanceof Error ? error.message : 'บันทึกสถานะไม่สำเร็จ'); return false; }
+    finally { this.requestBusyId.set(null); }
   }
 
   // Actions: Users with Optimistic UI & Rollback

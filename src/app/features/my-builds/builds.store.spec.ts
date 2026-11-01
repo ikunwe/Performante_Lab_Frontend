@@ -1,3 +1,22 @@
+import { seedCatalogFixture } from '../../testing/storage-catalog.fixture';
+import { StorageCatalogStore, storageCatalogData } from '../../core/catalog/storage-catalog';
+beforeEach(() => {
+  seedCatalogFixture(false);
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: StorageCatalogStore,
+        useValue: {
+          data: storageCatalogData,
+          load: async () => {},
+          loading: signal(false),
+          error: signal(''),
+          stale: signal(false),
+        },
+      },
+    ],
+  });
+});
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
@@ -20,6 +39,7 @@ describe('Account-scoped cloud builds', () => {
       list: vi.fn().mockResolvedValue([]),
       save: vi.fn(),
       remove: vi.fn(),
+      setVisibility: vi.fn(),
     };
     TestBed.configureTestingModule({ providers: [{ provide: BuildsApi, useValue: api }] });
     return { api, store: TestBed.inject(BuildsStore) };
@@ -69,5 +89,49 @@ describe('Account-scoped cloud builds', () => {
     expect(api.save.mock.calls[1][2]).toBe(id);
     expect(store.builds()).toHaveLength(1);
     expect(store.saving()).toBe(false);
+  });
+  it('waits for visibility confirmation, blocks duplicates and retains the old flag after errors', async () => {
+    const { api, store } = setup();
+    await store.load();
+    store.builds.set([{ ...row('one'), isPublic: false }]);
+    let reject!: (error: Error) => void;
+    api.setVisibility.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        }),
+    );
+    const pending = store.setVisibility('one', true);
+    expect(store.saving()).toBe(true);
+    expect(store.builds()[0].isPublic).toBe(false);
+    expect((await store.setVisibility('one', true)).ok).toBe(false);
+    reject(new Error('offline'));
+    expect((await pending).ok).toBe(false);
+    expect(store.builds()[0].isPublic).toBe(false);
+    api.setVisibility.mockResolvedValueOnce({
+      id: 'one',
+      isPublic: true,
+      updatedAt: new Date().toISOString(),
+    });
+    expect((await store.setVisibility('one', true)).ok).toBe(true);
+    expect(store.builds()[0].isPublic).toBe(true);
+  });
+  it('ignores a visibility response after an account switch', async () => {
+    const { api, store } = setup();
+    await store.load();
+    store.builds.set([row('one')]);
+    let done!: (result: unknown) => void;
+    api.setVisibility.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          done = resolve;
+        }),
+    );
+    const pending = store.setVisibility('one', true);
+    api.owner.set('account-b');
+    await store.load();
+    done({ id: 'one', isPublic: true, updatedAt: new Date().toISOString() });
+    expect((await pending).ok).toBe(false);
+    expect(store.builds()).toEqual([]);
   });
 });

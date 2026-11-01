@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, afterNextRender, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Icon } from '../../../shared/ui/icon/icon';
@@ -11,6 +11,11 @@ import { AdminRequestItem, AdminService } from '../services/admin.service';
 })
 export class AdminRequests {
   readonly admin = inject(AdminService);
+  constructor() {
+    afterNextRender(() => {
+      void this.admin.fetchRequests();
+    });
+  }
 
   readonly filtersOpen = signal(false);
   readonly detailsModalRequest = signal<AdminRequestItem | null>(null);
@@ -42,13 +47,15 @@ export class AdminRequests {
 
   async handleAccept(request: AdminRequestItem, event?: Event): Promise<void> {
     event?.stopPropagation();
-    await this.admin.acceptRequest(request.id);
+    if (!(await this.admin.acceptRequest(request.id))) return;
+    this.closeDetails();
     this.showToast(`อนุมัติคำขอชิ้นส่วน "${request.title}" เรียบร้อยแล้ว`);
   }
 
   async handleReject(request: AdminRequestItem, event?: Event): Promise<void> {
     event?.stopPropagation();
-    await this.admin.rejectRequest(request.id);
+    if (!(await this.admin.rejectRequest(request.id))) return;
+    this.closeDetails();
     this.showToast(`ปฏิเสธคำขอชิ้นส่วน "${request.title}" เรียบร้อยแล้ว`);
   }
 
@@ -59,4 +66,3 @@ export class AdminRequests {
     }, 3500);
   }
 }
-

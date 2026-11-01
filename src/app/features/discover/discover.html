@@ -1,16 +1,16 @@
 <main class="min-h-dvh bg-[#090909] text-stone-100">
   <header
     class="sticky top-0 z-30 flex h-[76px] items-center justify-between gap-4 border-b border-white/5 bg-[#151515]/95 px-6 backdrop-blur-xl md:px-10">
-    <a routerLink="/" aria-label="Performante Lab หน้าหลัก"
+    <a routerLink="/discover" aria-label="Performante Lab Discover"
       class="relative block h-10 w-[132px] shrink-0 cursor-pointer"><img src="assets/Logo_Performante_Lab.png"
         alt="Performante Lab" width="1920" height="1080"
         class="absolute -left-[22px] -top-[29px] w-[176px] max-w-none" /></a>
     <span class="hidden text-[8px] tracking-[.25em] text-stone-600 lg:block">THE COMMUNITY GARAGE</span>
     <div class="flex items-center gap-3 md:gap-5">
       @if (activeTab() !== 'My Builds' || buildHeading() === 'My Builds') {
-      <button type="button" (click)="openCreate()"
+      <button type="button" (click)="openCreate()" [disabled]="preparingBuild()"
         class="flex min-h-9 items-center gap-2 rounded-lg bg-[#d82c1b] px-3 font-[family-name:var(--font-display)] text-[8px] shadow-[0_5px_20px_#d82c1b25] hover:bg-[#f1422b] md:px-5 md:text-[9px] cursor-pointer disabled:cursor-not-allowed">
-        <app-icon name="plus" class="!size-3.5" />Create Build
+        <app-icon [name]="preparingBuild() ? 'spinner' : 'plus'" [class.animate-spin]="preparingBuild()" class="!size-3.5" />{{ preparingBuild() ? 'กำลังเตรียม…' : 'Create Build' }}
       </button>
       }
       <button type="button" aria-label="การแจ้งเตือน" (click)="notifications()"
@@ -20,7 +20,7 @@
       @if (auth.user()) {
       <app-account-menu [name]="auth.displayName()" [email]="auth.user()?.email ?? ''" [busy]="auth.busy()"
         [avatarUrl]="auth.avatarUrl()" [complete]="auth.accountComplete()" [showStatus]="true" (profile)="showProfile()"
-        (logout)="signOut()" />
+        (requests)="showRequests()" (logout)="signOut()" />
       } @else {
       <a routerLink="/login" aria-label="เข้าสู่ระบบ"
         class="flex items-center gap-2 border-l border-white/10 pl-3 text-[11px] text-stone-300 md:pl-5 cursor-pointer"><span
@@ -64,7 +64,7 @@
         <span>{{ auth.apiError() }}</span>
         <button type="button" (click)="auth.refreshBackendProfile()" [disabled]="auth.apiLoading()"
           [attr.aria-busy]="auth.apiLoading()"
-          class="min-h-8 cursor-pointer rounded-lg border border-amber-400/20 px-3">
+          class="min-h-8 cursor-pointer rounded-lg border border-amber-400/20 px-3 disabled:cursor-not-allowed">
           @if (auth.apiLoading()) {
           <app-icon name="spinner" class="!size-3 animate-spin motion-reduce:animate-none" />
           }
@@ -87,6 +87,8 @@
             ? 'ค้นหายี่ห้อ รุ่นรถ และพาร์ตแต่งสำหรับคันต่อไปของคุณ'
             : activeTab() === 'Compare'
             ? 'เปรียบเทียบของแต่งในรถรุ่นเดียวกัน'
+            : activeTab() === 'Requests'
+            ? 'ขอเพิ่มแบรนด์รถ รุ่นรถ และพาร์ทแต่งที่คุณอยากเห็น'
             : activeTab() === 'Profile'
             ? 'ข้อมูลบัญชีของคุณ และการตั้งค่าการเข้าสู่ระบบ'
             : 'เลือกแต่ง บันทึก และจัดการรถในสไตล์ของคุณ'
@@ -95,6 +97,8 @@
         </div>
         @if (activeTab() === 'Discover') {
         <div class="flex w-full items-center gap-2 sm:w-auto">
+          <button type="button" (click)="feed.load(true)" [disabled]="feed.loading() || !ready()" [attr.aria-busy]="feed.loading()" aria-label="รีเฟรช Build" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"><app-icon name="rotate" [class.animate-spin]="feed.loading()" class="!size-3 motion-reduce:animate-none" />รีเฟรช</button>
+
           <label
             class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-3 sm:w-[210px]"><app-icon
               name="search" class="text-stone-500" /><span class="sr-only">ค้นหา Build</span><input type="search"
@@ -120,8 +124,8 @@
         </button>
         }
         <label class="ml-auto flex cursor-pointer items-center gap-2 text-[11px] text-stone-400"><input type="checkbox"
-            [checked]="savedOnly()" (change)="savedOnly.set($any($event.target).checked)"
-            class="accent-red-500 cursor-pointer disabled:cursor-not-allowed" />เฉพาะที่บันทึก</label>
+            [checked]="likedOnly()" (change)="likedOnly.set($any($event.target).checked)"
+            class="accent-red-500 cursor-pointer disabled:cursor-not-allowed" />เฉพาะที่กด Like</label>
       </div>
       }
 
@@ -129,30 +133,34 @@
 
       @if (activeTab() === 'Discover') {
       <div class="mb-4 flex items-center justify-between border-b border-white/[.06] pb-3 text-[10px] text-stone-600">
-        <span>{{ visibleBuilds().length }} BUILDS</span><span>{{
-          activeTab() === 'Discover'
-          ? 'ตัวอย่าง Build · ข้อมูลและราคาเพื่อสาธิต'
-          : 'ฉบับร่างชั่วคราว · ยังไม่บันทึกลงบัญชี'
-          }}</span>
+        <span>{{ visibleBuilds().length }} BUILDS</span><span>Build สาธารณะจากชุมชน</span>
+
       </div>
+      @if (feed.error()) { <p role="alert" class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">{{ feed.error() }}</p> }
+      @if (!ready() || feed.loading()) { <app-loading-skeleton label="กำลังโหลด Build" /> } @else {
       <div class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         @for (build of visibleBuilds(); track build.id) {
-        <app-build-card [build]="build" [saved]="saved().includes(build.id)" (save)="toggleSaved($event)"
-          (details)="showDetails($event)" (copy)="openCreate($event)" />
+        <app-build-card [build]="build" [liked]="liked().includes(build.id)" [busy]="preparingBuild() || deletingBuild()" (like)="toggleLike($event)"
+          (details)="showDetails($event)" (copy)="openCreate($event)" (remove)="requestDelete($event)" />
         } @empty {
+        @if (ready() && !feed.loading() && !feed.error()) {
         <div class="col-span-full rounded-lg border border-dashed border-white/10 px-5 py-20 text-center">
           <app-icon name="builds" class="!size-8 text-stone-600" />
           <h2 class="mt-4 text-lg">ยังไม่มี Build ในรายการนี้</h2>
-          <p class="mt-2 text-sm text-stone-500">ลองเปลี่ยนคำค้นหาหรือสร้าง Build แรกของคุณ</p>
+          <p class="mt-2 text-sm text-stone-500">Discover แสดงเฉพาะ Build สาธารณะ ส่วน Build ส่วนตัวดูได้ใน My Builds</p>
+          @if (!auth.user()) { <a routerLink="/login" [queryParams]="{next:'/discover'}" class="mt-5 inline-block cursor-pointer rounded-lg border border-white/15 px-5 py-3 text-xs">เข้าสู่ระบบเพื่อดู Build ของคุณ</a> }
           <button type="button" (click)="openCreate()"
             class="mt-5 rounded-lg bg-[#ce281a] px-5 py-3 text-xs cursor-pointer disabled:cursor-not-allowed">
             Create Build
           </button>
         </div>
         }
+        }
       </div>
       }
 
+      }
+      @if (activeTab() === 'Requests') { <app-user-requests /> }
       @if (activeTab() === 'My Builds') {
       <app-my-builds [createRequest]="createRequest()" [sourceCarId]="sourceCarId()"
         (headingChange)="onBuildHeading($event)" />
@@ -173,18 +181,23 @@
 
   <dialog aria-labelledby="workspace-modal-title" #dialog
     class="workspace-dialog fixed inset-0 m-auto w-[calc(100%_-_32px)] max-w-lg rounded-lg border border-white/15 bg-[#171717] p-0 text-stone-100"
-    (click)="$event.target === dialog && close()">
+    (click)="$event.target === dialog && close()" (cancel)="deletingBuild() && $event.preventDefault()">
     <div class="p-6">
       <div class="mb-5 flex items-center justify-between gap-4">
         <h2 id="workspace-modal-title" tabindex="-1" autofocus
           class="font-[family-name:var(--font-display)] text-sm outline-none">
-          {{ modal() === 'details' ? 'Build details' : 'Notifications' }}
+          {{ modal() === 'delete' ? 'ลบ Build นี้?' : modal() === 'details' ? 'Build details' : 'Notifications' }}
         </h2>
-        <button type="button" aria-label="ปิดหน้าต่าง" (click)="close()"
+        <button type="button" aria-label="ปิดหน้าต่าง" (click)="close()" [disabled]="deletingBuild()"
           class="flex size-8 items-center justify-center rounded-full hover:bg-white/10 cursor-pointer disabled:cursor-not-allowed">
           <app-icon name="close" />
         </button>
       </div>
+      @if (modal() === 'delete') {
+        <p class="text-sm leading-7 text-stone-300">ยืนยันลบ “{{ selected()?.title }}” ออกจาก My Builds และ Discover หรือไม่?</p>
+        <p role="alert" class="my-4 text-xs text-red-300">{{ deleteError() }}</p>
+        <div class="mt-6 flex gap-3"><button type="button" (click)="close()" [disabled]="deletingBuild()" class="min-h-10 flex-1 cursor-pointer rounded-lg border border-white/15 text-xs disabled:cursor-not-allowed">ยกเลิก</button><button type="button" (click)="confirmDelete()" [disabled]="deletingBuild()" [attr.aria-busy]="deletingBuild()" class="min-h-10 flex-1 cursor-pointer rounded-lg bg-[#ce281a] text-xs hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">@if (deletingBuild()) { <app-icon name="spinner" class="mr-2 !size-3 animate-spin motion-reduce:animate-none" />กำลังลบ… } @else { ยืนยันลบ }</button></div>
+      }
       @if (modal() === 'notifications') {
       <p class="py-10 text-center text-sm text-stone-400">
         ยังไม่มีการแจ้งเตือน<br /><span class="text-xs text-stone-600">เข้าสู่ระบบเพื่อรับการแจ้งเตือนของคุณ</span>
@@ -193,7 +206,7 @@
       @if (modal() === 'details') {
       @if (selected(); as build) {
       <img [src]="build.image" [alt]="build.car" width="1280" height="960"
-        class="aspect-[1.9] w-full rounded-lg bg-[radial-gradient(ellipse,#444,#111)] object-cover" />
+        class="aspect-[1.9] w-full rounded-lg bg-[radial-gradient(ellipse,#444,#111)] object-contain" />
       <h3 class="mt-5 text-xl">{{ build.title }}</h3>
       <p class="mt-2 text-xs text-stone-500">
         {{ build.car }} · {{ build.category }} · by {{ build.author }}
@@ -204,17 +217,19 @@
         }
       </ul>
       <p class="text-lg text-red-400">
-        ฿{{ build.budget | number }}
-        <span class="text-[10px] text-stone-500">งบประมาณตัวอย่าง ไม่รวมค่าแรง</span>
+        @if (build.budget > 0) { ฿{{ build.budget | number }} } @else { ยังไม่ระบุงบประมาณ }
+
       </p>
       <p class="my-4 text-[11px] leading-relaxed text-stone-500">
-        รายการสาธิต ยังไม่มีข้อมูลความเข้ากันได้หรือสมรรถนะ และภาพยังไม่แสดงการเปลี่ยนชิ้นส่วน
+        {{ build.isOwn ? 'Build ของคุณ' : 'Build จากชุมชน' }} · {{ build.isPublic ? 'เผยแพร่' : 'ส่วนตัว' }}
       </p>
       <div class="flex flex-wrap gap-3">
+        @if (!build.isOwn) {
         <button type="button" (click)="openCreate(build)"
           class="rounded-lg bg-[#ce281a] px-4 py-3 text-xs cursor-pointer disabled:cursor-not-allowed">
           ใช้เป็นต้นแบบ Build
         </button>
+        }
       </div>
       }
       }
