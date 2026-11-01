@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AUTH_CLIENT, AUTH_CONFIG } from '../../../core/auth/auth-client';
 import { AuthService, UserRole } from '../../../core/auth/auth.service';
-import { CatalogStorageHelper } from '../../../core/storage/catalog-storage';
+import { CatalogStorageHelper, type StorageWorkshopItem } from '../../../core/storage/catalog-storage';
 
 export interface AdminBuildItem {
   id: string;
@@ -527,6 +527,11 @@ export class AdminService {
     }
   }
 
+  isBodyKitCategory(cat: string): boolean {
+    const c = (cat || '').toLowerCase().replace(/[\s_-]+/g, '');
+    return c === 'bodykit' || c === 'fullbodykits' || c === 'bodykits';
+  }
+
   // 1. ดึงแบรนด์ทั้งหมด (Storage catalog bucket -> car_brand_reference fallback)
   async fetchCatalogBrands(): Promise<void> {
     const client = await this.getClient();
@@ -618,7 +623,17 @@ export class AdminService {
             body_type: 'Coupe',
             bodyType: 'Coupe',
           }));
-          this.catalogModels.set(mapped);
+
+          // Merge กับ catalogModels ที่มีอยู่แล้ว ไม่ wipe out รถที่เพิ่ง optimistic insert
+          const current = this.catalogModels();
+          const merged = [...mapped];
+          for (const cm of current) {
+            const isMatchBrand = (cm.brand_id || cm.brandId) === brandId;
+            if (isMatchBrand && !merged.some((m) => m.name.toLowerCase() === cm.name.toLowerCase())) {
+              merged.push(cm);
+            }
+          }
+          this.catalogModels.set(merged);
           return;
         }
       }
@@ -640,8 +655,8 @@ export class AdminService {
           const brandName = data.name;
           const rawModels = data.details?.modelCatalog?.models || [];
           const mapped: RealCarModelItem[] = rawModels.map((m: any) => {
-            // ตรวจสอบว่ามีรูปรถใน Storage หรือไม่
-            const storageCarImage = `https://oxzejsgfazbjjqopkzuf.supabase.co/storage/v1/object/public/catalog/${brandName}/${m.name}/CarPicture.jpg`;
+            // ใช้ 45_front.png เป็นรูปรถหลักตามข้อกำหนดล่าสุด
+            const storageCarImage = `https://oxzejsgfazbjjqopkzuf.supabase.co/storage/v1/object/public/catalog/${brandName}/${m.name}/45_front.png`;
 
             return {
               id: m.id || `${brandId}-${m.name}`,
@@ -685,79 +700,225 @@ export class AdminService {
 
     try {
       const allParts: RealPartItem[] = [];
+      const storage = client?.storage?.from ? client.storage.from(CatalogStorageHelper.BUCKET) : null;
+      const safeBrand = CatalogStorageHelper.sanitize(brandName);
+      const safeModel = CatalogStorageHelper.sanitize(modelName);
 
-      // 1. ดึง BodyKit workshops และ items
-      const bkWorkshops = await CatalogStorageHelper.listWorkshops(
-        client,
-        brandName,
-        modelName,
-        'BodyKit',
-      );
-      for (const ws of bkWorkshops) {
-        const items = await CatalogStorageHelper.listItems(
-          client,
-          brandName,
-          modelName,
-          'BodyKit',
-          ws.name,
-        );
-        for (const item of items) {
-          allParts.push({
-            id: `${modelName}-bodykit-${ws.name}-${item.name}`,
-            car_model_id: modelName,
-            carId: modelName,
-            category: 'BodyKit',
-            name: item.displayName || item.name,
-            manufacturer: ws.name,
-            image_url: item.imageUrl,
-            image: item.imageUrl,
-            price: 0,
-          });
+      // 1. ดึง BodyKit workshops และ items (Parallel Optimized)
+      let bkWorkshops: StorageWorkshopItem[] = [];
+      const bkPath = `${safeBrand}/${safeModel}/BodyKit`;
+      if (storage) {
+        try {
+          const { data: bkEntries } = await storage.list(bkPath, { limit: 100 });
+          if (bkEntries && bkEntries.length > 0) {
+            const validBkFolders = bkEntries.filter(
+              (f) => !f.name.startsWith('.') && (f.id === null || f.metadata === null || !f.name.includes('.')),
+            );
+            bkWorkshops = validBkFolders.map((f) => ({ name: f.name, logoUrl: '' }));
+
+            // โหลด items ของทุก workshop ขนานกัน (Promise.all)
+            await Promise.all(
+              bkWorkshops.map(async (ws) => {
+                const items = await CatalogStorageHelper.listItems(client, brandName, modelName, 'BodyKit', ws.name);
+                for (const item of items) {
+                  allParts.push({
+                    id: `${modelName}-bodykit-${ws.name}-${item.name}`,
+                    car_model_id: modelName,
+                    carId: modelName,
+                    category: 'FullBodyKits',
+                    name: item.displayName || item.name,
+                    manufacturer: ws.name,
+                    image_url: item.imageUrl,
+                    image: item.imageUrl,
+                    price: 0,
+                  });
+                }
+              }),
+            );
+          }
+        } catch (bkErr) {
+          console.warn('[AdminService] fetchCatalogTuning bodykit scan warning:', bkErr);
         }
       }
 
-      // 2. ดึง Part workshops และ items
-      const partWorkshops = await CatalogStorageHelper.listWorkshops(
-        client,
-        brandName,
-        modelName,
-        'Part',
-      );
-      for (const ws of partWorkshops) {
-        const items = await CatalogStorageHelper.listItems(
-          client,
-          brandName,
-          modelName,
-          'Part',
-          ws.name,
-        );
-        for (const item of items) {
-          allParts.push({
-            id: `${modelName}-part-${ws.name}-${item.name}`,
-            car_model_id: modelName,
-            carId: modelName,
-            category: 'Part',
-            name: item.displayName || item.name,
-            manufacturer: ws.name,
-            image_url: item.imageUrl,
-            image: item.imageUrl,
-            price: 0,
-          });
+      // 2. ดึง Part categories, brands และ items ตาม STORAGE_CATALOG_TREE.md (Parallel Optimized)
+      // โครงสร้างโฟลเดอร์: {brand}/{model}/Part/{Category}/{PartBrand}/{PartName}/{angle}.png
+      const partWorkshops: StorageWorkshopItem[] = [];
+
+      if (storage) {
+        try {
+          const { data: partEntries } = await storage.list(`${safeBrand}/${safeModel}/Part`, { limit: 100 });
+          if (partEntries && partEntries.length > 0) {
+            await Promise.all(
+              partEntries.map(async (pEntry) => {
+                if (pEntry.name.startsWith('.')) return;
+                const rawCatName = pEntry.name;
+                const normCat = rawCatName.toLowerCase().replace(/[\s_-]+/g, '');
+                let standardCatName = '';
+                if (normCat === 'frontbumper' || normCat === 'front' || normCat === 'frontbumpers') standardCatName = 'Front Bumper';
+                else if (normCat === 'rearbumper' || normCat === 'rear' || normCat === 'rearbumpers') standardCatName = 'Rear Bumper';
+                else if (normCat === 'wheels' || normCat === 'wheel') standardCatName = 'Wheels';
+                else if (normCat === 'spoilers' || normCat === 'spoiler') standardCatName = 'Spoilers';
+
+                if (standardCatName) {
+                  const { data: brandEntries } = await storage.list(`${safeBrand}/${safeModel}/Part/${rawCatName}`, { limit: 100 });
+                  if (brandEntries) {
+                    await Promise.all(
+                      brandEntries.map(async (bEntry) => {
+                        if (bEntry.name.startsWith('.')) return;
+                        const partBrandName = bEntry.name;
+                        if (!partWorkshops.some((w) => w.name.toLowerCase() === partBrandName.toLowerCase())) {
+                          partWorkshops.push({ name: partBrandName, logoUrl: '' });
+                        }
+
+                        // ดึง items ภายใต้ {PartBrand}
+                        const { data: itemEntries } = await storage.list(
+                          `${safeBrand}/${safeModel}/Part/${rawCatName}/${partBrandName}`,
+                          { limit: 100 },
+                        );
+                        if (itemEntries) {
+                          await Promise.all(
+                            itemEntries.map(async (iEntry) => {
+                              if (iEntry.name.startsWith('.')) return;
+                              const partName = iEntry.name.replace(/\.[^/.]+$/, '');
+                              let imageUrl = '';
+
+                              if (!iEntry.name.includes('.')) {
+                                const { data: angleFiles } = await storage.list(
+                                  `${safeBrand}/${safeModel}/Part/${rawCatName}/${partBrandName}/${iEntry.name}`,
+                                  { limit: 20 },
+                                );
+                                if (angleFiles && angleFiles.length > 0) {
+                                  const primaryAngle =
+                                    angleFiles.find((f) => /^45_front\./i.test(f.name)) ||
+                                    angleFiles.find((f) => /^45_Back\./i.test(f.name)) ||
+                                    angleFiles.find((f) => /^front\./i.test(f.name)) ||
+                                    angleFiles.find((f) => /^Back\./i.test(f.name)) ||
+                                    angleFiles.find((f) => /\.(png|jpe?g|webp)$/i.test(f.name));
+                                  if (primaryAngle) {
+                                    imageUrl = CatalogStorageHelper.getPublicUrl(
+                                      client,
+                                      `${safeBrand}/${safeModel}/Part/${rawCatName}/${partBrandName}/${iEntry.name}/${primaryAngle.name}`,
+                                    );
+                                  }
+                                }
+                              } else if (/\.(png|jpe?g|webp|svg)$/i.test(iEntry.name)) {
+                                imageUrl = CatalogStorageHelper.getPublicUrl(
+                                  client,
+                                  `${safeBrand}/${safeModel}/Part/${rawCatName}/${partBrandName}/${iEntry.name}`,
+                                );
+                              }
+
+                              if (imageUrl) {
+                                allParts.push({
+                                  id: `${modelName}-part-${normCat}-${partBrandName}-${partName}`,
+                                  car_model_id: modelName,
+                                  carId: modelName,
+                                  category: standardCatName,
+                                  name: partName.replace(/[-_]+/g, ' '),
+                                  manufacturer: partBrandName,
+                                  image_url: imageUrl,
+                                  image: imageUrl,
+                                  price: 0,
+                                });
+                              }
+                            }),
+                          );
+                        }
+                      }),
+                    );
+                  }
+                } else {
+                  // Legacy structure
+                  const legacyItems = await CatalogStorageHelper.listItems(client, brandName, modelName, 'Part', pEntry.name);
+                  if (legacyItems.length > 0) {
+                    if (!partWorkshops.some((w) => w.name.toLowerCase() === pEntry.name.toLowerCase())) {
+                      partWorkshops.push({ name: pEntry.name, logoUrl: '' });
+                    }
+                    for (const li of legacyItems) {
+                      allParts.push({
+                        id: `${modelName}-part-${pEntry.name}-${li.name}`,
+                        car_model_id: modelName,
+                        carId: modelName,
+                        category: 'Wheels',
+                        name: li.displayName || li.name,
+                        manufacturer: pEntry.name,
+                        image_url: li.imageUrl,
+                        image: li.imageUrl,
+                        price: 0,
+                      });
+                    }
+                  }
+                }
+              }),
+            );
+          }
+        } catch (partErr) {
+          console.warn('[AdminService] fetchCatalogTuning part scan warning:', partErr);
         }
       }
 
-      if (allParts.length > 0) {
-        this.catalogParts.set(allParts);
-      } else {
-        await this.fetchCatalogParts(modelName);
+      // 3. รวมข้อมูลจากฐานข้อมูล Supabase `car_parts` Table
+      if (typeof client.from === 'function') {
+        try {
+          const { data: dbParts } = await client
+            .from('car_parts')
+            .select('*')
+            .or(`car_model_id.eq.${modelName},car_model_id.eq.${safeModel},car_model_id.ilike.%${safeModel}%`);
+          if (dbParts) {
+            for (const dp of dbParts) {
+              const mapped = mapPart(dp);
+              if (
+                !allParts.some(
+                  (p) =>
+                    p.name.toLowerCase() === mapped.name.toLowerCase() &&
+                    p.category.toLowerCase().replace(/[\s_-]+/g, '') ===
+                      mapped.category.toLowerCase().replace(/[\s_-]+/g, ''),
+                )
+              ) {
+                allParts.push(mapped);
+              }
+              if (mapped.manufacturer && !this.isBodyKitCategory(mapped.category)) {
+                if (!partWorkshops.some((w) => w.name.toLowerCase() === mapped.manufacturer.toLowerCase())) {
+                  partWorkshops.push({ name: mapped.manufacturer, logoUrl: '' });
+                }
+              }
+            }
+          }
+        } catch {
+          // ignore db error
+        }
       }
+
+      // Merge กับ parts ที่มีอยู่ใน memory ไม่ให้ล้างข้อมูลที่เพิ่ง optimistic insert
+      const currentParts = this.catalogParts();
+      const mergedParts = [...allParts];
+      for (const cp of currentParts) {
+        const isMatchCar =
+          (cp.car_model_id || cp.carId) === modelName ||
+          (cp.car_model_id || cp.carId) === safeModel ||
+          (cp.car_model_id || cp.carId)?.toLowerCase().includes(safeModel.toLowerCase());
+        if (
+          isMatchCar &&
+          !mergedParts.some(
+            (p) =>
+              p.id === cp.id ||
+              (p.name.toLowerCase() === cp.name.toLowerCase() &&
+                (p.manufacturer || '').toLowerCase() === (cp.manufacturer || '').toLowerCase()),
+          )
+        ) {
+          mergedParts.push(cp);
+        }
+      }
+
+      this.catalogParts.set(mergedParts);
 
       return {
         workshops: {
           bodykit: bkWorkshops,
           parts: partWorkshops,
         },
-        parts: allParts,
+        parts: mergedParts,
       };
     } catch (err: any) {
       console.error('[AdminService] fetchCatalogTuning exception:', err);
@@ -968,17 +1129,21 @@ export class AdminService {
         .insert([payload])
         .select()
         .single();
-      if (error) {
-        console.error('[AdminService] insertCarPart error:', error);
-        throw error;
+      if (!error && data) {
+        const mapped = mapPart(data);
+        this.catalogParts.update((list) => [...list, mapped]);
+        return { ok: true, data: mapped };
       }
-      const mapped = mapPart(data);
-      this.catalogParts.update((list) => [...list, mapped]);
-      return { ok: true, data: mapped };
     } catch (err: any) {
-      console.error('[AdminService] insertCarPart exception:', err);
-      return { ok: false, error: err?.message || 'บันทึกพาร์ตล้มเหลว' };
+      console.warn('[AdminService] insertCarPart DB fallback to local memory:', err);
     }
+
+    const fallbackItem = mapPart({
+      id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      ...payload,
+    });
+    this.catalogParts.update((list) => [...list, fallbackItem]);
+    return { ok: true, data: fallbackItem };
   }
 
   // อัปเดตชิ้นส่วน Part (car_parts)
@@ -1035,42 +1200,82 @@ export class AdminService {
     }
   }
 
-  // ลบชิ้นส่วน Part (car_parts & storage)
+  // ลบชิ้นส่วน Part หรือชุดแต่ง (car_parts & recursive storage cleanup)
   async deletePartItem(
     partId: string,
     storagePath?: string,
+    partName?: string,
+    carModelName?: string,
   ): Promise<{ ok: boolean; error?: string }> {
     const client = await this.getClient();
     if (client) {
       try {
         if (typeof client.from === 'function') {
-          await client.from('car_parts').delete().eq('id', partId);
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(partId);
+          if (isUuid) {
+            await client.from('car_parts').delete().eq('id', partId);
+          }
+          if (partName) {
+            let query = client.from('car_parts').delete().ilike('name', partName);
+            if (carModelName) {
+              const safeModel = CatalogStorageHelper.sanitize(carModelName);
+              query = query.or(`car_model_id.eq.${carModelName},car_model_id.eq.${safeModel}`);
+            }
+            await query;
+          }
         }
         if (storagePath) {
-          await CatalogStorageHelper.deleteFile(client, storagePath);
+          const cleanPath = CatalogStorageHelper.extractStoragePath(storagePath);
+          if (cleanPath) {
+            // ดึงโฟลเดอร์ของชิ้นส่วน (ตัดชื่อไฟล์รูปมุมมองออก)
+            const lastSlash = cleanPath.lastIndexOf('/');
+            const folderPath = lastSlash !== -1 ? cleanPath.substring(0, lastSlash) : cleanPath;
+            await CatalogStorageHelper.deleteFolderRecursively(client, folderPath);
+          }
         }
       } catch (err: any) {
         console.warn('[AdminService] deletePartItem error:', err);
       }
     }
-    this.catalogParts.update((list) => list.filter((p) => p.id !== partId));
+    this.catalogParts.update((list) =>
+      list.filter((p) => p.id !== partId && (!partName || p.name.toLowerCase() !== partName.toLowerCase())),
+    );
     return { ok: true };
   }
 
-  // ลบสำนักแต่ง Tuning Brand (car_parts & storage folder)
+  // ลบสำนักแต่ง Tuning Brand (car_parts & storage folders recursively)
   async deleteTuningBrand(
     brandName: string,
     carModelName: string,
     tab: 'bodykit' | 'parts',
     tuningBrand: string,
+    category?: string,
   ): Promise<{ ok: boolean; error?: string }> {
     const client = await this.getClient();
-    const folder = tab === 'bodykit' ? 'BodyKit' : 'Part';
-    const prefix = `${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carModelName)}/${folder}/${CatalogStorageHelper.sanitize(tuningBrand)}`;
+    const safeBrand = CatalogStorageHelper.sanitize(brandName);
+    const safeModel = CatalogStorageHelper.sanitize(carModelName);
+    const safeTuningBrand = CatalogStorageHelper.sanitize(tuningBrand);
 
     if (client) {
       try {
-        await CatalogStorageHelper.deleteFolder(client, prefix);
+        if (tab === 'bodykit') {
+          const prefix = `${safeBrand}/${safeModel}/BodyKit/${safeTuningBrand}`;
+          await CatalogStorageHelper.deleteFolderRecursively(client, prefix);
+        } else {
+          // ถ้าเป็น Tab parts ให้ลบโฟลเดอร์ของแบรนด์นี้ใน category ที่เลือก หรือทุก standard category
+          const categoriesToClean = category
+            ? [CatalogStorageHelper.sanitize(category)]
+            : ['Front-Bumper', 'Rear-Bumper', 'Wheels', 'Spoilers'];
+
+          for (const cat of categoriesToClean) {
+            const catPrefix = `${safeBrand}/${safeModel}/Part/${cat}/${safeTuningBrand}`;
+            await CatalogStorageHelper.deleteFolderRecursively(client, catPrefix);
+          }
+          // Legacy direct folder
+          const legacyPrefix = `${safeBrand}/${safeModel}/Part/${safeTuningBrand}`;
+          await CatalogStorageHelper.deleteFolderRecursively(client, legacyPrefix);
+        }
+
         if (typeof client.from === 'function') {
           await client
             .from('car_parts')

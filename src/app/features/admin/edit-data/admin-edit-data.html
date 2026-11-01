@@ -495,6 +495,14 @@
                   class="aspect-square rounded-2xl bg-[#141414] border-2 border-emerald-500/60 hover:border-emerald-400 relative flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group select-none shadow-sm"
                   title="คลิกเพื่อแก้ไขชื่อแบรนด์"
                 >
+                  <button
+                    type="button"
+                    (click)="confirmDeleteTuningBrand(selectedTuningBrand()!, $event)"
+                    class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                    title="ลบแบรนด์นี้"
+                  >
+                    <app-icon name="trash" class="!size-3" />
+                  </button>
                   <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-emerald-300 transition-colors truncate max-w-full block mb-1">
                     {{ selectedTuningBrand() }}
                   </span>
@@ -502,7 +510,7 @@
                   <div class="absolute bottom-2 inset-x-2 flex items-center justify-center text-[9px] text-emerald-300 bg-black/70 backdrop-blur-sm py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>แก้ไขแบรนด์</span>
                   </div>
-                  <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" title="Active Tuning Brand"></span>
+                  <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse group-hover:opacity-0 transition-opacity" title="Active Tuning Brand"></span>
                 </div>
 
                 <!-- Card 2: (+) เพิ่มชุดแต่ง -->
@@ -550,9 +558,6 @@
                       <span class="text-xs font-semibold text-white tracking-wide truncate block">
                         {{ part.name }}
                       </span>
-                      @if (part.price) {
-                        <span class="text-[10px] text-stone-400 block">฿{{ part.price.toLocaleString() }}</span>
-                      }
                     </div>
                   </div>
                 }
@@ -709,6 +714,14 @@
                   class="aspect-square rounded-2xl bg-[#141414] border-2 border-emerald-500/60 hover:border-emerald-400 relative flex flex-col items-center justify-center p-4 cursor-pointer transition-all hover:scale-[1.02] group select-none shadow-sm"
                   title="คลิกเพื่อแก้ไขชื่อแบรนด์"
                 >
+                  <button
+                    type="button"
+                    (click)="confirmDeleteTuningBrand(selectedTuningBrand()!, $event)"
+                    class="absolute top-2 right-2 size-7 rounded-lg bg-black/60 hover:bg-red-500/20 text-stone-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                    title="ลบแบรนด์นี้"
+                  >
+                    <app-icon name="trash" class="!size-3" />
+                  </button>
                   <span class="text-sm font-bold text-white text-center tracking-wide group-hover:text-emerald-300 transition-colors truncate max-w-full block mb-1">
                     {{ selectedTuningBrand() }}
                   </span>
@@ -716,7 +729,7 @@
                   <div class="absolute bottom-2 inset-x-2 flex items-center justify-center text-[9px] text-emerald-300 bg-black/70 backdrop-blur-sm py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>แก้ไขแบรนด์</span>
                   </div>
-                  <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" title="Active Tuning Brand"></span>
+                  <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse group-hover:opacity-0 transition-opacity" title="Active Tuning Brand"></span>
                 </div>
 
                 <!-- Card 2: (+) เพิ่มชิ้นส่วน -->
@@ -764,9 +777,6 @@
                       <span class="text-xs font-semibold text-white tracking-wide truncate block">
                         {{ part.name }}
                       </span>
-                      @if (part.price) {
-                        <span class="text-[10px] text-stone-400 block">฿{{ part.price.toLocaleString() }}</span>
-                      }
                     </div>
                   </div>
                 }
@@ -920,39 +930,62 @@
             />
           </div>
 
-          <!-- File Upload Dropzone (Car Picture) -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-stone-300">
-              อัปโหลดรูปรถต้นแบบ (JPG, PNG, WebP สูงสุด 10MB) <span class="text-red-400">*</span>
-            </label>
-            <div
-              class="relative rounded-xl border-2 border-dashed border-white/15 bg-[#121212] p-4 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group"
-              (click)="carFileInput.click()"
-            >
-              <input
-                #carFileInput
-                type="file"
-                accept="image/png, image/jpeg, image/webp"
-                class="hidden"
-                (change)="onCarFileChange($event)"
-              />
+          <!-- Multi-angle Car Upload Dropzones (4 Angles: 45_front, front, 45_Back, Back) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-semibold text-stone-300">
+                อัปโหลดรูปรถต้นแบบตาม 4 มุมมอง <span class="text-red-400">*</span>
+              </label>
+              <span class="text-[10px] text-stone-400">
+                จำเป็นต้องมีครบทั้ง 4 มุม (เหมือน Body Kit)
+              </span>
+            </div>
 
-              @if (carFilePreview()) {
-                <div class="flex flex-col items-center gap-2">
-                  <img
-                    [src]="carFilePreview()"
-                    alt="Preview"
-                    class="max-h-32 max-w-full rounded-lg object-contain shadow-md"
-                  />
-                  <p class="text-[11px] text-stone-400 truncate max-w-xs">
-                    {{ selectedCarFile()?.name }} <span class="text-[#ce281a]">(คลิกเพื่อเปลี่ยนรูป)</span>
-                  </p>
-                </div>
-              } @else {
-                <div class="flex flex-col items-center justify-center py-3 text-stone-400 group-hover:text-stone-300">
-                  <app-icon name="plus" class="!size-6 text-stone-500 group-hover:text-[#ce281a] mb-1.5 transition-colors" />
-                  <p class="text-xs font-medium">คลิกเพื่อเลือกไฟล์รูปรถจากเครื่อง</p>
-                  <p class="text-[10px] text-stone-500 mt-0.5">จัดเก็บเป็น CarPicture ใน Supabase Storage</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              @for (angle of carRequiredAngles; track angle.key) {
+                <div class="rounded-xl border border-white/10 bg-[#121212] p-3 space-y-2">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-stone-200">{{ angle.label }}</span>
+                    @if (carAngleFiles().has(angle.key)) {
+                      <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <app-icon name="check" class="!size-2.5" />
+                        พร้อมอัปโหลด
+                      </span>
+                    } @else {
+                      <span class="text-[10px] text-amber-400 font-semibold">ต้องระบุ *</span>
+                    }
+                  </div>
+
+                  <div
+                    class="relative rounded-lg border-2 border-dashed border-white/15 bg-black/40 p-3 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group flex flex-col items-center justify-center min-h-[96px]"
+                    (click)="carAngleInput.click()"
+                  >
+                    <input
+                      #carAngleInput
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      class="hidden"
+                      (change)="onCarAngleFileChange(angle.key, $event)"
+                    />
+
+                    @if (carAnglePreviews().get(angle.key); as previewUrl) {
+                      <div class="flex flex-col items-center gap-1.5">
+                        <img
+                          [src]="previewUrl"
+                          [alt]="angle.label"
+                          class="max-h-20 max-w-full rounded object-contain shadow"
+                        />
+                        <span class="text-[10px] text-stone-400 truncate max-w-[140px]">
+                          {{ carAngleFiles().get(angle.key)?.name }}
+                        </span>
+                      </div>
+                    } @else {
+                      <div class="flex flex-col items-center justify-center text-stone-400 group-hover:text-stone-300">
+                        <app-icon name="plus" class="!size-5 text-stone-500 group-hover:text-[#ce281a] mb-1 transition-colors" />
+                        <span class="text-[11px] font-medium">เลือกไฟล์ {{ angle.key }}.png</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               }
             </div>
@@ -1021,44 +1054,6 @@
             />
           </div>
 
-          <!-- File Upload Dropzone (Tuning Brand Logo) -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-stone-300">
-              อัปโหลดรูปโลโก้แบรนด์ของแต่ง (JPG, PNG, WebP สูงสุด 10MB) <span class="text-red-400">*</span>
-            </label>
-            <div
-              class="relative rounded-xl border-2 border-dashed border-white/15 bg-[#121212] p-4 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group"
-              (click)="tuningBrandFileInput.click()"
-            >
-              <input
-                #tuningBrandFileInput
-                type="file"
-                accept="image/png, image/jpeg, image/webp"
-                class="hidden"
-                (change)="onTuningBrandFileChange($event)"
-              />
-
-              @if (tuningBrandFilePreview()) {
-                <div class="flex flex-col items-center gap-2">
-                  <img
-                    [src]="tuningBrandFilePreview()"
-                    alt="Preview"
-                    class="max-h-24 max-w-full rounded-lg object-contain shadow-md"
-                  />
-                  <p class="text-[11px] text-stone-400 truncate max-w-xs">
-                    {{ selectedTuningBrandFile()?.name }} <span class="text-[#ce281a]">(คลิกเพื่อเปลี่ยนรูป)</span>
-                  </p>
-                </div>
-              } @else {
-                <div class="flex flex-col items-center justify-center py-3 text-stone-400 group-hover:text-stone-300">
-                  <app-icon name="plus" class="!size-6 text-stone-500 group-hover:text-[#ce281a] mb-1.5 transition-colors" />
-                  <p class="text-xs font-medium">คลิกเพื่อเลือกไฟล์รูปโลโก้จากเครื่อง</p>
-                  <p class="text-[10px] text-stone-500 mt-0.5">จัดเก็บเป็น logo.png สำหรับสำนักแต่งนี้</p>
-                </div>
-              }
-            </div>
-          </div>
-
           @if (isUploading()) {
             <div class="flex items-center gap-2 text-xs text-amber-400 justify-center py-1">
               <app-icon name="spinner" class="!size-4 animate-spin text-[#ce281a]" />
@@ -1086,6 +1081,86 @@
               <app-icon name="spinner" class="!size-3 animate-spin text-white" />
             }
             <span>ยืนยันและไปเพิ่มชิ้นส่วน</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MODAL: EDIT TUNING BRAND (Rename / Delete Brand)         -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  @if (editTuningBrandModalOpen()) {
+    <div class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150" (click)="closeEditTuningBrandModal()">
+      <div class="w-full max-w-md bg-[#181818] border border-white/15 rounded-2xl p-6 shadow-2xl space-y-4 text-white max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between pb-3 border-b border-white/10">
+          <h3 class="font-bold text-base text-white">
+            แก้ไขแบรนด์ของแต่ง
+            <span class="text-xs text-stone-400 font-normal">({{ originalTuningBrandName() }})</span>
+          </h3>
+          <button type="button" (click)="closeEditTuningBrandModal()" class="text-stone-400 hover:text-white cursor-pointer">
+            <app-icon name="close" class="!size-4" />
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <p class="text-xs text-stone-400">
+            แก้ไขชื่อแบรนด์/สำนักแต่งสำหรับ {{ partTab() === 'bodykit' ? 'Body Kit' : 'Part: ' + selectedCategory() }}
+          </p>
+
+          <div>
+            <label class="block text-xs font-semibold text-stone-300 mb-1.5">
+              ชื่อแบรนด์ของแต่ง / สำนักแต่ง <span class="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              [ngModel]="editingTuningBrandName()"
+              (ngModelChange)="editingTuningBrandName.set($event)"
+              placeholder="ระบุชื่อแบรนด์ใหม่"
+              class="h-10 w-full bg-[#121212] border border-white/15 rounded-xl px-3.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
+            />
+          </div>
+
+          <!-- Delete Brand Action -->
+          <div class="pt-2 border-t border-white/10 flex items-center justify-between">
+            <span class="text-xs text-stone-400">ต้องการลบแบรนด์นี้หรือไม่?</span>
+            <button
+              type="button"
+              (click)="closeEditTuningBrandModal(); confirmDeleteTuningBrand(originalTuningBrandName())"
+              class="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <app-icon name="trash" class="!size-3" />
+              <span>ลบแบรนด์นี้</span>
+            </button>
+          </div>
+
+          @if (isUploading()) {
+            <div class="flex items-center gap-2 text-xs text-amber-400 justify-center py-1">
+              <app-icon name="spinner" class="!size-4 animate-spin text-[#ce281a]" />
+              <span>{{ uploadProgressText() }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+          <button
+            type="button"
+            (click)="closeEditTuningBrandModal()"
+            [disabled]="isUploading()"
+            class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            (click)="saveEditTuningBrand()"
+            [disabled]="isUploading()"
+            class="px-5 py-2 rounded-xl bg-[#ce281a] hover:bg-red-600 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-[#ce281a]/30 transition-colors cursor-pointer flex items-center gap-2"
+          >
+            @if (isUploading()) {
+              <app-icon name="spinner" class="!size-3 animate-spin text-white" />
+            }
+            <span>บันทึกชื่อแบรนด์</span>
           </button>
         </div>
       </div>
@@ -1247,17 +1322,6 @@
                 </div>
               }
             </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-stone-300 mb-1.5">ราคาประเมินอ้างอิง (บาท, ไม่บังคับ)</label>
-            <input
-              type="number"
-              [ngModel]="newPartPrice()"
-              (ngModelChange)="newPartPrice.set($event)"
-              placeholder="เช่น 150000"
-              class="h-10 w-full bg-[#121212] border border-white/15 rounded-xl px-3.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
-            />
           </div>
 
           <!-- Uploading Spinner Feedback -->
@@ -1423,47 +1487,72 @@
             />
           </div>
 
-          <!-- File Upload Dropzone (Optional new car picture) -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-stone-300">
-              อัปโหลดรูปรถใหม่ (ไม่เลือกจะใช้รูปเดิม)
-            </label>
-            <div
-              class="relative rounded-xl border-2 border-dashed border-white/15 bg-[#121212] p-4 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group"
-              (click)="editCarFileInput.click()"
-            >
-              <input
-                #editCarFileInput
-                type="file"
-                accept="image/png, image/jpeg, image/webp"
-                class="hidden"
-                (change)="onEditCarFileChange($event)"
-              />
+          <!-- Multi-angle Edit Car Upload Dropzones (4 Angles: 45_front, front, 45_Back, Back) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-semibold text-stone-300">
+                แก้ไขรูปรถต้นแบบ (4 มุมมอง)
+              </label>
+              <span class="text-[10px] text-stone-400">
+                (หากไม่เลือกรูปใหม่ จะใช้รูปเดิม)
+              </span>
+            </div>
 
-              @if (editCarFilePreview()) {
-                <div class="flex flex-col items-center gap-2">
-                  <img
-                    [src]="editCarFilePreview()"
-                    alt="Preview"
-                    class="max-h-32 max-w-full rounded-lg object-contain shadow-md"
-                  />
-                  <p class="text-[11px] text-stone-400 truncate max-w-xs">
-                    {{ editCarFile()?.name }} <span class="text-[#ce281a]">(คลิกเพื่อเปลี่ยนรูป)</span>
-                  </p>
-                </div>
-              } @else if (selectedCar()?.image_url) {
-                <div class="flex flex-col items-center gap-2">
-                  <img
-                    [src]="selectedCar()!.image_url"
-                    alt="Current Car Picture"
-                    class="max-h-28 max-w-full object-contain rounded-lg"
-                  />
-                  <p class="text-[11px] text-stone-400">รูปปัจจุบัน (คลิกเพื่ออัปโหลดรูปรถใหม่แทนที่)</p>
-                </div>
-              } @else {
-                <div class="flex flex-col items-center justify-center py-3 text-stone-400 group-hover:text-stone-300">
-                  <app-icon name="plus" class="!size-6 text-stone-500 group-hover:text-[#ce281a] mb-1.5 transition-colors" />
-                  <p class="text-xs font-medium">คลิกเพื่อเลือกไฟล์รูปรถใหม่</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              @for (angle of carRequiredAngles; track angle.key) {
+                <div class="rounded-xl border border-white/10 bg-[#121212] p-3 space-y-2">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-stone-200">{{ angle.label }}</span>
+                    @if (editCarAngleFiles().has(angle.key)) {
+                      <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <app-icon name="check" class="!size-2.5" />
+                        รูปใหม่
+                      </span>
+                    } @else {
+                      <span class="text-[10px] text-stone-400">รูปเดิม</span>
+                    }
+                  </div>
+
+                  <div
+                    class="relative rounded-lg border-2 border-dashed border-white/15 bg-black/40 p-3 text-center hover:border-[#ce281a]/60 transition-colors cursor-pointer group flex flex-col items-center justify-center min-h-[96px]"
+                    (click)="editCarAngleInput.click()"
+                  >
+                    <input
+                      #editCarAngleInput
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      class="hidden"
+                      (change)="onEditCarAngleFileChange(angle.key, $event)"
+                    />
+
+                    @if (editCarAnglePreviews().get(angle.key); as previewUrl) {
+                      <div class="flex flex-col items-center gap-1.5">
+                        <img
+                          [src]="previewUrl"
+                          [alt]="angle.label"
+                          class="max-h-20 max-w-full rounded object-contain shadow"
+                        />
+                        <span class="text-[10px] text-emerald-400 truncate max-w-[140px]">
+                          {{ editCarAngleFiles().get(angle.key)?.name }}
+                        </span>
+                      </div>
+                    } @else if (getExistingCarAngleUrl(selectedCar(), angle.key); as existingUrl) {
+                      <div class="flex flex-col items-center gap-1.5">
+                        <img
+                          [src]="existingUrl"
+                          [alt]="angle.label"
+                          class="max-h-20 max-w-full rounded object-contain shadow opacity-80"
+                          (error)="$any($event.target).src = (selectedCar()?.image_url || 'assets/car_pic.png')"
+                        />
+                        <span class="text-[10px] text-stone-400 group-hover:text-stone-300">คลิกเพื่อเปลี่ยนรูป</span>
+                      </div>
+                    } @else {
+                      <div class="flex flex-col items-center justify-center text-stone-400 group-hover:text-stone-300">
+                        <app-icon name="plus" class="!size-5 text-stone-500 group-hover:text-[#ce281a] mb-1 transition-colors" />
+                        <span class="text-[11px] font-medium">อัปโหลดรูปใหม่ ({{ angle.key }})</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               }
             </div>
@@ -1548,17 +1637,6 @@
             />
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-stone-300 mb-1.5">ราคาโดยประมาณ (บาท - ตัวเลือก)</label>
-            <input
-              type="number"
-              [ngModel]="editingPartPrice()"
-              (ngModelChange)="editingPartPrice.set($event)"
-              placeholder="เช่น 45000"
-              class="h-10 w-full bg-[#121212] border border-white/15 rounded-xl px-3.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
-            />
-          </div>
-
           <!-- Multi-angle Image Upload Dropzones (Optional when editing: if none uploaded, keeps existing) -->
           <div class="space-y-3">
             <div class="flex items-center justify-between">
@@ -1611,9 +1689,10 @@
                     } @else if (editingPart()?.image || editingPart()?.image_url) {
                       <div class="flex flex-col items-center gap-1.5">
                         <img
-                          [src]="editingPart()!.image || editingPart()!.image_url"
+                          [src]="getExistingPartAngleUrl(editingPart(), angle.key)"
                           [alt]="angle.label"
                           class="max-h-20 max-w-full rounded object-contain shadow opacity-80"
+                          (error)="$any($event.target).src = (editingPart()?.image_url || 'assets/car_pic.png')"
                         />
                         <span class="text-[10px] text-stone-400 group-hover:text-stone-300">คลิกเพื่อเปลี่ยนรูป</span>
                       </div>
@@ -1657,6 +1736,64 @@
               <app-icon name="spinner" class="!size-3 animate-spin text-white" />
             }
             <span>บันทึกการแก้ไข</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MODAL: CONFIRM DELETE SAFEGUARD MODAL                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  @if (confirmDeleteModalOpen() && deleteTarget()) {
+    <div
+      class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+      (click)="closeConfirmDeleteModal()"
+    >
+      <div
+        class="w-full max-w-sm bg-[#181818] border border-red-500/30 rounded-2xl p-6 shadow-2xl space-y-4 text-white text-center"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="mx-auto size-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500">
+          <app-icon name="trash" class="!size-6" />
+        </div>
+
+        <div class="space-y-1.5">
+          <h3 class="font-bold text-base text-white">
+            ยืนยันการลบ{{ deleteTarget()?.type === 'tuningBrand' ? 'แบรนด์' : (deleteTarget()?.type === 'category' ? 'หมวดหมู่' : 'ชิ้นส่วน') }}
+          </h3>
+          <p class="text-xs text-stone-300">
+            คุณต้องการลบ <span class="font-bold text-red-400">"{{ deleteTarget()?.name }}"</span> ใช่หรือไม่?
+          </p>
+          @if ((deleteTarget()?.partCount ?? 0) > 0) {
+            <p class="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 mt-2">
+              ⚠️ การลบนี้จะลบชิ้นส่วนทั้งหมดจำนวน {{ deleteTarget()?.partCount }} รายการออกจากระบบและ Storage อย่างถาวร
+            </p>
+          }
+          <p class="text-[10px] text-stone-500">
+            การกระทำนี้ไม่สามารถย้อนกลับได้ ข้อมูลและรูปภาพใน Storage จะถูกลบออกทั้งหมด
+          </p>
+        </div>
+
+        <div class="flex items-center justify-center gap-3 pt-2 border-t border-white/10">
+          <button
+            type="button"
+            (click)="closeConfirmDeleteModal()"
+            [disabled]="isDeleting()"
+            class="px-4 py-2 rounded-xl border border-white/15 text-xs font-semibold text-stone-300 hover:bg-white/5 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            (click)="executeDelete()"
+            [disabled]="isDeleting()"
+            class="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-xs font-bold text-white shadow-md shadow-red-600/30 transition-colors cursor-pointer flex items-center gap-2"
+          >
+            @if (isDeleting()) {
+              <app-icon name="spinner" class="!size-3 animate-spin text-white" />
+            }
+            <span>{{ isDeleting() ? 'กำลังลบ...' : 'ยืนยันการลบ' }}</span>
           </button>
         </div>
       </div>

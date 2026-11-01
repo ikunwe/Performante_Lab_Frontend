@@ -859,5 +859,37 @@ describe('Admin Portal Features', () => {
       expect(bodyKitAngles.length).toBe(4);
       expect(bodyKitAngles.map((a) => a.key)).toEqual(['45_front', 'front', '45_Back', 'Back']);
     });
+
+    it('allows editing tuning brand name and filters category names out of brand list', async () => {
+      const fixture = TestBed.createComponent(AdminEditData);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const ferrari = component.admin.editBrands().find((b) => b.name === 'Ferrari');
+      await component.selectBrand(ferrari!);
+      const pista = component.filteredCarsForBrand()[0];
+      await component.selectCar(pista);
+
+      // Set tuning brand & open edit modal
+      component.selectedTuningBrand.set('Akrapovic');
+      component.openEditTuningBrandModal('Akrapovic');
+      expect(component.editTuningBrandModalOpen()).toBe(true);
+      expect(component.editingTuningBrandName()).toBe('Akrapovic');
+
+      // Rename tuning brand
+      component.editingTuningBrandName.set('Akrapovic Racing');
+      await component.saveEditTuningBrand();
+      expect(component.editTuningBrandModalOpen()).toBe(false);
+      expect(component.selectedTuningBrand()).toBe('Akrapovic Racing');
+
+      // Test that Spoilers or category names are not treated as brands
+      component.workshopBrands.set({
+        bodykit: [{ name: 'Novitec', logoUrl: '' }],
+        parts: [{ name: 'Akrapovic', logoUrl: '' }, { name: 'Spoilers', logoUrl: '' }],
+      });
+      const brandsForRearBumper = component.tuningBrandsForPartCategory('Rear Bumper');
+      expect(brandsForRearBumper).toContain('Akrapovic');
+      expect(brandsForRearBumper).not.toContain('Spoilers');
+    });
   });
 });

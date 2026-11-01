@@ -1,9 +1,11 @@
-# 🚀 MASTER WORKER PROMPT (FINAL V3): Admin Edit Data — Locked 4 Categories, 3-Step Flow & Multi-Angle Asset Specification
+# 🚀 MASTER WORKER PROMPT (FINAL V4): Complete Admin Edit Data Fixes & Multi-Angle Catalog Asset Integration
 
-> ⚠️ **CRITICAL DIRECTIVE FOR AI WORKER / AGENT**:  
-> ห้ามย้อนเวอร์ชันโค้ด (DO NOT REGRESS)!  
-> หน้า Body Kit ปัจจุบันทำงานถูกต้องแล้วตามภาพอนุมัติ (Sano-Design: การ์ดแรกขอบเขียวเป็น Text-only ไม่มีรูปโลโก้ + การ์ด 2 เป็น (+) เพิ่มชิ้นส่วน + การ์ด 3+ เป็นชิ้นส่วนแต่งที่คลิกเพื่อแก้ไขได้)  
-> เอกสารฉบับนี้สรุป **ข้อกำหนดที่สมบูรณ์และเด็ดขาด 100%** สำหรับทั้งแท็บ **Body Kit** และแท็บ **Part** รวมถึง **Multi-Angle Upload Requirements** ทุกมุมมอง
+> ⚠️ **CRITICAL DIRECTIVES FOR WORKER / AGENT**:  
+> เอกสารฉบับนี้รวบรวมการแก้ปัญหาทั้งหมดในหน้า **Portal Admin (`/admin/edit-data`)** ทั้ง 4 จุดสำคัญตามรายการแจ้งเตือน:
+> 1. **การดึงข้อมูลจาก Storage Bucket (`catalog`) & Database (`car_parts`)**: แก้ปัญหาโครงสร้างโฟลเดอร์พาร์ตหลายระดับ `{brand}/{model}/Part/{Category}/{PartBrand}/{PartName}` ให้แสดงผลชิ้นส่วนครบถ้วน (เช่น Ferrari 458-Italia / Spoilers / Akrapovic)
+> 2. **การเปลี่ยนชื่อและการลบแบรนด์ของแต่ง (Edit/Delete Tuning Brand)**: เพิ่ม Modal `editTuningBrandModalOpen` และปุ่มถังขยะบน Card 1 เพื่อให้สามารถเปลี่ยนชื่อหรือลบแบรนด์ได้จริง
+> 3. **แก้ปัญหาชื่อหมวดหมู่ (เช่น Spoilers) ปะปนมาเป็นชื่อแบรนด์**: แยกหมวดหมู่ออกจากแบรนด์อย่างเด็ดขาด และกรองชื่อหมวดไม่ให้หลุดมาเป็นการ์ดแบรนด์
+> 4. **การสร้างแบรนด์ของแต่งไม่ต้องใช้รูปโลโก้ (No Logo on Brand Creation)**: ลบช่องอัปโหลดรูปภาพโลโก้ออกจาก Modal `tuningBrandModalOpen` ทั้งหมด ให้กรอกเฉพาะชื่อแบรนด์แบบ Text-only
 
 ---
 
