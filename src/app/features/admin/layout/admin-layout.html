@@ -1,8 +1,18 @@
-<div class="min-h-screen bg-[#090909] text-white flex flex-col font-[family-name:var(--font-body)] selection:bg-[#ce281a] selection:text-white" (click)="closeMenus()">
-  <!-- Top Header Bar (h-[70px]) -->
-  <header class="sticky top-0 z-40 flex h-[70px] items-center justify-between border-b border-white/5 bg-[#121212]/95 px-6 backdrop-blur-xl md:px-10" (click)="$event.stopPropagation()">
+<div
+  class="min-h-dvh bg-[#090909] text-stone-100 flex flex-col font-[family-name:var(--font-body)] selection:bg-[#ce281a] selection:text-white"
+  (click)="closeMenus()"
+>
+  <!-- Top Header Bar (h-[76px]) -->
+  <header
+    class="sticky top-0 z-40 flex h-[76px] items-center justify-between border-b border-white/5 bg-[#151515]/95 px-6 backdrop-blur-xl md:px-10"
+    (click)="$event.stopPropagation()"
+  >
     <!-- Logo (Left) -->
-    <a routerLink="/admin/discover" aria-label="Performante Lab Admin Portal" class="relative block h-10 w-[132px] shrink-0 cursor-pointer">
+    <a
+      routerLink="/admin/discover"
+      aria-label="Performante Lab Admin Portal"
+      class="relative block h-10 w-[132px] shrink-0 cursor-pointer"
+    >
       <img
         src="assets/Logo_Performante_Lab.png"
         alt="Performante Lab"
@@ -24,17 +34,24 @@
         >
           <app-icon name="bell" class="!size-5" />
           @if (admin.unreadNotificationsCount() > 0) {
-            <span class="absolute top-1.5 right-1.5 size-2 rounded-full bg-sky-400 ring-2 ring-[#121212]" title="มีการแจ้งเตือนใหม่"></span>
+            <span
+              class="absolute top-1.5 right-1.5 size-2 rounded-full bg-sky-400 ring-2 ring-[#121212]"
+              title="มีการแจ้งเตือนใหม่"
+            ></span>
           }
         </button>
 
         <!-- Notifications Dropdown -->
         @if (notificationsOpen()) {
-          <div class="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-[#161616] border border-white/10 shadow-2xl p-4 z-50 animate-in fade-in duration-150">
+          <div
+            class="absolute right-0 mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-lg bg-[#151515] border border-white/10 shadow-2xl p-4 z-50 animate-in fade-in duration-150"
+          >
             <div class="flex items-center justify-between pb-3 border-b border-white/10">
               <div class="flex items-center gap-2">
                 <span class="font-bold text-sm">การแจ้งเตือน</span>
-                <span class="px-2 py-0.5 text-[10px] rounded-full bg-[#ce281a] font-semibold">{{ admin.unreadNotificationsCount() }} ใหม่</span>
+                <span class="px-2 py-0.5 text-[10px] rounded-full bg-[#ce281a] font-semibold"
+                  >{{ admin.unreadNotificationsCount() }} ใหม่</span
+                >
               </div>
               <button
                 type="button"
@@ -46,9 +63,15 @@
             </div>
             <div class="divide-y divide-white/5 max-h-72 overflow-y-auto mt-2">
               @for (notif of admin.notifications(); track notif.id) {
-                <div class="py-3 px-2 flex flex-col gap-1 hover:bg-white/[.03] rounded-lg transition-colors">
+                <div
+                  class="py-3 px-2 flex flex-col gap-1 hover:bg-white/[.03] rounded-lg transition-colors"
+                >
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold" [class.text-white]="!notif.read" [class.text-stone-400]="notif.read">
+                    <span
+                      class="text-xs font-semibold"
+                      [class.text-white]="!notif.read"
+                      [class.text-stone-400]="notif.read"
+                    >
                       {{ notif.title }}
                     </span>
                     <span class="text-[10px] text-stone-500">{{ notif.time }}</span>
@@ -69,31 +92,48 @@
           class="flex items-center gap-2.5 py-1 px-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
           aria-label="เมนูผู้ใช้"
         >
-          <!-- User Avatar (size-9 bg-[#ce281a]) -->
-          <div class="size-9 rounded-full bg-[#ce281a] flex items-center justify-center text-white shrink-0 shadow-md shadow-[#ce281a]/25 group-hover:scale-105 transition-transform">
-            <app-icon name="user" class="!size-4" />
-          </div>
+          <app-account-avatar
+            [url]="auth.avatarUrl()"
+            [name]="auth.displayName()"
+            [showStatus]="false"
+            class="!size-8"
+          />
           <!-- Username Text (var(--font-display) text-xs) -->
-          <span class="font-[family-name:var(--font-display)] text-xs text-white max-w-[130px] truncate tracking-tight">
+          <span
+            class="hidden sm:block text-[11px] text-stone-300 max-w-[130px] truncate tracking-tight"
+          >
             {{ auth.displayName() }}
           </span>
           <!-- Dropdown Arrow Icon -->
-          <app-icon name="chevron-down" class="!size-2 text-stone-400 group-hover:text-white transition-transform" [class.rotate-180]="userMenuOpen()" />
+          <app-icon
+            name="chevron-down"
+            class="!size-2 text-stone-400 group-hover:text-white transition-transform"
+            [class.rotate-180]="userMenuOpen()"
+          />
         </button>
 
         <!-- User Dropdown Menu -->
         @if (userMenuOpen()) {
-          <div class="absolute right-0 mt-3 w-72 rounded-2xl bg-[#161616] border border-white/10 shadow-2xl p-4 z-50 animate-in fade-in duration-150">
+          <div
+            class="absolute right-0 mt-3 w-[min(18rem,calc(100vw-2rem))] rounded-lg bg-[#151515] border border-white/10 shadow-2xl p-4 z-50 animate-in fade-in duration-150"
+          >
             <!-- User Info Header -->
             <div class="flex items-center gap-3 pb-3 border-b border-white/10">
-              <div class="size-10 rounded-full bg-[#ce281a] flex items-center justify-center text-white font-bold text-base">
-                <app-icon name="user" class="!size-4" />
-              </div>
+              <app-account-avatar
+                [url]="auth.avatarUrl()"
+                [name]="auth.displayName()"
+                [showStatus]="false"
+                class="!size-10"
+              />
               <div class="min-w-0 flex-1">
                 <p class="font-bold text-sm truncate text-white">{{ auth.displayName() }}</p>
-                <p class="text-xs text-stone-400 truncate">{{ auth.user()?.email || 'admin@performante.lab' }}</p>
+                <p class="text-xs text-stone-400 truncate">
+                  {{ auth.user()?.email || 'admin@performante.lab' }}
+                </p>
                 <div class="mt-1 flex items-center gap-1.5">
-                  <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ce281a] text-white">
+                  <span
+                    class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ce281a] text-white"
+                  >
                     {{ auth.userRole() }}
                   </span>
                   <span class="text-[10px] text-emerald-400 font-medium">● Online</span>
@@ -106,12 +146,16 @@
               <label class="block text-[11px] font-medium text-stone-400 mb-1.5">
                 สลับ Role เพื่อทดสอบ RBAC:
               </label>
-              <div class="grid grid-cols-3 gap-1.5 text-xs">
+              <div class="grid grid-cols-3 gap-1.5 text-[10px]">
                 <button
                   type="button"
                   (click)="changeRole('SuperAdmin')"
                   class="py-1 px-2 rounded-lg text-center font-medium transition-colors cursor-pointer"
-                  [class]="auth.userRole() === 'SuperAdmin' ? 'bg-[#ce281a] text-white font-bold' : 'bg-white/5 text-stone-300 hover:bg-white/10'"
+                  [class]="
+                    auth.userRole() === 'SuperAdmin'
+                      ? 'bg-[#ce281a] text-white font-bold'
+                      : 'bg-white/5 text-stone-300 hover:bg-white/10'
+                  "
                 >
                   SuperAdmin
                 </button>
@@ -119,7 +163,11 @@
                   type="button"
                   (click)="changeRole('Admin')"
                   class="py-1 px-2 rounded-lg text-center font-medium transition-colors cursor-pointer"
-                  [class]="auth.userRole() === 'Admin' ? 'bg-[#ce281a] text-white font-bold' : 'bg-white/5 text-stone-300 hover:bg-white/10'"
+                  [class]="
+                    auth.userRole() === 'Admin'
+                      ? 'bg-[#ce281a] text-white font-bold'
+                      : 'bg-white/5 text-stone-300 hover:bg-white/10'
+                  "
                 >
                   Admin
                 </button>
@@ -127,7 +175,11 @@
                   type="button"
                   (click)="changeRole('User')"
                   class="py-1 px-2 rounded-lg text-center font-medium transition-colors cursor-pointer"
-                  [class]="auth.userRole() === 'User' ? 'bg-[#ce281a] text-white font-bold' : 'bg-white/5 text-stone-300 hover:bg-white/10'"
+                  [class]="
+                    auth.userRole() === 'User'
+                      ? 'bg-[#ce281a] text-white font-bold'
+                      : 'bg-white/5 text-stone-300 hover:bg-white/10'
+                  "
                 >
                   User
                 </button>
@@ -139,7 +191,7 @@
               <a
                 routerLink="/discover"
                 (click)="closeMenus()"
-                class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-stone-300 hover:text-white hover:bg-white/5 transition-colors"
+                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-stone-300 hover:text-white hover:bg-white/5 transition-colors"
               >
                 <app-icon name="discover" class="!size-4 text-stone-400" />
                 <span>กลับสู่หน้าผู้ใช้ทั่วไป (User Portal)</span>
@@ -151,7 +203,7 @@
               <button
                 type="button"
                 (click)="logout()"
-                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
               >
                 <app-icon name="logout" class="!size-4" />
                 <span>ออกจากระบบ</span>
@@ -164,22 +216,30 @@
   </header>
 
   <!-- Body Container: Sidebar + Main Content -->
-  <div class="flex-1 flex min-h-[calc(100vh-70px)]">
-    <!-- Left Sidebar (w-72, sticky top-[70px] h-[calc(100vh-70px)]) -->
-    <aside class="w-72 shrink-0 bg-[#141414] border-r border-white/5 p-5 flex flex-col justify-between sticky top-[70px] h-[calc(100vh-70px)]">
+  <div
+    class="mx-auto grid w-full max-w-[1800px] flex-1 grid-cols-1 gap-7 px-4 py-5 md:grid-cols-[180px_minmax(0,1fr)] md:px-7 md:py-7 xl:grid-cols-[210px_minmax(0,1fr)] xl:gap-10 xl:px-10"
+  >
+    <!-- Responsive workspace navigation -->
+    <aside
+      class="flex self-start flex-col rounded-lg border border-white/5 bg-[#151515] p-3 md:sticky md:top-[104px] md:min-h-[calc(100dvh-132px)]"
+    >
       <!-- Nav Menu -->
       <div class="space-y-4">
         <p class="hidden px-3 pt-1 text-[8px] tracking-[.24em] text-stone-600 md:block uppercase">
           ADMIN WORKSPACE
         </p>
-        <nav class="space-y-1.5" aria-label="เมนูผู้ดูแลระบบ">
+        <nav class="grid grid-cols-4 gap-1 md:grid-cols-1 md:gap-2" aria-label="เมนูผู้ดูแลระบบ">
           <!-- Discover Tab -->
           <a
             routerLink="/admin/discover"
             routerLinkActive="active-nav"
-            class="nav-item group relative flex h-11 items-center gap-3.5 px-4 rounded-lg font-medium text-sm text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+            ariaCurrentWhenActive="page"
+            class="nav-item group flex min-h-11 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-l-2 border-transparent px-2 py-3 text-[8px] text-stone-400 transition-colors hover:bg-white/5 hover:text-white md:flex-row md:justify-start md:px-3 md:text-[10px]"
           >
-            <app-icon name="discover" class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon" />
+            <app-icon
+              name="discover"
+              class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon"
+            />
             <span class="tracking-wide">Discover</span>
           </a>
 
@@ -187,9 +247,13 @@
           <a
             routerLink="/admin/requests"
             routerLinkActive="active-nav"
-            class="nav-item group relative flex h-11 items-center gap-3.5 px-4 rounded-lg font-medium text-sm text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+            ariaCurrentWhenActive="page"
+            class="nav-item group flex min-h-11 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-l-2 border-transparent px-2 py-3 text-[8px] text-stone-400 transition-colors hover:bg-white/5 hover:text-white md:flex-row md:justify-start md:px-3 md:text-[10px]"
           >
-            <app-icon name="requests" class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon" />
+            <app-icon
+              name="requests"
+              class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon"
+            />
             <span class="tracking-wide">Requests</span>
           </a>
 
@@ -197,9 +261,13 @@
           <a
             routerLink="/admin/edit-data"
             routerLinkActive="active-nav"
-            class="nav-item group relative flex h-11 items-center gap-3.5 px-4 rounded-lg font-medium text-sm text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+            ariaCurrentWhenActive="page"
+            class="nav-item group flex min-h-11 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-l-2 border-transparent px-2 py-3 text-[8px] text-stone-400 transition-colors hover:bg-white/5 hover:text-white md:flex-row md:justify-start md:px-3 md:text-[10px]"
           >
-            <app-icon name="parts" class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon" />
+            <app-icon
+              name="parts"
+              class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon"
+            />
             <span class="tracking-wide">Edit Data</span>
           </a>
 
@@ -207,22 +275,26 @@
           <a
             routerLink="/admin/users"
             routerLinkActive="active-nav"
-            class="nav-item group relative flex h-11 items-center gap-3.5 px-4 rounded-lg font-medium text-sm text-stone-400 hover:text-white hover:bg-white/5 transition-all"
+            ariaCurrentWhenActive="page"
+            class="nav-item group flex min-h-11 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-l-2 border-transparent px-2 py-3 text-[8px] text-stone-400 transition-colors hover:bg-white/5 hover:text-white md:flex-row md:justify-start md:px-3 md:text-[10px]"
           >
-            <app-icon name="user" class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon" />
+            <app-icon
+              name="user"
+              class="!size-4 text-stone-400 group-hover:text-white transition-colors nav-icon"
+            />
             <span class="tracking-wide">Users</span>
           </a>
         </nav>
       </div>
 
       <!-- Web Ads Space Banner (300x400) Reusable Component -->
-      <div class="mt-6">
+      <div class="mt-auto hidden pt-10 md:block">
         <app-ads-banner size="300x400" />
       </div>
     </aside>
 
     <!-- Main Content View Area -->
-    <main class="flex-1 min-w-0 bg-[#090909] p-6 md:p-8 xl:p-10 overflow-y-auto">
+    <main class="min-w-0 scroll-mt-[100px]">
       <router-outlet />
     </main>
   </div>

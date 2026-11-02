@@ -17,6 +17,9 @@ export interface StorageModelItem {
 }
 
 export interface StorageWorkshopItem {
+  displayName?: string;
+  storagePath?: string;
+  category?: string;
   name: string;
   logoUrl: string;
 }
@@ -185,15 +188,19 @@ export class CatalogStorageHelper {
     const prefix = path.trim().replace(/^\/+|\/+$/g, '');
     const segments = prefix.split('/');
     if (
-      !prefix || /[\\\u0000-\u001f?#:]/.test(prefix) ||
-      segments.some(segment => !segment || segment === '.' || segment === '..')
+      !prefix ||
+      /[\\\u0000-\u001f?#:]/.test(prefix) ||
+      segments.some((segment) => !segment || segment === '.' || segment === '..')
     ) {
       throw new Error('กรุณาระบุโฟลเดอร์ภายใน catalog ที่ต้องการลบ');
     }
     return prefix;
   }
 
-  static async deleteFile(client: SupabaseClient, path: string): Promise<{ ok: boolean; error?: string }> {
+  static async deleteFile(
+    client: SupabaseClient,
+    path: string,
+  ): Promise<{ ok: boolean; error?: string }> {
     try {
       const target = this.deletionPath(path);
       const { error } = await client.storage.from(this.BUCKET).remove([target]);
@@ -205,7 +212,10 @@ export class CatalogStorageHelper {
     }
   }
 
-  static async deleteFolder(client: SupabaseClient, path: string): Promise<{ ok: boolean; error?: string }> {
+  static async deleteFolder(
+    client: SupabaseClient,
+    path: string,
+  ): Promise<{ ok: boolean; error?: string }> {
     try {
       await this.deleteFolderRecursively(client, path);
       return { ok: true };
@@ -226,12 +236,19 @@ export class CatalogStorageHelper {
       const folder = folders[index];
       for (let offset = 0; ; offset += pageSize) {
         const { data, error } = await storage.list(folder, {
-          limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' },
+          limit: pageSize,
+          offset,
+          sortBy: { column: 'name', order: 'asc' },
         });
         if (error) throw error;
         if (!data) throw new Error('โหลดรายการไฟล์เพื่อลบไม่สำเร็จ');
         for (const entry of data) {
-          if (!entry.name || /[/\\\u0000-\u001f]/.test(entry.name) || entry.name === '.' || entry.name === '..') {
+          if (
+            !entry.name ||
+            /[/\\\u0000-\u001f]/.test(entry.name) ||
+            entry.name === '.' ||
+            entry.name === '..'
+          ) {
             throw new Error('พบชื่อไฟล์หรือโฟลเดอร์ที่ไม่ถูกต้อง');
           }
           const path = `${folder}/${entry.name}`;
@@ -262,14 +279,14 @@ export class CatalogStorageHelper {
     path: string,
     file: File | Blob,
     upsert = true,
-    metadata?:Record<string,unknown>,
+    metadata?: Record<string, unknown>,
   ): Promise<{ ok: boolean; url?: string; error?: string }> {
     try {
       const { error } = await client.storage.from(this.BUCKET).upload(path, file, {
         upsert,
         contentType: file.type || undefined,
         cacheControl: '3600',
-        ...(metadata ? {metadata} : {}),
+        ...(metadata ? { metadata } : {}),
       });
 
       if (error) throw error;
@@ -348,12 +365,57 @@ export class CatalogStorageHelper {
   /**
    * ดึงรายชื่อแบรนด์ทั้งหมดจาก Root ของ Storage bucket 'catalog'
    */
-  static async listBrands(client: SupabaseClient): Promise<StorageBrandItem[]> {
+  /** Persist the display name on the logo without changing any catalog paths or build IDs. */
+  static async saveBrandProfile(
+    client: SupabaseClient,
+    folder: string,
+    name: string,
+    file?: File | null,
+  ): Promise<{ ok: boolean; url?: string; error?: string }> {
+    try {
+      const displayName = name.trim();
+      if (!displayName || displayName.length > 100)
+        throw new Error('ชื่อแบรนด์ต้องมี 1–100 ตัวอักษร');
+      const path = this.deletionPath(folder);
+      if (path.includes('/')) throw new Error('โฟลเดอร์แบรนด์ไม่ถูกต้อง');
+      const storage = client.storage.from(this.BUCKET);
+      const listed = await storage.list(path, { limit: 100 });
+      if (listed.error) throw listed.error;
+      const logo = listed.data?.find((f) => /^logo\.(png|svg|jpe?g|webp|avif)$/i.test(f.name));
+      let metadata: Record<string, unknown> = {};
+      if (logo) {
+        const info = await storage.info(path + '/' + logo.name);
+        if (info.error) throw info.error;
+        metadata = info.data.metadata || {};
+      }
+      let photo: Blob;
+      if (file) photo = file;
+      else {
+        if (!logo) throw new Error('กรุณาแนบโลโก้แบรนด์ก่อนบันทึกชื่อ');
+        const downloaded = await storage.download(path + '/' + logo.name);
+        if (downloaded.error || !downloaded.data)
+          throw downloaded.error || new Error('โหลดโลโก้ไม่สำเร็จ');
+        photo = downloaded.data;
+      }
+      const ext = file ? this.getFileExtension(file) : logo!.name.split('.').pop()!;
+      const result = await this.uploadFile(client, path + '/logo.' + ext, photo, true, {
+        ...metadata,
+        brandDisplayName: displayName,
+      });
+      if (!result.ok) return result;
+      if (file) await this.removeSiblingFiles(client, path, 'logo', ext);
+      return result;
+    } catch (error: any) {
+      return { ok: false, error: error?.message || 'บันทึกชื่อแบรนด์ไม่สำเร็จ' };
+    }
+  }
+
+  static async listBrands(client: SupabaseClient, strict = false): Promise<StorageBrandItem[]> {
     try {
       const storage = client?.storage?.from ? client.storage.from(this.BUCKET) : null;
       if (!storage || typeof storage.list !== 'function') return [];
       const { data, error } = await storage.list('', { limit: 100 });
-      if (error || !data) return [];
+      if (error || !data) throw error || new Error('โหลดแบรนด์จาก Storage ไม่สำเร็จ');
 
       const folders = data.filter(
         (item) =>
@@ -364,12 +426,20 @@ export class CatalogStorageHelper {
       const items = await Promise.all(
         folders.map(async (folder) => {
           const brandName = folder.name;
+          let displayName = brandName;
           let logoUrl = this.getPublicUrl(client, `${brandName}/logo.png`);
           try {
             const { data: files } = await storage.list(brandName, { limit: 50 });
             const logoFile = files?.find((f) => /^logo\.(png|svg|jpe?g|webp)$/i.test(f.name));
             if (logoFile) {
               logoUrl = this.getPublicUrl(client, `${brandName}/${logoFile.name}`);
+              if (logoFile.updated_at) logoUrl += '?v=' + encodeURIComponent(logoFile.updated_at);
+              if (typeof storage.info === 'function') {
+                const info = await storage.info(`${brandName}/${logoFile.name}`);
+                const name = info.data?.metadata?.['brandDisplayName'];
+                if (!info.error && typeof name === 'string' && name.trim() && name.length <= 100)
+                  displayName = name.trim();
+              }
             }
           } catch {
             // fallback to default
@@ -377,7 +447,7 @@ export class CatalogStorageHelper {
 
           return {
             id: brandName,
-            name: brandName,
+            name: displayName,
             slug: brandName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             logoUrl,
           };
@@ -386,6 +456,7 @@ export class CatalogStorageHelper {
 
       return items.sort((a, b) => a.name.localeCompare(b.name));
     } catch (err) {
+      if (strict) throw err;
       console.warn('[CatalogStorageHelper] listBrands error:', err);
       return [];
     }
@@ -445,6 +516,92 @@ export class CatalogStorageHelper {
   /**
    * ดึงรายชื่อสำนักแต่ง/ยี่ห้อพาร์ตใน {brand}/{model}/{BodyKit|Part}
    */
+  /** Workshop identity is its folder; the editable label lives on its logo metadata. */
+  static async readWorkshopProfile(
+    client: SupabaseClient,
+    path: string,
+    files?: { name: string; updated_at?: string | null }[],
+  ): Promise<{ displayName?: string; logoUrl: string }> {
+    const storage = client.storage.from(this.BUCKET);
+    const entries = files ?? (await storage.list(path, { limit: 100 })).data ?? [];
+    const logo = entries.find((f) => /^logo\.(png|svg|jpe?g|webp|avif)$/i.test(f.name));
+    if (!logo) return { logoUrl: '' };
+    let displayName: string | undefined,
+      placeholder = false;
+    if (typeof storage.info === 'function') {
+      const info = await storage.info(path + '/' + logo.name);
+      const value = info.data?.metadata?.['workshopDisplayName'];
+      if (!info.error && typeof value === 'string' && value.trim() && value.length <= 100)
+        displayName = value.trim();
+      placeholder = info.data?.metadata?.['workshopPlaceholderLogo'] === true;
+    }
+    const url = this.getPublicUrl(client, path + '/' + logo.name);
+    return {
+      displayName,
+      logoUrl: placeholder
+        ? ''
+        : url + (logo.updated_at ? '?v=' + encodeURIComponent(logo.updated_at) : ''),
+    };
+  }
+
+  static async saveWorkshopProfile(
+    client: SupabaseClient,
+    folder: string,
+    name: string,
+    file?: File | null,
+  ): Promise<{ ok: boolean; url?: string; error?: string }> {
+    try {
+      const displayName = name.trim(),
+        path = this.deletionPath(folder);
+      if (!path.includes('/')) throw new Error('โฟลเดอร์แบรนด์ของแต่งไม่ถูกต้อง');
+      if (!displayName || displayName.length > 100)
+        throw new Error('ชื่อแบรนด์ต้องมี 1–100 ตัวอักษร');
+      const storage = client.storage.from(this.BUCKET);
+      const listed = await storage.list(path, { limit: 100 });
+      if (listed.error) throw listed.error;
+      const logo = listed.data?.find((f) => /^logo\.(png|svg|jpe?g|webp|avif)$/i.test(f.name));
+      let metadata: Record<string, unknown> = {},
+        photo: Blob;
+      if (logo) {
+        const info = await storage.info(path + '/' + logo.name);
+        if (info.error) throw info.error;
+        metadata = info.data.metadata || {};
+      }
+      if (file) photo = file;
+      else if (logo) {
+        const downloaded = await storage.download(path + '/' + logo.name);
+        if (downloaded.error || !downloaded.data)
+          throw downloaded.error || new Error('โหลดโลโก้ไม่สำเร็จ');
+        photo = downloaded.data;
+      } else {
+        // A transparent metadata carrier for existing workshops without a logo.
+        photo = new Blob(
+          [
+            Uint8Array.from(
+              atob(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aVd8AAAAASUVORK5CYII=',
+              ),
+              (c) => c.charCodeAt(0),
+            ),
+          ],
+          { type: 'image/png' },
+        );
+      }
+      const ext = file ? this.getFileExtension(file) : logo?.name.split('.').pop() || 'png';
+      const result = await this.uploadFile(client, path + '/logo.' + ext, photo, true, {
+        ...metadata,
+        workshopDisplayName: displayName,
+        workshopPlaceholderLogo: file
+          ? false
+          : !logo || metadata['workshopPlaceholderLogo'] === true,
+      });
+      if (result.ok && file) await this.removeSiblingFiles(client, path, 'logo', ext);
+      return result;
+    } catch (error: any) {
+      return { ok: false, error: error?.message || 'บันทึกแบรนด์ของแต่งไม่สำเร็จ' };
+    }
+  }
+
   static async listWorkshops(
     client: SupabaseClient,
     brand: string,
@@ -512,7 +669,8 @@ export class CatalogStorageHelper {
       const result: StoragePartItem[] = [];
 
       for (const f of data) {
-        if (f.name.startsWith('.') || /^logo\./i.test(f.name) || /\.(mask|layer)\./i.test(f.name)) continue;
+        if (f.name.startsWith('.') || /^logo\./i.test(f.name) || /\.(mask|layer)\./i.test(f.name))
+          continue;
 
         // ถ้าเป็นไฟล์รูปภาพโดยตรง
         if (/\.(png|jpe?g|webp|svg)$/i.test(f.name)) {
@@ -532,7 +690,7 @@ export class CatalogStorageHelper {
           try {
             const { data: subFiles } = await storage.list(`${path}/${f.name}`, { limit: 20 });
             if (subFiles && subFiles.length > 0) {
-              const photos = subFiles.filter(s => !/\.(mask|layer)\./i.test(s.name));
+              const photos = subFiles.filter((s) => !/\.(mask|layer)\./i.test(s.name));
               const primaryFile =
                 photos.find((s) => /^45_front\./i.test(s.name)) ||
                 photos.find((s) => /^front\./i.test(s.name)) ||

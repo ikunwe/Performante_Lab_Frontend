@@ -67,3 +67,27 @@ by Storage metadata. See [Local asset cleanup](local-assets.md).
 Both applications need the updated code. Restart Backend after changing routes.
 The frontend API_BASE_URL must point to that Backend. Supabase files remain in the
 existing `catalog` bucket and no database catalog table is required for display.
+
+
+## Brand display names
+
+Admin saves a brand's edited display name as `brandDisplayName` in the logo
+object's custom Storage metadata. The Admin list and backend Storage catalog read
+this label. Folder names, car/part IDs and existing build references remain stable;
+subsequent Admin uploads still use the original brand folder (`storagePath`).
+No SQL migration is required. A brand needs a logo to persist its display name.
+
+
+Workshop/part-brand names follow the same stable-folder rule. The existing
+workshop logo stores `workshopDisplayName`; workshops without a logo get a tiny
+transparent `logo.png` metadata carrier marked `workshopPlaceholderLogo` (not
+shown as a product or brand logo). Admin keeps the physical manufacturer key and
+category-specific workshop path for all subsequent uploads and edits. User
+Catalog/Compare read the display name from the backend. No old folders are moved
+or deleted, and part IDs and saved Build references remain unchanged.
+
+
+Deleting a car brand in Admin removes only its catalog Storage folder. It does
+not delete `car_brands` or `car_brand_reference` rows. An empty Storage catalog
+stays empty on refresh; it is not repopulated from reference-table fallbacks.
+Storage errors keep the current brand visible and return a failure.

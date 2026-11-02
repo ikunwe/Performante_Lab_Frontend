@@ -61,6 +61,7 @@ export interface AdminNotification {
 }
 
 export interface RealBrandItem {
+  storagePath?: string;
   id: string;
   name: string;
   slug: string;
@@ -110,6 +111,7 @@ export function mapBrand(row: any): RealBrandItem {
   const isCustom = Boolean(row.is_custom_bg ?? row.isCustomBg);
   return {
     id: String(row.id),
+    ...(row.storagePath ? {storagePath: row.storagePath} : {}),
     name: row.name,
     slug: row.slug || row.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
     logo_url: logo,
@@ -258,7 +260,7 @@ export class AdminService {
         !query ||
         [r.title, r.author, r.car, r.tag, r.category, r.description].join(' ').toLowerCase().includes(query);
       const matchesStatus = status === 'All' || r.status === status;
-      return matchesQuery && matchesStatus;
+      return r.status !== 'Cancelled' && matchesQuery && matchesStatus;
     });
   });
 
@@ -344,20 +346,19 @@ export class AdminService {
     try {
       // ดึงจาก Storage Bucket 'catalog' เป็นหลัก
       if (typeof (client as any).storage?.from === 'function') {
-        const storageBrands = await CatalogStorageHelper.listBrands(client);
-        if (storageBrands && storageBrands.length > 0) {
-          const mapped: RealBrandItem[] = storageBrands.map((b) => ({
-            id: b.id,
-            name: b.name,
-            slug: b.slug,
-            logo_url: b.logoUrl,
-            logoUrl: b.logoUrl,
-            is_custom_bg: b.id.toLowerCase() === 'ferrari',
-            isCustomBg: b.id.toLowerCase() === 'ferrari',
-          }));
-          this.catalogBrands.set(mapped);
-          return;
-        }
+        const storageBrands = await CatalogStorageHelper.listBrands(client, true);
+        const mapped: RealBrandItem[] = storageBrands.map((b) => ({
+          id: b.id,
+          storagePath: b.id,
+          name: b.name,
+          slug: b.slug,
+          logo_url: b.logoUrl,
+          logoUrl: b.logoUrl,
+          is_custom_bg: b.id.toLowerCase() === 'ferrari',
+          isCustomBg: b.id.toLowerCase() === 'ferrari',
+        }));
+        this.catalogBrands.set(mapped);
+        return;
       }
 
       // Fallback: car_brand_reference database table
@@ -494,8 +495,8 @@ export class AdminService {
     modelName: string,
   ): Promise<{
     workshops: {
-      bodykit: { name: string; logoUrl: string }[];
-      parts: { name: string; logoUrl: string }[];
+      bodykit: StorageWorkshopItem[];
+      parts: StorageWorkshopItem[];
     };
     parts: RealPartItem[];
   }> {
@@ -520,7 +521,7 @@ export class AdminService {
             const validBkFolders = bkEntries.filter(
               (f) => !f.name.startsWith('.') && (f.id === null || f.metadata === null || !f.name.includes('.')),
             );
-            bkWorkshops = validBkFolders.map((f) => ({ name: f.name, logoUrl: '' }));
+            bkWorkshops = await Promise.all(validBkFolders.map(async f => ({name:f.name,storagePath:bkPath+'/'+f.name,...await CatalogStorageHelper.readWorkshopProfile(client,bkPath+'/'+f.name)})));
 
             // โหลด items ของทุก workshop ขนานกัน (Promise.all)
             await Promise.all(
@@ -571,21 +572,20 @@ export class AdminService {
                   if (brandEntries) {
                     await Promise.all(
                       brandEntries.map(async (bEntry) => {
-                        if (bEntry.name.startsWith('.')) return;
+                        if (bEntry.name.startsWith('.') || (bEntry.id !== null && bEntry.metadata !== null && bEntry.name.includes('.'))) return;
                         const partBrandName = bEntry.name;
-                        if (!partWorkshops.some((w) => w.name.toLowerCase() === partBrandName.toLowerCase())) {
-                          partWorkshops.push({ name: partBrandName, logoUrl: '' });
-                        }
 
                         // ดึง items ภายใต้ {PartBrand}
                         const { data: itemEntries } = await storage.list(
                           `${safeBrand}/${safeModel}/Part/${rawCatName}/${partBrandName}`,
                           { limit: 100 },
                         );
+                        const workshopPath=`${safeBrand}/${safeModel}/Part/${rawCatName}/${partBrandName}`;
+                        if (!partWorkshops.some(w=>w.storagePath===workshopPath)) partWorkshops.push({name:partBrandName,storagePath:workshopPath,category:standardCatName,...await CatalogStorageHelper.readWorkshopProfile(client,workshopPath,itemEntries || [])});
                         if (itemEntries) {
                           await Promise.all(
                             itemEntries.map(async (iEntry) => {
-                              if (iEntry.name.startsWith('.') || /\.(mask|layer)\./i.test(iEntry.name)) return;
+                              if (iEntry.name.startsWith('.') || /^logo\./i.test(iEntry.name) || /\.(mask|layer)\./i.test(iEntry.name)) return;
                               const partName = iEntry.name.replace(/\.[^/.]+$/, '');
                               let imageUrl = '';
 
@@ -640,7 +640,7 @@ export class AdminService {
                   const legacyItems = await CatalogStorageHelper.listItems(client, brandName, modelName, 'Part', pEntry.name);
                   if (legacyItems.length > 0) {
                     if (!partWorkshops.some((w) => w.name.toLowerCase() === pEntry.name.toLowerCase())) {
-                      partWorkshops.push({ name: pEntry.name, logoUrl: '' });
+                      partWorkshops.push({name:pEntry.name,storagePath:`${safeBrand}/${safeModel}/Part/${pEntry.name}`,...await CatalogStorageHelper.readWorkshopProfile(client,`${safeBrand}/${safeModel}/Part/${pEntry.name}`)});
                     }
                     for (const li of legacyItems) {
                       allParts.push({
@@ -787,31 +787,24 @@ export class AdminService {
       return { ok: true, data: fallbackItem };
     }
 
-    const payload = {
-      id,
-      slug,
-      name: item.name.trim(),
-      details: {
-        id,
-        name: item.name.trim(),
-        slug,
-        logoReferenceUrl: item.logo_url,
-        modelCatalog: {
-          brandId: id,
-          brandName: item.name.trim(),
-          models: [],
-        },
-      },
-      collected_at: new Date().toISOString(),
-    };
-
     try {
-      const { data, error } = await client
-        .from('car_brand_reference')
-        .insert([payload])
-        .select()
-        .single();
-
+      // Reference brands may already exist in the seeded dataset even if no logo
+      // has been uploaded to Storage yet. Preserve their models and source data.
+      const existing = await client.from('car_brand_reference')
+        .select('id,name,slug,details,collected_at').eq('id',id).maybeSingle();
+      if (existing.error) throw existing.error;
+      const details=existing.data?.details || {};
+      const savedSlug=item.slug || existing.data?.slug || id;
+      const payload={
+        id,slug:savedSlug,name:item.name.trim(),
+        details:{
+          ...details,id,name:item.name.trim(),slug:savedSlug,logoReferenceUrl:item.logo_url,
+          modelCatalog: details.modelCatalog ?? {brandId:id,brandName:item.name.trim(),models:[]},
+        },
+        collected_at:existing.data?.collected_at || new Date().toISOString(),
+      };
+      const {data,error}=await client.from('car_brand_reference')
+        .upsert(payload,{onConflict:'id'}).select().single();
       if (error) throw error;
 
       const mapped: RealBrandItem = {
@@ -824,7 +817,7 @@ export class AdminService {
         isCustomBg: item.is_custom_bg ?? isFerrari,
       };
 
-      this.catalogBrands.update((list) => [...list, mapped].sort((a, b) => a.name.localeCompare(b.name)));
+      this.catalogBrands.update(list => [...list.filter(b => b.id!==mapped.id && b.name.toLowerCase()!==mapped.name.toLowerCase()),mapped].sort((a,b)=>a.name.localeCompare(b.name)));
       return { ok: true, data: mapped };
     } catch (err: any) {
       console.error('[AdminService] insertBrand exception:', err);
@@ -1127,39 +1120,17 @@ export class AdminService {
     return { ok: true };
   }
 
-  // ลบแบรนด์รถยนต์ (car_brands, car_brand_reference & recursive storage cleanup)
-  async deleteCarBrand(
-    brandId: string,
-    brandName: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    const client = await this.getClient();
-    const safeBrand = CatalogStorageHelper.sanitize(brandName);
-
-    if (client) {
-      try {
-        // 1. ลบโฟลเดอร์แบรนด์ออกจาก Storage 'catalog' แบบ Recursive
-        await CatalogStorageHelper.deleteFolderRecursively(client, safeBrand);
-
-        // 2. ลบออกจากฐานข้อมูล
-        if (typeof client.from === 'function') {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(brandId);
-          if (isUuid) {
-            await client.from('car_brands').delete().eq('id', brandId);
-            await client.from('car_brand_reference').delete().eq('id', brandId);
-          }
-          await client.from('car_brands').delete().ilike('name', brandName);
-          await client.from('car_brand_reference').delete().ilike('name', brandName);
-        }
-      } catch (err: any) {
-        console.warn('[AdminService] deleteCarBrand error:', err);
-        return { ok: false, error: err?.message || 'ลบแบรนด์ไม่สำเร็จ' };
-      }
-    }
-
-    this.catalogBrands.update((list) =>
-      list.filter((b) => b.id !== brandId && b.name.toLowerCase() !== brandName.toLowerCase()),
-    );
-    return { ok: true };
+  // Delete only the Storage catalog brand; reference tables remain untouched.
+  async deleteCarBrand(brandId: string, brandName: string): Promise<{ok:boolean;error?:string}> {
+    try {
+      const client=await this.getClient();
+      if (!client) throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+      const brand=this.catalogBrands().find(b=>b.id===brandId);
+      const folder=CatalogStorageHelper.sanitize(brand?.storagePath || brandName);
+      await CatalogStorageHelper.deleteFolderRecursively(client,folder);
+      this.catalogBrands.update(list=>list.filter(b=>b.id!==brandId && b.name.toLowerCase()!==brandName.toLowerCase()));
+      return {ok:true};
+    } catch(error:any) {return {ok:false,error:error?.message || 'ลบแบรนด์ไม่สำเร็จ'};}
   }
 
   // ลบรุ่นรถยนต์ (car_models, car_parts & recursive storage cleanup)

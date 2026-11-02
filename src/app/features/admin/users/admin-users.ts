@@ -1,13 +1,15 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AccountAvatar } from '../../../shared/ui/account-avatar/account-avatar';
+import { LoadingSkeleton } from '../../../shared/ui/loading-skeleton/loading-skeleton';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { AuthService, UserRole } from '../../../core/auth/auth.service';
 import { AdminService, AdminUserItem } from '../services/admin.service';
 
 @Component({
   selector: 'app-admin-users',
-  imports: [CommonModule, FormsModule, Icon],
+  imports: [CommonModule, FormsModule, Icon, LoadingSkeleton, AccountAvatar],
   templateUrl: './admin-users.html',
 })
 export class AdminUsers {
