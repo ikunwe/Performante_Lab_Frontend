@@ -211,9 +211,11 @@
         <app-showcase-image [build]="build" />
       </div>
       <h3 class="mt-5 text-xl">{{ build.title }}</h3>
-      <p class="mt-2 text-xs text-stone-500">
-        {{ build.car }} · {{ build.category }} · by {{ build.author }}
-      </p>
+      <p class="mt-2 text-xs text-stone-500">{{ build.car }} · {{ build.category }}</p>
+      <div class="mt-3 flex items-center gap-2 text-xs text-stone-400">
+        <app-account-avatar [url]="build.authorAvatar || ''" [name]="build.author" [showStatus]="false" class="!size-6" />
+        <span>{{ build.author }}</span>
+      </div>
       <ul class="my-5 space-y-2 text-sm text-stone-300">
         @if (build.partDetails?.length) {
           @for (part of build.partDetails; track part.id) {

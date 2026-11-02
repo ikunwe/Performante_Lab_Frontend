@@ -37,7 +37,7 @@ describe('Database build card', () => {
     expect(text).toContain('ยังไม่ระบุ');
     expect(text).not.toContain('งบประมาณตัวอย่าง');
     expect(text).not.toContain('ใช้เป็นต้นแบบ Build');
-    const usernameRow = fixture.nativeElement.querySelector('app-icon[name="user"]')?.parentElement?.parentElement;
+    const usernameRow = fixture.nativeElement.querySelector('app-account-avatar')?.parentElement;
     expect(usernameRow?.textContent).toContain('driver');
     expect(usernameRow?.textContent).toContain('ของคุณ');
     expect(usernameRow?.textContent).toContain('ส่วนตัว');
@@ -47,6 +47,18 @@ describe('Database build card', () => {
     expect(remove).not.toHaveBeenCalled();
     fixture.componentRef.setInput('busy',false); fixture.detectChanges(); button.click();
     expect(remove).toHaveBeenCalledWith(build);
+  });
+  it('renders the owner profile photo and falls back when it cannot load', () => {
+    const fixture = TestBed.createComponent(BuildCard);
+    fixture.componentRef.setInput('build', { ...build, authorAvatar: 'https://test/driver.png' });
+    fixture.detectChanges();
+    const avatar = fixture.nativeElement.querySelector('app-account-avatar img');
+    expect(avatar?.getAttribute('src')).toBe('https://test/driver.png');
+    expect(avatar?.getAttribute('alt')).toBe('driver');
+    avatar.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-account-avatar img')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-account-avatar app-icon[name="user"]')).not.toBeNull();
   });
   it('keeps public community builds free of own/private badges', () => {
     TestBed.configureTestingModule({ imports: [BuildCard] });
