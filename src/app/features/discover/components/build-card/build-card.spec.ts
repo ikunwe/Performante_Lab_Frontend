@@ -34,7 +34,8 @@ describe('Database build card', () => {
     expect(text).toContain('ของคุณ');
     expect(fixture.nativeElement.querySelector('button[aria-label*="จำนวน 42"]')?.textContent).toContain('42');
     expect(text).toContain('ส่วนตัว');
-    expect(text).toContain('ยังไม่ระบุ');
+    expect(text).not.toContain('งบประมาณ');
+    expect(text).not.toContain('฿');
     expect(text).not.toContain('งบประมาณตัวอย่าง');
     expect(text).not.toContain('ใช้เป็นต้นแบบ Build');
     const usernameRow = fixture.nativeElement.querySelector('app-account-avatar')?.parentElement;

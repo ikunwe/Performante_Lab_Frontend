@@ -6,14 +6,14 @@
   <section
     role="dialog"
     aria-modal="true"
-    aria-label="เลือกบริเวณภาพที่จะตัด"
+    aria-label="ตัดภาพและจัดวางพาร์ท"
     class="max-h-[95dvh] w-full max-w-6xl overflow-y-auto rounded-lg border border-white/15 bg-[#141414] p-4 text-white shadow-2xl sm:p-6"
   >
     <div class="mb-4 flex justify-between gap-4">
       <div>
-        <h2 #heading tabindex="-1" class="text-base outline-none">เลือกบริเวณภาพที่จะตัด</h2>
+        <h2 #heading tabindex="-1" class="text-base outline-none">ตัดภาพและจัดวางพาร์ท</h2>
         <p class="mt-1 text-xs leading-6 text-stone-400">
-          ลากกรอบให้ครอบเฉพาะพาร์ท · ลากจุดมุมล่างขวาเพื่อปรับขนาด · ภาพรถคงตำแหน่งเดิม
+          ตัดเฉพาะส่วนพาร์ท แล้วจัดวางบน {{ referenceLabel() }} · บันทึกแยกสำหรับภาพมุมนี้
         </p>
       </div>
       <button
@@ -26,99 +26,260 @@
         <app-icon name="close" />
       </button>
     </div>
+    <div class="mb-4 flex flex-wrap gap-2" aria-label="โหมดแก้ไขพาร์ท">
+      <button
+        type="button"
+        (click)="setMode('crop')"
+        [attr.aria-pressed]="mode() === 'crop'"
+        [disabled]="loading() || saving() || exporting()"
+        class="min-h-10 cursor-pointer rounded-lg border border-white/15 px-4 text-xs aria-pressed:border-red-400 aria-pressed:text-red-300 disabled:cursor-not-allowed"
+      >
+        1. ตัดภาพ
+      </button>
+      <button
+        type="button"
+        (click)="setMode('place')"
+        [attr.aria-pressed]="mode() === 'place'"
+        [disabled]="loading() || saving() || exporting()"
+        class="min-h-10 cursor-pointer rounded-lg border border-white/15 px-4 text-xs aria-pressed:border-red-400 aria-pressed:text-red-300 disabled:cursor-not-allowed"
+      >
+        2. จัดวาง
+      </button>
+      <button
+        type="button"
+        (click)="toggleGuides()"
+        [attr.aria-pressed]="!showGuides()"
+        [disabled]="loading()"
+        class="min-h-10 cursor-pointer rounded-lg border border-white/15 px-4 text-xs hover:bg-white/5 disabled:cursor-not-allowed"
+      >
+        {{ showGuides() ? 'ซ่อนกรอบ' : 'แสดงกรอบ' }}
+      </button>
+    </div>
     @if (loading()) {
       <p role="status" class="animate-pulse py-20 text-center text-stone-400">กำลังโหลดภาพ…</p>
     }
     <div [class.hidden]="loading()" class="grid gap-5 lg:grid-cols-[1fr_240px]">
-      <div>
-        <div
-          class="overflow-hidden rounded-lg border border-white/10 bg-[repeating-conic-gradient(#242424_0%_25%,#1b1b1b_0%_50%)] bg-[length:20px_20px]"
-          [style.aspect-ratio]="width() + '/' + height()"
-        >
-          <svg
-            [class.hidden]="preview()"
-            [attr.viewBox]="'0 0 ' + width() + ' ' + height()"
-            (pointermove)="drag($event)"
-            (pointerup)="end()"
-            (pointercancel)="end()"
-            (keydown)="nudge($event)"
-            tabindex="0"
-            role="img"
-            aria-label="ภาพต้นฉบับและกรอบตัด"
-            class="block h-full w-full touch-none select-none"
+      <div class="min-w-0">
+        <div class="mb-3 flex flex-wrap items-center gap-2 text-xs" aria-label="ซูมภาพทำงาน">
+          <button
+            type="button"
+            aria-label="ซูมออก"
+            (click)="setZoom(zoom() - 0.25)"
+            [disabled]="zoom() <= 1"
+            class="min-h-9 cursor-pointer rounded-lg border border-white/15 px-3 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <image [attr.href]="source()" [attr.width]="width()" [attr.height]="height()" />
-            @for (region of regions(); track $index; let i = $index) {
-              @if (region.kind === 'ellipse') {
-                <ellipse
-                  [attr.cx]="region.cx * width()"
-                  [attr.cy]="region.cy * height()"
-                  [attr.rx]="region.rx * width()"
-                  [attr.ry]="region.ry * height()"
-                  fill="#38bdf8"
-                  fill-opacity="0.12"
-                  [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
-                  stroke-width="2"
-                  vector-effect="non-scaling-stroke"
-                  (pointerdown)="begin($event, i)"
-                  class="cursor-move"
-                />
-              } @else {
-                <polygon
-                  [attr.points]="polygon(region)"
-                  fill="#38bdf8"
-                  fill-opacity="0.12"
-                  [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
-                  stroke-width="2"
-                  vector-effect="non-scaling-stroke"
-                  (pointerdown)="begin($event, i)"
-                  class="cursor-move"
-                />
-              }
-              @if (cropBounds(region); as b) {
-                <rect
-                  [attr.x]="b.x * width()"
-                  [attr.y]="b.y * height()"
-                  [attr.width]="b.width * width()"
-                  [attr.height]="b.height * height()"
-                  fill="transparent"
-                  [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
-                  stroke-dasharray="5 4"
-                  stroke-width="1"
-                  vector-effect="non-scaling-stroke"
-                  (pointerdown)="begin($event, i)"
-                  class="cursor-move"
-                />
-                <text
-                  [attr.x]="b.x * width()"
-                  [attr.y]="b.y * height() - height() / 70"
-                  [attr.font-size]="width() / 70"
-                  fill="#facc15"
-                  pointer-events="none"
-                >
-                  {{ label(i) }}
-                </text>
-                @if (i === selected()) {
-                  <rect
-                    [attr.x]="(b.x + b.width) * width() - width() / 110"
-                    [attr.y]="(b.y + b.height) * height() - width() / 110"
-                    [attr.width]="width() / 55"
-                    [attr.height]="width() / 55"
-                    fill="#facc15"
-                    (pointerdown)="begin($event, i, true)"
-                    class="cursor-nwse-resize"
-                  />
+            −
+          </button>
+          <span class="min-w-12 text-center tabular-nums">{{ (zoom() * 100).toFixed(0) }}%</span>
+          <button
+            type="button"
+            aria-label="ซูมเข้า"
+            (click)="setZoom(zoom() + 0.25)"
+            [disabled]="zoom() >= 4"
+            class="min-h-9 cursor-pointer rounded-lg border border-white/15 px-3 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            +
+          </button>
+          <input
+            type="range"
+            aria-label="ระดับซูมภาพทำงาน"
+            min="1"
+            max="4"
+            step="0.05"
+            [value]="zoom()"
+            (input)="zoomInput($event)"
+            class="w-24 cursor-pointer accent-red-400"
+          />
+          <button
+            type="button"
+            (click)="setZoom(1)"
+            class="min-h-9 cursor-pointer rounded-lg border border-white/15 px-3 hover:bg-white/5"
+          >
+            พอดีกรอบ
+          </button>
+          <button
+            type="button"
+            (click)="togglePan()"
+            [disabled]="zoom() <= 1"
+            [attr.aria-pressed]="panMode()"
+            class="min-h-9 cursor-pointer rounded-lg border border-white/15 px-3 aria-pressed:border-yellow-300 aria-pressed:text-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            เลื่อนภาพ
+          </button>
+        </div>
+        <p class="mb-2 text-[11px] text-stone-500">
+          ซูมเฉพาะหน้าจอทำงาน · เปิดเลื่อนภาพแล้วลากเพื่อดูบริเวณอื่น ปิดเพื่อกลับไปแก้พาร์ท
+        </p>
+        <div
+          #viewport
+          class="overflow-auto overscroll-contain rounded-lg border border-white/10"
+          [style.aspect-ratio]="width() + '/' + height()"
+          (pointerdown)="beginPan($event)"
+          (pointermove)="dragPan($event)"
+          (pointerup)="endPan()"
+          (pointercancel)="endPan()"
+          (lostpointercapture)="endPan()"
+        >
+          <div
+            [style.width.%]="zoom() * 100"
+            class="relative overflow-hidden rounded-lg border border-white/10 bg-[repeating-conic-gradient(#242424_0%_25%,#1b1b1b_0%_50%)] bg-[length:20px_20px]"
+            [style.aspect-ratio]="width() + '/' + height()"
+          >
+            <svg
+              [class.hidden]="preview() || mode() === 'place'"
+              [attr.viewBox]="'0 0 ' + width() + ' ' + height()"
+              (pointermove)="drag($event)"
+              (pointerup)="end()"
+              (pointercancel)="end()"
+              (keydown)="nudge($event)"
+              tabindex="0"
+              role="img"
+              aria-label="ภาพต้นฉบับและกรอบตัด"
+              class="block h-full w-full touch-none select-none"
+            >
+              <image [attr.href]="source()" [attr.width]="width()" [attr.height]="height()" />
+              <g [attr.visibility]="showGuides() ? 'visible' : 'hidden'">
+                @for (region of regions(); track $index; let i = $index) {
+                  @if (region.kind === 'ellipse') {
+                    <ellipse
+                      [attr.cx]="region.cx * width()"
+                      [attr.cy]="region.cy * height()"
+                      [attr.rx]="region.rx * width()"
+                      [attr.ry]="region.ry * height()"
+                      fill="#38bdf8"
+                      fill-opacity="0.12"
+                      [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
+                      stroke-width="2"
+                      vector-effect="non-scaling-stroke"
+                      (pointerdown)="begin($event, i)"
+                      class="cursor-move"
+                    />
+                  } @else {
+                    <polygon
+                      [attr.points]="polygon(region)"
+                      fill="#38bdf8"
+                      fill-opacity="0.12"
+                      [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
+                      stroke-width="2"
+                      vector-effect="non-scaling-stroke"
+                      (pointerdown)="begin($event, i)"
+                      class="cursor-move"
+                    />
+                  }
+                  @if (cropBounds(region); as b) {
+                    <rect
+                      [attr.x]="b.x * width()"
+                      [attr.y]="b.y * height()"
+                      [attr.width]="b.width * width()"
+                      [attr.height]="b.height * height()"
+                      fill="transparent"
+                      [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
+                      stroke-dasharray="5 4"
+                      stroke-width="1"
+                      vector-effect="non-scaling-stroke"
+                      (pointerdown)="begin($event, i)"
+                      class="cursor-move"
+                    />
+                    <text
+                      [attr.x]="b.x * width()"
+                      [attr.y]="b.y * height() - height() / 70"
+                      [attr.font-size]="width() / 70"
+                      fill="#facc15"
+                      pointer-events="none"
+                    >
+                      {{ label(i) }}
+                    </text>
+                    @if (i === selected()) {
+                      <rect
+                        [attr.x]="(b.x + b.width) * width() - width() / 110"
+                        [attr.y]="(b.y + b.height) * height() - width() / 110"
+                        [attr.width]="width() / 55"
+                        [attr.height]="width() / 55"
+                        fill="#facc15"
+                        (pointerdown)="begin($event, i, true)"
+                        class="cursor-nwse-resize"
+                      />
+                    }
+                  }
                 }
-              }
+              </g>
+            </svg>
+            <canvas
+              #canvas
+              [class.hidden]="!preview()"
+              class="block h-full w-full object-contain"
+              role="img"
+              aria-label="ตัวอย่างเฉพาะพาร์ทที่ตัดซ้อนบน Default"
+            ></canvas>
+            @if (mode() === 'place' && showGuides()) {
+              <svg
+                class="absolute inset-0 h-full w-full touch-none select-none"
+                [attr.viewBox]="'0 0 ' + width() + ' ' + height()"
+                (pointermove)="dragPlacement($event)"
+                (pointerup)="end()"
+                (pointercancel)="end()"
+                (lostpointercapture)="end()"
+                (keydown)="nudge($event)"
+                tabindex="0"
+                role="img"
+                aria-label="ลากพาร์ทเพื่อจัดวางบนรถ"
+              >
+                @for (region of regions(); track $index; let i = $index) {
+                  @if (cropBounds(region); as b) {
+                    <g [attr.transform]="placementTransform(i)">
+                      <rect
+                        [attr.x]="b.x * width()"
+                        [attr.y]="b.y * height()"
+                        [attr.width]="b.width * width()"
+                        [attr.height]="b.height * height()"
+                        fill="transparent"
+                        [attr.stroke]="i === selected() ? '#facc15' : '#38bdf8'"
+                        stroke-width="2"
+                        vector-effect="non-scaling-stroke"
+                        stroke-dasharray="6 4"
+                        class="cursor-move"
+                        (pointerdown)="beginPlacement($event, i)"
+                      />
+                      @if (i === selected()) {
+                        @for (handle of resizeHandles; track handle) {
+                          <rect
+                            [attr.x]="
+                              (b.x + b.width * (handle === 'y' ? 0.5 : 1)) * width() - width() / 140
+                            "
+                            [attr.y]="
+                              (b.y + b.height * (handle === 'x' ? 0.5 : 1)) * height() -
+                              width() / 140
+                            "
+                            [attr.width]="width() / 70"
+                            [attr.height]="width() / 70"
+                            fill="#facc15"
+                            [attr.aria-label]="
+                              handle === 'x'
+                                ? 'ยืดความกว้าง'
+                                : handle === 'y'
+                                  ? 'ยืดความสูง'
+                                  : 'ยืดอิสระ'
+                            "
+                            [class.cursor-ew-resize]="handle === 'x'"
+                            [class.cursor-ns-resize]="handle === 'y'"
+                            [class.cursor-nwse-resize]="handle === 'both'"
+                            (pointerdown)="beginPlacement($event, i, handle)"
+                          />
+                        }
+                      }
+                    </g>
+                  }
+                }
+              </svg>
             }
-          </svg>
-          <canvas
-            #canvas
-            [class.hidden]="!preview()"
-            class="block h-full w-full object-contain"
-            role="img"
-            aria-label="ตัวอย่างเฉพาะพาร์ทที่ตัดซ้อนบน Default"
-          ></canvas>
+            @if (panMode() && zoom() > 1) {
+              <div
+                class="absolute inset-0 z-10 touch-none cursor-grab"
+                [class.cursor-grabbing]="panning()"
+                aria-hidden="true"
+              ></div>
+            }
+          </div>
         </div>
         <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
           @for (region of regions(); track $index; let i = $index) {
@@ -150,88 +311,140 @@
         </div>
       </div>
       <div class="space-y-4 text-xs text-stone-300">
-        <h3 class="font-semibold text-white">ปรับกรอบ {{ label(selected()) }}</h3>
-        @if (activeBounds(); as b) {
-          <fieldset
-            [disabled]="saving() || exporting() || preview()"
-            class="space-y-4 disabled:opacity-40"
-          >
+        @if (mode() === 'place') {
+          <h3 class="font-semibold text-white">จัดวาง {{ label(selected()) }}</h3>
+          <p class="text-[11px] leading-6 text-stone-400">
+            ลากกรอบเพื่อย้าย · ลากจุดด้านข้างหรือด้านล่างเพื่อยืดแยกแกน · ลากจุดมุมเพื่อยืดอิสระ
+          </p>
+          @if (!reference()) {
+            <p class="text-amber-300">ยังไม่มีภาพฐานสำหรับเทียบตำแหน่ง</p>
+          }
+          <fieldset [disabled]="saving() || exporting()" class="space-y-4 disabled:opacity-40">
+            @for (control of placementControls; track control.key) {
+              <label class="block"
+                >{{ control.label }} {{ placementValue(control.key) }}
+                <input
+                  type="range"
+                  [attr.aria-label]="control.label + 'พาร์ท'"
+                  [min]="control.min"
+                  [max]="control.max"
+                  [step]="control.step"
+                  [value]="placementInputValue(control.key)"
+                  (input)="adjustPlacement(control.key, $event)"
+                  class="mt-2 w-full cursor-pointer accent-yellow-400 disabled:cursor-not-allowed"
+                />
+              </label>
+            }
             <label class="block"
-              >แนวนอน {{ (b.x * 100).toFixed(1) }}%<input
+              >ความทึบตัวอย่าง {{ (opacity() * 100).toFixed(0) }}%
+              <input
                 type="range"
-                aria-label="ตำแหน่งกรอบแนวนอน"
-                min="0"
-                [max]="1 - b.width"
-                step="0.001"
-                [value]="b.x"
-                (input)="adjust('x', $event)"
-                class="mt-2 w-full cursor-pointer accent-yellow-400 disabled:cursor-not-allowed"
-            /></label>
-            <label class="block"
-              >แนวตั้ง {{ (b.y * 100).toFixed(1) }}%<input
-                type="range"
-                aria-label="ตำแหน่งกรอบแนวตั้ง"
-                min="0"
-                [max]="1 - b.height"
-                step="0.001"
-                [value]="b.y"
-                (input)="adjust('y', $event)"
-                class="mt-2 w-full cursor-pointer accent-yellow-400 disabled:cursor-not-allowed"
-            /></label>
-            <label class="block"
-              >ความกว้าง {{ (b.width * 100).toFixed(1) }}%<input
-                type="range"
-                aria-label="ความกว้างกรอบตัด"
-                min="0.01"
+                aria-label="ความทึบตัวอย่าง"
+                min="0.1"
                 max="1"
-                step="0.001"
-                [value]="b.width"
-                (input)="adjust('width', $event)"
-                class="mt-2 w-full cursor-pointer accent-sky-400 disabled:cursor-not-allowed"
-            /></label>
-            <label class="block"
-              >ความสูง {{ (b.height * 100).toFixed(1) }}%<input
-                type="range"
-                aria-label="ความสูงกรอบตัด"
-                min="0.01"
-                max="1"
-                step="0.001"
-                [value]="b.height"
-                (input)="adjust('height', $event)"
-                class="mt-2 w-full cursor-pointer accent-sky-400 disabled:cursor-not-allowed"
-            /></label>
+                step="0.05"
+                [value]="opacity()"
+                (input)="placementOpacity($event)"
+                class="mt-2 w-full cursor-pointer accent-sky-400"
+              />
+            </label>
           </fieldset>
-        }
-        <p class="text-[11px] leading-6 text-stone-500">
-          กรอบจะกำหนดส่วนที่นำไปซ้อน ภาพตัดยังอยู่ตำแหน่งเดิมในกรอบภาพ · ใช้ลูกศรขยับกรอบละเอียด และ
-          Shift + ลูกศรเพื่อขยับเร็ว
-        </p>
-        <button
-          type="button"
-          (click)="preview() ? preview.set(false) : showPreview()"
-          [disabled]="saving() || exporting()"
-          class="min-h-10 w-full cursor-pointer rounded-lg border border-white/20 px-3 hover:bg-white/5 disabled:cursor-not-allowed"
-        >
-          {{ preview() ? 'กลับไปปรับกรอบ' : 'ดูตัวอย่างส่วนที่ตัด' }}
-        </button>
-        @if (reference()) {
+          <p class="text-[11px] leading-6 text-stone-500">
+            ความทึบใช้เฉพาะเทียบภาพตอนจัดวาง ภาพที่บันทึกใช้ความทึบเต็ม ·
+            ส่วนที่เลื่อนออกนอกกรอบภาพจะถูกตัดออก
+          </p>
           <button
             type="button"
-            (click)="showPreview(true)"
+            (click)="resetPlacement()"
             [disabled]="saving() || exporting()"
             class="min-h-9 w-full cursor-pointer rounded-lg border border-white/15 px-3 hover:bg-white/5 disabled:cursor-not-allowed"
           >
-            ดูภาพตัดซ้อนบน Default
+            รีเซ็ตตำแหน่ง {{ label(selected()) }}
+          </button>
+        } @else {
+          <h3 class="font-semibold text-white">ปรับกรอบ {{ label(selected()) }}</h3>
+          @if (activeBounds(); as b) {
+            <fieldset
+              [disabled]="saving() || exporting() || preview()"
+              class="space-y-4 disabled:opacity-40"
+            >
+              <label class="block"
+                >แนวนอน {{ (b.x * 100).toFixed(1) }}%<input
+                  type="range"
+                  aria-label="ตำแหน่งกรอบแนวนอน"
+                  min="0"
+                  [max]="1 - b.width"
+                  step="0.001"
+                  [value]="b.x"
+                  (input)="adjust('x', $event)"
+                  class="mt-2 w-full cursor-pointer accent-yellow-400 disabled:cursor-not-allowed"
+              /></label>
+              <label class="block"
+                >แนวตั้ง {{ (b.y * 100).toFixed(1) }}%<input
+                  type="range"
+                  aria-label="ตำแหน่งกรอบแนวตั้ง"
+                  min="0"
+                  [max]="1 - b.height"
+                  step="0.001"
+                  [value]="b.y"
+                  (input)="adjust('y', $event)"
+                  class="mt-2 w-full cursor-pointer accent-yellow-400 disabled:cursor-not-allowed"
+              /></label>
+              <label class="block"
+                >ความกว้าง {{ (b.width * 100).toFixed(1) }}%<input
+                  type="range"
+                  aria-label="ความกว้างกรอบตัด"
+                  min="0.01"
+                  max="1"
+                  step="0.001"
+                  [value]="b.width"
+                  (input)="adjust('width', $event)"
+                  class="mt-2 w-full cursor-pointer accent-sky-400 disabled:cursor-not-allowed"
+              /></label>
+              <label class="block"
+                >ความสูง {{ (b.height * 100).toFixed(1) }}%<input
+                  type="range"
+                  aria-label="ความสูงกรอบตัด"
+                  min="0.01"
+                  max="1"
+                  step="0.001"
+                  [value]="b.height"
+                  (input)="adjust('height', $event)"
+                  class="mt-2 w-full cursor-pointer accent-sky-400 disabled:cursor-not-allowed"
+              /></label>
+            </fieldset>
+          }
+          <p class="text-[11px] leading-6 text-stone-500">
+            กรอบจะกำหนดส่วนที่นำไปซ้อน ภาพตัดยังอยู่ตำแหน่งเดิมในกรอบภาพ · ใช้ลูกศรขยับกรอบละเอียด
+            และ Shift + ลูกศรเพื่อขยับเร็ว
+          </p>
+          <button
+            type="button"
+            (click)="preview() ? preview.set(false) : showPreview()"
+            [disabled]="saving() || exporting()"
+            class="min-h-10 w-full cursor-pointer rounded-lg border border-white/20 px-3 hover:bg-white/5 disabled:cursor-not-allowed"
+          >
+            {{ preview() ? 'กลับไปปรับกรอบ' : 'ดูตัวอย่างส่วนที่ตัด' }}
+          </button>
+          @if (reference()) {
+            <button
+              type="button"
+              (click)="showPreview(true)"
+              [disabled]="saving() || exporting()"
+              class="min-h-9 w-full cursor-pointer rounded-lg border border-white/15 px-3 hover:bg-white/5 disabled:cursor-not-allowed"
+            >
+              ดูภาพตัดซ้อนบน {{ referenceLabel() }}
+            </button>
+          }
+          <button
+            type="button"
+            (click)="reset()"
+            [disabled]="saving() || exporting()"
+            class="min-h-9 w-full cursor-pointer rounded-lg px-3 text-stone-400 hover:bg-white/5 disabled:cursor-not-allowed"
+          >
+            คืนค่ากรอบเริ่มต้น
           </button>
         }
-        <button
-          type="button"
-          (click)="reset()"
-          [disabled]="saving() || exporting()"
-          class="min-h-9 w-full cursor-pointer rounded-lg px-3 text-stone-400 hover:bg-white/5 disabled:cursor-not-allowed"
-        >
-          คืนค่ากรอบเริ่มต้น
-        </button>
       </div>
     </div>
     @if (error()) {
@@ -241,7 +454,9 @@
       <p role="alert" class="mt-3 text-xs text-amber-200">{{ saveError() }}</p>
     }
     <div class="mt-5 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
-      <p class="text-[11px] text-stone-400">บันทึกกรอบและภาพพาร์ทที่ตัดแล้ว · ภาพต้นฉบับยังอยู่</p>
+      <p class="text-[11px] text-stone-400">
+        บันทึกกรอบตัดและตำแหน่งจัดวางของมุมนี้ · ภาพต้นฉบับยังอยู่
+      </p>
       <button
         type="button"
         (click)="export()"
@@ -252,7 +467,7 @@
           [name]="saving() || exporting() ? 'spinner' : 'check'"
           class="!size-3"
           [class.animate-spin]="saving() || exporting()"
-        />{{ saving() || exporting() ? 'กำลังบันทึก…' : 'บันทึกกรอบตัด' }}
+        />{{ saving() || exporting() ? 'กำลังบันทึก…' : 'บันทึกภาพและตำแหน่ง' }}
       </button>
     </div>
   </section>

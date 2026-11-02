@@ -55,9 +55,15 @@ export function buildLayerPlan(
   }
   for (const part of photos) {
     if (part === foundation) continue;
-    const mask = part.masks?.[view];
+    const variant = foundation ? part.placementVariants?.[foundation.id] : undefined;
+    const calibrated = variant?.masks[view] && variant.layerViews[view] ? variant : undefined;
+    const mask = calibrated?.masks[view] || part.masks?.[view];
     if (mask && plan.base) {
-      plan.layers.push({ id: part.id, image: part.layerViews?.[view] || part.views![view]!, mask });
+      plan.layers.push({
+        id: part.id,
+        image: calibrated?.layerViews[view] || part.layerViews?.[view] || part.views![view]!,
+        mask,
+      });
       plan.selected = true;
     } else {
       const regions = automaticPartClips(car, part.category, view);

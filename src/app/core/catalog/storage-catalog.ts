@@ -86,7 +86,21 @@ export function validStorageCatalog(value: unknown): value is StorageCatalogData
         typeof p.name === 'string' &&
         typeof p.category === 'string' &&
         image(p.previewImage) &&
-        validViews(p.views) && validViews(p.masks) && validViews(p.layerViews),
+        validViews(p.views) &&
+        validViews(p.masks) &&
+        validViews(p.layerViews) &&
+        (p.placementVariants === undefined ||
+          (!!p.placementVariants &&
+            typeof p.placementVariants === 'object' &&
+            Object.entries(p.placementVariants).every(
+              ([id, v]) =>
+                /^storage-part:[a-f0-9]{32}$/.test(id) &&
+                !!v &&
+                !!v.masks &&
+                !!v.layerViews &&
+                validViews(v.masks) &&
+                validViews(v.layerViews),
+            ))),
     )
   );
 }

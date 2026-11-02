@@ -86,6 +86,38 @@ describe('Full-car photo layers', () => {
       selected: false,
     });
   });
+  it('uses the placement matching the selected bumper and angle, falls back to general placement for another bumper', () => {
+    const a = { ...part('front', false), id: 'bumper-a' };
+    const b = { ...part('front', false), id: 'bumper-b' };
+    const wheel = {
+      ...part('wheels'),
+      placementVariants: {
+        'bumper-a': { masks: { front45: 'mask-on-a' }, layerViews: { front45: 'wheels-on-a' } },
+        'bumper-b': { masks: { front45: 'mask-on-b' }, layerViews: { front45: 'wheels-on-b' } },
+      },
+    };
+    expect(buildLayerPlan(car, [a, wheel], 'front45').layers[0]).toEqual({
+      id: 'wheels',
+      image: 'wheels-on-a',
+      mask: 'mask-on-a',
+    });
+    expect(buildLayerPlan(car, [b, wheel], 'front45').layers[0].image).toBe('wheels-on-b');
+    expect(buildLayerPlan(car, [{ ...a, id: 'bumper-c' }, wheel], 'front45').layers[0].mask).toBe(
+      'mask-wheels',
+    );
+    expect(buildLayerPlan(car, [wheel], 'front45').layers[0].mask).toBe('mask-wheels');
+    const rear = { ...part('rear', false), id: 'rear-a' };
+    wheel.placementVariants['rear-a' as 'bumper-a'] = {
+      masks: { front45: 'not-this-angle' },
+      layerViews: { front45: 'not-this-angle' },
+    };
+    expect(buildLayerPlan(car, [rear, wheel], 'rear45').layers[0].mask).toBe('mask-r45-wheels');
+    const incomplete = {
+      ...wheel,
+      placementVariants: { 'bumper-a': { masks: { front45: 'incomplete' }, layerViews: {} } },
+    };
+    expect(buildLayerPlan(car, [a, incomplete], 'front45').layers[0].mask).toBe('mask-wheels');
+  });
   it('rejects opaque black/white or empty masks, preserves partial alpha edges', () => {
     expect(() =>
       validateAlphaMask(new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255])),

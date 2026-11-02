@@ -13,7 +13,6 @@ import {
   effect,
   untracked,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { Catalog } from '../catalog/catalog';
 import { MyBuilds } from '../my-builds/my-builds';
 import { catalogCars, buildPartCategories } from '../catalog/catalog.data';
@@ -40,7 +39,6 @@ type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Reque
     Icon,
     BuildCard,
     ShowcaseImage,
-    DecimalPipe,
     Catalog,
     Compare,
     MyBuilds,

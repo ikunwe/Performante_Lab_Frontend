@@ -397,14 +397,8 @@
       <app-icon name="lock" class="mt-0.5 !size-3" />ชุดแต่งสำเร็จ ไม่ใช้ร่วมกับพาร์ตแยก
     </p>
     }
-    <div class="my-5 border-t border-white/10 pt-4">
-      <p class="text-[10px] text-stone-500">งบประมาณรวม</p>
-      <p class="mt-2 text-xs">
-        {{ selectedParts().length ? 'รอข้อมูลราคาอ้างอิง' : 'ยังไม่มีรายการแต่ง' }}
-      </p>
-    </div>
     <button type="button" (click)="requestSave()"
-      class="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#ce281a] text-[11px] hover:bg-red-500">
+      class="mt-5 flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#ce281a] text-[11px] hover:bg-red-500">
       <app-icon name="builds" class="!size-3.5" />บันทึก Build
     </button>
     <p class="mt-3 text-center text-[9px] text-stone-500">Build ใหม่เป็นส่วนตัว เผยแพร่ภายหลังได้ใน My Builds</p>

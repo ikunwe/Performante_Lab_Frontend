@@ -109,7 +109,6 @@ export class AdminEditData implements OnInit {
   readonly editPartModalOpen = signal(false);
   readonly editingPart = signal<RealPartItem | null>(null);
   readonly editingPartName = signal('');
-  readonly editingPartPrice = signal<number | null>(null);
   readonly editPartFile = signal<File | null>(null);
   readonly editPartFilePreview = signal<string | null>(null);
   readonly editPartAngleFiles = signal<Map<string, File>>(new Map());
@@ -193,7 +192,6 @@ export class AdminEditData implements OnInit {
   readonly newPartCategory = signal('BodyKit');
   readonly newPartManufacturer = signal('');
   readonly newPartName = signal('');
-  readonly newPartPrice = signal<number | null>(null);
 
   // Toast feedback
   readonly toastMessage = signal('');
@@ -1482,7 +1480,6 @@ export class AdminEditData implements OnInit {
     this.newPartCategory.set(currentCat);
     this.newPartManufacturer.set(this.selectedTuningBrand() || 'Custom');
     this.newPartName.set('');
-    this.newPartPrice.set(null);
     this.selectedPartFile.set(null);
     this.partFilePreview.set(null);
     this.partAngleFiles.set(new Map());
@@ -1586,14 +1583,12 @@ export class AdminEditData implements OnInit {
       this.isUploading.set(false);
     }
 
-    const price = this.newPartPrice() ?? 0;
     const res = await this.admin.insertCarPart({
       car_model_id: car.id,
       category,
       name,
       manufacturer: tuningBrand,
       image_url: primaryImageUrl,
-      price,
     });
     if (res.ok) {
       // Ensure tuning brand exists in workshopBrands list immediately
@@ -1658,7 +1653,6 @@ export class AdminEditData implements OnInit {
   async openEditPartModal(part: RealPartItem): Promise<void> {
     this.editingPart.set(part);
     this.editingPartName.set(part.name);
-    this.editingPartPrice.set(part.price ?? null);
     this.editPartFile.set(null);
     this.editPartFilePreview.set(part.image || part.image_url || null);
     this.editPartAngleFiles.set(new Map());
@@ -1883,11 +1877,9 @@ export class AdminEditData implements OnInit {
       }
     }
 
-    const price = this.editingPartPrice() ?? part.price ?? 0;
     const res = await this.admin.updateCarPart({
       id: part.id,
       name: newName,
-      price,
       image_url: imageUrl,
     });
 

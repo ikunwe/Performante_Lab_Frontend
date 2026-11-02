@@ -30,6 +30,8 @@ export interface PartCategory {
   icon: string;
 }
 export interface CatalogPart {
+  /** Placement frames calibrated against a particular full-photo foundation part. */
+  placementVariants?: Record<string, { masks: CatalogViews; layerViews: CatalogViews }>;
   /** Full photo aligned to the default frame by the Admin mask editor. */
   layerViews?: CatalogViews;
   /** Alpha PNG: opaque only in the region replaced by this part. */
@@ -57,7 +59,6 @@ export const partCategories: PartCategory[] = [
   { id: 'others', name: 'Other Parts', label: 'พาร์ทอื่น ๆ', icon: 'parts' },
   { id: 'spoilers', name: 'Spoilers', label: 'สปอยเลอร์', icon: 'parts' },
 ];
-
 
 /** Categories supported by both the builder and part comparison. */
 export const buildPartCategories: PartCategory[] = [

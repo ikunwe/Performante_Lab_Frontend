@@ -230,10 +230,6 @@
           }
         }
       </ul>
-      <p class="text-lg text-red-400">
-        @if (build.budget > 0) { ฿{{ build.budget | number }} } @else { ยังไม่ระบุงบประมาณ }
-
-      </p>
       <p class="my-4 text-[11px] leading-relaxed text-stone-500">
         {{ build.isOwn ? 'Build ของคุณ' : 'Build จากชุมชน' }} · {{ build.isPublic ? 'เผยแพร่' : 'ส่วนตัว' }}
       </p>

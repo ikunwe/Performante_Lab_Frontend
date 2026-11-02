@@ -32,17 +32,8 @@
       {{ build().title }}
     </h2>
     <p class="mb-3 text-[10px] text-stone-500">{{ build().car }}</p>
-    <div class="mb-3 mt-auto flex items-end justify-between gap-2 border-t border-white/5 pt-2.5">
-      <span class="text-[9px] text-stone-500">งบประมาณ</span><span class="text-[11px] text-stone-300">
-        @if (build().budget > 0) {
-        ฿{{ build().budget | number }}
-        } @else {
-        ยังไม่ระบุ
-        }
-      </span>
-    </div>
     <button type="button"
-      class="flex min-h-9 items-center justify-between rounded-lg bg-[#ce281a] px-3 text-[9px] text-white transition-colors hover:bg-[#ef402b] focus-visible:outline-2 focus-visible:outline-red-300 cursor-pointer disabled:cursor-not-allowed"
+      class="mt-auto flex min-h-9 items-center justify-between rounded-lg bg-[#ce281a] px-3 text-[9px] text-white transition-colors hover:bg-[#ef402b] focus-visible:outline-2 focus-visible:outline-red-300 cursor-pointer disabled:cursor-not-allowed"
       (click)="details.emit(build())">
       <span class="font-[family-name:var(--font-display)]">SEE DETAILS</span><app-icon name="arrow" class="!size-3.5" />
     </button>

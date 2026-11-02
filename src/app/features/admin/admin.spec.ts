@@ -565,7 +565,6 @@ describe('Admin Portal Features', () => {
       component.openPartModal();
       expect(component.partModalOpen()).toBe(true);
       component.newPartName.set('Novitec Carbon Wing');
-      component.newPartPrice.set(380000);
       component.selectedPartFile.set(new File(['part'], 'wing.png', { type: 'image/png' }));
       await component.savePart();
       expect(component.partModalOpen()).toBe(false);
@@ -895,17 +894,15 @@ describe('Admin Portal Features', () => {
       expect(component.editPartModalOpen()).toBe(true);
       expect(component.editingPart()?.id).toBe(initialPart.id);
       expect(component.editingPartName()).toBe('Initial Aero Kit');
-      expect(component.editingPartPrice()).toBe(150000);
 
-      // Modify name and price without uploading new image (keeps existing image)
+      // Editing the name preserves stored historical prices.
       component.editingPartName.set('Novitec Esteso Widebody');
-      component.editingPartPrice.set(220000);
       await component.saveEditPart();
 
       expect(component.editPartModalOpen()).toBe(false);
       const updatedPart = component.admin.catalogParts().find((p) => p.id === initialPart.id);
       expect(updatedPart?.name).toBe('Novitec Esteso Widebody');
-      expect(updatedPart?.price).toBe(220000);
+      expect(updatedPart?.price).toBe(150000);
       expect(updatedPart?.image_url || updatedPart?.image).toBe('assets/car_pic.png');
     });
 

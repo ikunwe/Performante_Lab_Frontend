@@ -84,7 +84,7 @@ describe('Catalog', () => {
     expect(fixture.nativeElement.querySelector('article button')).toBeNull();
     expect(fixture.nativeElement.querySelector('dialog')).toBeNull();
     expect(cards[0].textContent).toContain('แบรนด์ / สำนักแต่ง');
-    expect(cards[0].textContent).toContain('ราคาอ้างอิง');
+    expect(cards[0].textContent).not.toContain('ราคาอ้างอิง');
     expect(cards[0].textContent).toContain('แนวทางชุดแต่งภายนอก');
     expect(fixture.nativeElement.textContent).not.toContain('View details');
     page.category.set('front');
