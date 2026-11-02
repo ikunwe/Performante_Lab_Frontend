@@ -4,16 +4,14 @@ import { Component, input } from '@angular/core';
   selector: 'app-ads-banner',
   template: `
     <div
-      class="w-full aspect-[3/4] min-h-[260px] max-h-[380px] rounded-xl bg-[#383838] border border-white/5 flex flex-col items-center justify-center p-6 text-center select-none shadow-inner"
+      class="w-full rounded-lg border border-dashed border-white/15 bg-gradient-to-b from-white/[.04] to-transparent flex flex-col items-center justify-center px-4 py-9 text-center select-none"
     >
-      <span class="font-[family-name:var(--font-display)] text-sm sm:text-base font-semibold text-white tracking-wide">
+      <span class="font-[family-name:var(--font-display)] text-[10px] text-stone-400 tracking-wide">
         Web Ads Space
       </span>
       <div class="my-5 w-8 h-[1px] bg-white/20"></div>
-      <span class="text-xs text-stone-300 font-medium">
-        Banner
-      </span>
-      <span class="font-mono text-xs text-stone-400 mt-0.5">
+      <span class="text-[10px] text-stone-500"> Banner </span>
+      <span class="text-[9px] text-stone-600 mt-1">
         {{ size() }}
       </span>
     </div>
@@ -23,4 +21,3 @@ import { Component, input } from '@angular/core';
 export class AdsBanner {
   readonly size = input('300x400');
 }
-

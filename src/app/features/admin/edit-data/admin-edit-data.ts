@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { LoadingSkeleton } from '../../../shared/ui/loading-skeleton/loading-skeleton';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -13,8 +14,8 @@ import {
   RealPartItem,
 } from '../services/admin.service';
 import { PartMaskUpload } from './part-mask-upload';
-import {hasAutomaticPartClips} from '../../../core/catalog/part-clip-regions';
-import { CatalogStorageHelper } from '../../../core/storage/catalog-storage';
+import { hasAutomaticPartClips } from '../../../core/catalog/part-clip-regions';
+import { CatalogStorageHelper, StorageWorkshopItem } from '../../../core/storage/catalog-storage';
 
 export interface DeleteTarget {
   type: 'brand' | 'car' | 'category' | 'tuningBrand' | 'part';
@@ -29,11 +30,11 @@ export interface DeleteTarget {
 
 @Component({
   selector: 'app-admin-edit-data',
-  imports: [CommonModule, FormsModule, Icon, PartMaskUpload],
+  imports: [CommonModule, FormsModule, Icon, LoadingSkeleton, PartMaskUpload],
   templateUrl: './admin-edit-data.html',
 })
 export class AdminEditData implements OnInit {
-  readonly hasAutomaticPartClips=hasAutomaticPartClips;
+  readonly hasAutomaticPartClips = hasAutomaticPartClips;
   readonly auth = inject(AuthService);
   readonly admin = inject(AdminService);
 
@@ -64,9 +65,9 @@ export class AdminEditData implements OnInit {
   readonly filteredBrands = computed(() => {
     const q = this.brandSearchQuery().trim().toLowerCase();
     if (!q) return this.admin.catalogBrands();
-    return this.admin.catalogBrands().filter(
-      (b) => b.name.toLowerCase().includes(q) || b.slug.toLowerCase().includes(q),
-    );
+    return this.admin
+      .catalogBrands()
+      .filter((b) => b.name.toLowerCase().includes(q) || b.slug.toLowerCase().includes(q));
   });
 
   // Track failed image loads to replace with neutral placeholders
@@ -162,8 +163,8 @@ export class AdminEditData implements OnInit {
 
   readonly tuningBrandLogos = signal<Map<string, string>>(new Map());
   readonly workshopBrands = signal<{
-    bodykit: { name: string; logoUrl: string }[];
-    parts: { name: string; logoUrl: string }[];
+    bodykit: StorageWorkshopItem[];
+    parts: StorageWorkshopItem[];
   }>({ bodykit: [], parts: [] });
 
   // Uploading & Deleting state
@@ -247,7 +248,9 @@ export class AdminEditData implements OnInit {
     if (!car) return [];
     const cat = category.toLowerCase().replace(/[\s_-]+/g, '');
 
-    const fromWorkshops = this.workshopBrands().parts.map((w) => w.name);
+    const fromWorkshops = this.workshopBrands()
+      .parts.filter((w) => !w.category || w.category.toLowerCase().replace(/[\s_-]+/g, '') === cat)
+      .map((w) => w.name);
     const relevantParts = this.admin.catalogParts().filter((p) => {
       const isMatchCar =
         (p.car_model_id || p.carId) === car.id || (p.car_model_id || p.carId) === car.name;
@@ -300,7 +303,9 @@ export class AdminEditData implements OnInit {
   readonly partsForSelectedPartBrandAndCategory = computed(() => {
     const car = this.selectedCar();
     const brandName = this.selectedTuningBrand();
-    const cat = this.selectedCategory().toLowerCase().replace(/[\s_-]+/g, '');
+    const cat = this.selectedCategory()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '');
     if (!car || !brandName) return [];
 
     return this.admin.catalogParts().filter((p) => {
@@ -330,49 +335,6 @@ export class AdminEditData implements OnInit {
     });
   });
 
-  // Grid slot placeholders
-  readonly brandPlaceholders = computed(() => {
-    const filled = 1 + this.filteredBrands().length;
-    const remaining = Math.max(0, 18 - filled);
-    return Array.from({ length: remaining });
-  });
-
-  readonly modelPlaceholders = computed(() => {
-    const filled = 2 + this.filteredCarsForBrand().length;
-    const remaining = Math.max(0, 18 - filled);
-    return Array.from({ length: remaining });
-  });
-
-  readonly tuningBrandPlaceholders = computed(() => {
-    const filled = 1 + this.tuningBrandsForCurrentContext().length;
-    const remaining = Math.max(0, 12 - filled);
-    return Array.from({ length: remaining });
-  });
-
-  readonly partPlaceholders = computed(() => {
-    const filled = 2 + this.partsForSelectedTuningBrand().length;
-    const remaining = Math.max(0, 12 - filled);
-    return Array.from({ length: remaining });
-  });
-
-  readonly categoryPlaceholders = computed(() => {
-    const filled = this.availableCategories().length;
-    const remaining = Math.max(0, 12 - filled);
-    return Array.from({ length: remaining });
-  });
-
-  readonly partBrandPlaceholders = computed(() => {
-    const filled = 2 + this.tuningBrandsForCurrentPartCategory().length;
-    const remaining = Math.max(0, 12 - filled);
-    return Array.from({ length: remaining });
-  });
-
-  readonly partItemPlaceholders = computed(() => {
-    const filled = 2 + this.partsForSelectedPartBrandAndCategory().length;
-    const remaining = Math.max(0, 12 - filled);
-    return Array.from({ length: remaining });
-  });
-
   async ngOnInit(): Promise<void> {
     await this.admin.fetchCatalogBrands();
   }
@@ -383,7 +345,7 @@ export class AdminEditData implements OnInit {
     this.selectedCar.set(null);
     this.selectedTuningBrand.set(null);
     this.level.set('models');
-    await this.admin.fetchCatalogModels(brand.name || brand.id);
+    await this.admin.fetchCatalogModels(this.brandFolder(brand) || brand.id);
   }
 
   backToBrands(): void {
@@ -399,7 +361,7 @@ export class AdminEditData implements OnInit {
     this.partTab.set('bodykit');
     this.partStep.set('category');
     this.level.set('parts');
-    const brandName = this.selectedBrand()?.name || '';
+    const brandName = this.brandFolder(this.selectedBrand());
     if (brandName) {
       const res = await this.admin.fetchCatalogTuning(brandName, car.name);
       this.workshopBrands.set(res.workshops);
@@ -527,7 +489,9 @@ export class AdminEditData implements OnInit {
       if (!existing.some((w) => w.name.toLowerCase() === name.toLowerCase())) {
         return {
           ...wb,
-          [tabKey]: [...existing, { name, logoUrl: '' }].sort((a, b) => a.name.localeCompare(b.name)),
+          [tabKey]: [...existing, { name, logoUrl: '' }].sort((a, b) =>
+            a.name.localeCompare(b.name),
+          ),
         };
       }
       return wb;
@@ -543,7 +507,7 @@ export class AdminEditData implements OnInit {
 
   // Edit Tuning Brand Modal Handlers
   openEditTuningBrandModal(brandName: string): void {
-    this.editingTuningBrandName.set(brandName);
+    this.editingTuningBrandName.set(this.tuningBrandLabel(brandName));
     this.originalTuningBrandName.set(brandName);
     this.editTuningBrandFile.set(null);
     this.editTuningBrandFilePreview.set(null);
@@ -565,47 +529,75 @@ export class AdminEditData implements OnInit {
     }
   }
 
+  private workshopFor(name: string): StorageWorkshopItem | undefined {
+    const normalized = (value: string) => value.toLowerCase().replace(/[\s_-]+/g, '');
+    const current = normalized(this.selectedCategory());
+    return this.workshopBrands()[this.partTab()].find(
+      (w) => w.name === name && (!w.category || normalized(w.category) === current),
+    );
+  }
+  tuningBrandLabel(name: string | null | undefined): string {
+    return name ? this.workshopFor(name)?.displayName || name : '';
+  }
   async saveEditTuningBrand(): Promise<void> {
-    const oldName = this.originalTuningBrandName().trim();
-    const newName = this.editingTuningBrandName().trim();
-    if (!oldName || !newName) {
-      this.showToast('กรุณาระบุชื่อแบรนด์', 'error');
+    if (this.isUploading()) return;
+    const oldName = this.originalTuningBrandName().trim(),
+      newName = this.editingTuningBrandName().trim();
+    const brand = this.selectedBrand(),
+      car = this.selectedCar(),
+      tab = this.partTab();
+    if (!oldName || !newName || !brand || !car) {
+      this.showToast('กรุณาระบุชื่อแบรนด์และรุ่นรถ', 'error');
       return;
     }
-
+    if (
+      this.workshopBrands()[tab].some(
+        (w) =>
+          w.name !== oldName &&
+          (w.displayName || w.name).toLowerCase() === newName.toLowerCase() &&
+          (!w.category || w.category === this.selectedCategory()),
+      )
+    ) {
+      this.showToast('มีชื่อแบรนด์นี้แล้วในหมวดนี้', 'error');
+      return;
+    }
+    const workshop = this.workshopFor(oldName);
+    const safe = (name: string) => CatalogStorageHelper.sanitize(name);
+    const category = this.selectedCategory();
+    const folder =
+      workshop?.storagePath ||
+      `${safe(this.brandFolder(brand))}/${safe(car.name)}/${tab === 'bodykit' ? 'BodyKit' : 'Part/' + safe(category)}/${safe(oldName)}`;
     this.isUploading.set(true);
     this.uploadProgressText.set('กำลังอัปเดตข้อมูลแบรนด์...');
-
     try {
-      // Update workshop brands list
-      this.workshopBrands.update((wb) => {
-        const tabKey = this.partTab();
-        const list = wb[tabKey].map((w) =>
-          w.name.toLowerCase() === oldName.toLowerCase()
-            ? { ...w, name: newName }
-            : w,
-        );
-        return { ...wb, [tabKey]: list };
-      });
-
-      // Update catalog parts in memory
-      this.admin.catalogParts.update((parts) =>
-        parts.map((p) =>
-          (p.manufacturer || '').toLowerCase() === oldName.toLowerCase()
-            ? { ...p, manufacturer: newName }
-            : p,
-        ),
+      const client = await this.admin.getClient();
+      if (!client) throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+      const result = await CatalogStorageHelper.saveWorkshopProfile(
+        client,
+        folder,
+        newName,
+        this.editTuningBrandFile(),
       );
-
-      // If active selection was this brand, update it
-      if (this.selectedTuningBrand()?.toLowerCase() === oldName.toLowerCase()) {
-        this.selectedTuningBrand.set(newName);
-      }
-
+      if (!result.ok) throw new Error(result.error || 'บันทึกแบรนด์ไม่สำเร็จ');
+      const profile = await CatalogStorageHelper.readWorkshopProfile(client, folder);
+      const updated: StorageWorkshopItem = {
+        name: oldName,
+        storagePath: folder,
+        category: tab === 'parts' ? category : undefined,
+        ...profile,
+        displayName: newName,
+      };
+      this.workshopBrands.update((wb) => ({
+        ...wb,
+        [tab]: workshop
+          ? wb[tab].map((w) => (w === workshop ? updated : w))
+          : [...wb[tab], updated],
+      }));
+      // Physical manufacturer keys and all part paths remain unchanged.
       this.closeEditTuningBrandModal();
       this.showToast(`แก้ไขข้อมูลแบรนด์ "${newName}" เรียบร้อยแล้ว`, 'success');
-    } catch (err: any) {
-      this.showToast(`แก้ไขล้มเหลว: ${err?.message || 'Update failed'}`, 'error');
+    } catch (error: any) {
+      this.showToast(`แก้ไขล้มเหลว: ${error?.message || 'Update failed'}`, 'error');
     } finally {
       this.isUploading.set(false);
     }
@@ -702,7 +694,7 @@ export class AdminEditData implements OnInit {
           this.showToast(res.error || 'ลบแบรนด์ล้มเหลว', 'error');
         }
       } else if (target.type === 'car') {
-        const brandName = brand?.name || '';
+        const brandName = this.brandFolder(brand);
         const res = await this.admin.deleteCarModel(target.id || '', brandName, target.name);
         if (res.ok) {
           if (this.selectedCar()?.name.toLowerCase() === target.name.toLowerCase()) {
@@ -731,9 +723,15 @@ export class AdminEditData implements OnInit {
         }
       } else if (target.type === 'tuningBrand') {
         const carName = car?.name || '';
-        const brandName = brand?.name || '';
+        const brandName = this.brandFolder(brand);
         const tab = target.tab || this.partTab();
-        const res = await this.admin.deleteTuningBrand(brandName, carName, tab, target.name, target.category);
+        const res = await this.admin.deleteTuningBrand(
+          brandName,
+          carName,
+          tab,
+          target.name,
+          target.category,
+        );
         if (res.ok) {
           this.workshopBrands.update((wb) => ({
             ...wb,
@@ -748,7 +746,12 @@ export class AdminEditData implements OnInit {
         }
       } else if (target.type === 'part' && target.id) {
         const carName = car?.name || '';
-        const res = await this.admin.deletePartItem(target.id, target.storagePath, target.name, carName);
+        const res = await this.admin.deletePartItem(
+          target.id,
+          target.storagePath,
+          target.name,
+          carName,
+        );
         if (res.ok) {
           this.showToast(`ลบชิ้นส่วน "${target.name}" เรียบร้อยแล้ว`, 'success');
         } else {
@@ -853,75 +856,53 @@ export class AdminEditData implements OnInit {
     }
   }
 
+  brandFolder(brand: RealBrandItem | null | undefined): string {
+    return brand?.storagePath || brand?.name || '';
+  }
   async saveEditBrand(): Promise<void> {
-    const brand = this.selectedBrand();
-    const newName = this.editingBrandName().trim();
+    if (this.isUploading()) return;
+    const brand = this.selectedBrand(),
+      newName = this.editingBrandName().trim();
     if (!brand) return;
     if (!newName) {
       this.showToast('กรุณากรอกชื่อแบรนด์', 'error');
       return;
     }
-
+    if (
+      this.admin
+        .catalogBrands()
+        .some((b) => b.id !== brand.id && b.name.toLowerCase() === newName.toLowerCase())
+    ) {
+      this.showToast('มีชื่อแบรนด์นี้แล้ว', 'error');
+      return;
+    }
     this.isUploading.set(true);
     this.uploadProgressText.set('กำลังอัปเดตข้อมูลแบรนด์...');
-
     try {
       const client = await this.admin.getClient();
-      let logoUrl = brand.logo_url;
-
-      const file = this.editBrandFile();
-      if (file && client) {
-        const ext = CatalogStorageHelper.getFileExtension(file);
-        await CatalogStorageHelper.removeSiblingFiles(client, newName, 'logo', ext);
-        const path = CatalogStorageHelper.getBrandLogoPath(newName, ext);
-        const res = await CatalogStorageHelper.uploadFile(client, path, file);
-        if (res.ok && res.url) {
-          logoUrl = res.url;
-        } else {
-          throw new Error(res.error || 'Upload failed');
-        }
-      }
-
-      if (client) {
-        try {
-          await client
-            .from('car_brand_reference')
-            .update({
-              name: newName,
-              details: {
-                ...(brand as any).details,
-                name: newName,
-                logoReferenceUrl: logoUrl,
-              },
-            })
-            .eq('id', brand.id);
-        } catch (dbErr) {
-          console.warn('[AdminEditData] Supabase update car_brand_reference warning:', dbErr);
-        }
-      }
-
-      const updated: RealBrandItem = {
-        ...brand,
-        name: newName,
-        logo_url: logoUrl,
-        logoUrl: logoUrl,
-      };
-      this.selectedBrand.set(updated);
-      this.admin.catalogBrands.update((list) =>
-        list.map((b) => (b.id === brand.id ? updated : b)),
+      if (!client) throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+      const folder = this.brandFolder(brand);
+      const result = await CatalogStorageHelper.saveBrandProfile(
+        client,
+        folder,
+        newName,
+        this.editBrandFile(),
       );
-
+      if (!result.ok || !result.url) throw new Error(result.error || 'บันทึกแบรนด์ไม่สำเร็จ');
+      const logoUrl = result.url + '?v=' + Date.now();
+      const updated = { ...brand, storagePath: folder, name: newName, logo_url: logoUrl, logoUrl };
+      this.selectedBrand.set(updated);
+      this.admin.catalogBrands.update((rows) => rows.map((b) => (b.id === brand.id ? updated : b)));
       this.failedBrandLogos.update((set) => {
         const next = new Set(set);
         next.delete(brand.id);
         return next;
       });
-
       await this.admin.fetchCatalogBrands();
       this.closeEditBrandModal();
       this.showToast(`แก้ไขข้อมูลแบรนด์ "${newName}" เรียบร้อยแล้ว`, 'success');
-    } catch (err: any) {
-      this.showToast(`แก้ไขล้มเหลว: ${err?.message || 'Update failed'}`, 'error');
+    } catch (error: any) {
+      this.showToast(`แก้ไขล้มเหลว: ${error?.message || 'Update failed'}`, 'error');
     } finally {
       this.isUploading.set(false);
     }
@@ -941,7 +922,7 @@ export class AdminEditData implements OnInit {
     try {
       const client = await this.admin.getClient();
       const brand = this.selectedBrand();
-      const brandName = brand?.name || car.brand_id || car.brandId || '';
+      const brandName = this.brandFolder(brand) || car.brand_id || car.brandId || '';
       if (client && brandName && car.name) {
         const safeBrand = CatalogStorageHelper.sanitize(brandName);
         const safeCar = CatalogStorageHelper.sanitize(car.name);
@@ -1007,9 +988,14 @@ export class AdminEditData implements OnInit {
       if (angleFiles.size > 0 && client) {
         for (const [angleKey, file] of angleFiles.entries()) {
           const ext = CatalogStorageHelper.getFileExtension(file);
-          const folderPath = `${brand.name}/${newName}`;
+          const folderPath = `${this.brandFolder(brand)}/${newName}`;
           await CatalogStorageHelper.removeSiblingFiles(client, folderPath, angleKey, ext);
-          const path = CatalogStorageHelper.getCarAnglePath(brand.name, newName, angleKey, ext);
+          const path = CatalogStorageHelper.getCarAnglePath(
+            this.brandFolder(brand),
+            newName,
+            angleKey,
+            ext,
+          );
           const res = await CatalogStorageHelper.uploadFile(client, path, file);
           if (res.ok && res.url) {
             if (angleKey === '45_front' || !imageUrl) {
@@ -1019,9 +1005,14 @@ export class AdminEditData implements OnInit {
         }
       } else if (singleFile && client) {
         const ext = CatalogStorageHelper.getFileExtension(singleFile);
-        const folderPath = `${brand.name}/${newName}`;
+        const folderPath = `${this.brandFolder(brand)}/${newName}`;
         await CatalogStorageHelper.removeSiblingFiles(client, folderPath, '45_front', ext);
-        const path = CatalogStorageHelper.getCarAnglePath(brand.name, newName, '45_front', ext);
+        const path = CatalogStorageHelper.getCarAnglePath(
+          this.brandFolder(brand),
+          newName,
+          '45_front',
+          ext,
+        );
         const res = await CatalogStorageHelper.uploadFile(client, path, singleFile);
         if (res.ok && res.url) {
           imageUrl = res.url;
@@ -1071,7 +1062,7 @@ export class AdminEditData implements OnInit {
         return next;
       });
 
-      await this.admin.fetchCatalogModels(brand.name || brand.id);
+      await this.admin.fetchCatalogModels(this.brandFolder(brand) || brand.id);
       this.closeEditCarModal();
       this.showToast(`แก้ไขรุ่นรถ "${newName}" เรียบร้อยแล้ว`, 'success');
     } catch (err: any) {
@@ -1302,9 +1293,14 @@ export class AdminEditData implements OnInit {
         for (const req of this.carRequiredAngles) {
           const file = angleFiles.get(req.key)!;
           const ext = CatalogStorageHelper.getFileExtension(file);
-          const folderPath = `${brand.name}/${name}`;
+          const folderPath = `${this.brandFolder(brand)}/${name}`;
           await CatalogStorageHelper.removeSiblingFiles(client, folderPath, req.key, ext);
-          const path = CatalogStorageHelper.getCarAnglePath(brand.name, name, req.key, ext);
+          const path = CatalogStorageHelper.getCarAnglePath(
+            this.brandFolder(brand),
+            name,
+            req.key,
+            ext,
+          );
           const res = await CatalogStorageHelper.uploadFile(client, path, file);
           if (res.ok && res.url) {
             if (req.key === '45_front' || !primaryImageUrl) {
@@ -1323,11 +1319,11 @@ export class AdminEditData implements OnInit {
       this.isUploading.set(false);
     }
 
-    const modelId = `${CatalogStorageHelper.sanitize(brand.name)}-${CatalogStorageHelper.sanitize(name)}`;
+    const modelId = `${CatalogStorageHelper.sanitize(this.brandFolder(brand))}-${CatalogStorageHelper.sanitize(name)}`;
     const newCarModelItem: RealCarModelItem = {
       id: modelId,
-      brand_id: brand.name || brand.id,
-      brandId: brand.name || brand.id,
+      brand_id: this.brandFolder(brand) || brand.id,
+      brandId: this.brandFolder(brand) || brand.id,
       name,
       slug: CatalogStorageHelper.sanitize(name).toLowerCase(),
       image_url: primaryImageUrl || this.carFilePreview() || '',
@@ -1345,13 +1341,13 @@ export class AdminEditData implements OnInit {
     });
 
     const res = await this.admin.insertCarModel({
-      brand_id: brand.name || brand.id,
+      brand_id: this.brandFolder(brand) || brand.id,
       name,
       image_url: primaryImageUrl || this.carFilePreview() || '',
       body_type: 'Coupe',
     });
     if (res.ok) {
-      this.admin.fetchCatalogModels(brand.name || brand.id);
+      this.admin.fetchCatalogModels(this.brandFolder(brand) || brand.id);
       this.closeCarModal();
       this.showToast(`เพิ่มรุ่นรถ "${name}" พร้อม 4 มุมมอง สำเร็จ`, 'success');
     } else {
@@ -1384,7 +1380,7 @@ export class AdminEditData implements OnInit {
     if (!baseImg) return '';
 
     const brand = this.selectedBrand();
-    const brandName = brand?.name || car.brand_id || car.brandId || '';
+    const brandName = this.brandFolder(brand) || car.brand_id || car.brandId || '';
     const carName = car.name;
 
     const angleRegex = /\/(45_front|front|45_Back|Back|CarPicture)\.([a-zA-Z0-9]+)(\?.*)?$/i;
@@ -1412,9 +1408,16 @@ export class AdminEditData implements OnInit {
   getRequiredAngles(catParam?: string): { key: string; label: string }[] {
     const rawCat =
       catParam ||
-      (this.partTab() === 'bodykit' ? 'bodykit' : (this.newPartCategory() || this.selectedCategory()));
+      (this.partTab() === 'bodykit'
+        ? 'bodykit'
+        : this.newPartCategory() || this.selectedCategory());
     const cat = (rawCat || '').toLowerCase().replace(/[\s_-]+/g, '');
-    if (cat === 'bodykit' || cat === 'fullbodykits' || cat === 'bodykits' || cat === 'fullbodykit') {
+    if (
+      cat === 'bodykit' ||
+      cat === 'fullbodykits' ||
+      cat === 'bodykits' ||
+      cat === 'fullbodykit'
+    ) {
       return [
         { key: '45_front', label: '45 องศาหน้า' },
         { key: 'front', label: 'หน้าตรง' },
@@ -1536,7 +1539,7 @@ export class AdminEditData implements OnInit {
 
     try {
       const client = await this.admin.getClient();
-      const brandName = brand?.name || 'Universal';
+      const brandName = this.brandFolder(brand) || 'Universal';
 
       for (const req of requiredAngles) {
         const file = angleFiles.get(req.key)!;
@@ -1549,8 +1552,23 @@ export class AdminEditData implements OnInit {
         if (client) {
           await CatalogStorageHelper.removeSiblingFiles(client, folderPath, req.key, ext);
           const path = isBodyKit
-            ? CatalogStorageHelper.getBodyKitAnglePath(brandName, car.name, tuningBrand, name, req.key, ext)
-            : CatalogStorageHelper.getPartAnglePath(brandName, car.name, category, tuningBrand, name, req.key, ext);
+            ? CatalogStorageHelper.getBodyKitAnglePath(
+                brandName,
+                car.name,
+                tuningBrand,
+                name,
+                req.key,
+                ext,
+              )
+            : CatalogStorageHelper.getPartAnglePath(
+                brandName,
+                car.name,
+                category,
+                tuningBrand,
+                name,
+                req.key,
+                ext,
+              );
 
           const res = await CatalogStorageHelper.uploadFile(client, path, file);
           if (res.ok && res.url) {
@@ -1585,7 +1603,9 @@ export class AdminEditData implements OnInit {
         if (!existing.some((w) => w.name.toLowerCase() === tuningBrand.toLowerCase())) {
           return {
             ...wb,
-            [tabKey]: [...existing, { name: tuningBrand, logoUrl: '' }].sort((a, b) => a.name.localeCompare(b.name)),
+            [tabKey]: [...existing, { name: tuningBrand, logoUrl: '' }].sort((a, b) =>
+              a.name.localeCompare(b.name),
+            ),
           };
         }
         return wb;
@@ -1603,7 +1623,7 @@ export class AdminEditData implements OnInit {
 
       // Background sync
       if (brand && car) {
-        this.admin.fetchCatalogTuning(brand.name, car.name).then((tRes) => {
+        this.admin.fetchCatalogTuning(this.brandFolder(brand), car.name).then((tRes) => {
           this.workshopBrands.set(tRes.workshops);
         });
       }
@@ -1617,14 +1637,23 @@ export class AdminEditData implements OnInit {
   readonly submitAddPart = (): Promise<void> => this.savePart();
 
   // Edit Part Modal Handlers
-  readonly existingPartMasks = signal(new Map<string,string>());
-  readonly existingPartLayers = signal(new Map<string,string>());
-  readonly maskDefaultViews = signal(new Map<string,string>());
-  setPartLayer(angle:string,url:string):void {
-    this.existingPartLayers.update(current=>{const next=new Map(current);next.set(angle,url);return next;});
+  readonly existingPartMasks = signal(new Map<string, string>());
+  readonly existingPartLayers = signal(new Map<string, string>());
+  readonly maskDefaultViews = signal(new Map<string, string>());
+  setPartLayer(angle: string, url: string): void {
+    this.existingPartLayers.update((current) => {
+      const next = new Map(current);
+      next.set(angle, url);
+      return next;
+    });
   }
-  setPartMask(angle:string,url:string):void {
-    this.existingPartMasks.update(current=>{const next=new Map(current);if(url)next.set(angle,url);else next.delete(angle);return next;});
+  setPartMask(angle: string, url: string): void {
+    this.existingPartMasks.update((current) => {
+      const next = new Map(current);
+      if (url) next.set(angle, url);
+      else next.delete(angle);
+      return next;
+    });
   }
   async openEditPartModal(part: RealPartItem): Promise<void> {
     this.editingPart.set(part);
@@ -1644,7 +1673,7 @@ export class AdminEditData implements OnInit {
       const client = await this.admin.getClient();
       const brand = this.selectedBrand();
       const car = this.selectedCar();
-      const brandName = brand?.name || 'Universal';
+      const brandName = this.brandFolder(brand) || 'Universal';
       const carName = car?.name || 'Universal';
       const isBodyKit = this.isBodyKitCategory(part.category);
       const tuningBrand = part.manufacturer || this.selectedTuningBrand() || 'Custom';
@@ -1655,17 +1684,25 @@ export class AdminEditData implements OnInit {
         : `${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carName)}/Part/${CatalogStorageHelper.sanitize(category)}/${CatalogStorageHelper.sanitize(tuningBrand)}/${CatalogStorageHelper.sanitize(part.name)}`;
 
       if (client) {
-        const defaultFolder=`${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carName)}`;
-        const [{data:files},{data:defaults}]=await Promise.all([
-          client.storage.from('catalog').list(folder,{limit:50}),
-          client.storage.from('catalog').list(defaultFolder,{limit:50}),
+        const defaultFolder = `${CatalogStorageHelper.sanitize(brandName)}/${CatalogStorageHelper.sanitize(carName)}`;
+        const [{ data: files }, { data: defaults }] = await Promise.all([
+          client.storage.from('catalog').list(folder, { limit: 50 }),
+          client.storage.from('catalog').list(defaultFolder, { limit: 50 }),
         ]);
-        if(this.editingPart()?.id!==part.id)return;
-        if(defaults){
-          const views=new Map<string,string>();
-          for(const angle of this.getRequiredAngles(category)){
-            const match=defaults.find(f=>new RegExp('^'+angle.key+'\\.(png|jpe?g|webp)$','i').test(f.name));
-            if(match)views.set(angle.key,CatalogStorageHelper.getPublicUrl(client,`${defaultFolder}/${match.name}`)+'?t='+Date.now());
+        if (this.editingPart()?.id !== part.id) return;
+        if (defaults) {
+          const views = new Map<string, string>();
+          for (const angle of this.getRequiredAngles(category)) {
+            const match = defaults.find((f) =>
+              new RegExp('^' + angle.key + '\\.(png|jpe?g|webp)$', 'i').test(f.name),
+            );
+            if (match)
+              views.set(
+                angle.key,
+                CatalogStorageHelper.getPublicUrl(client, `${defaultFolder}/${match.name}`) +
+                  '?t=' +
+                  Date.now(),
+              );
           }
           this.maskDefaultViews.set(views);
         }
@@ -1675,10 +1712,22 @@ export class AdminEditData implements OnInit {
           const requiredAngles = this.getRequiredAngles(category);
           for (const angle of requiredAngles) {
             const regex = new RegExp(`^${angle.key}\\.(png|jpe?g|webp)$`, 'i');
-            const layer = files.find(f=>f.name.toLowerCase() === (angle.key+'.layer.png').toLowerCase());
-            if(layer)this.setPartLayer(angle.key,CatalogStorageHelper.getPublicUrl(client,`${folder}/${layer.name}`)+'?t='+now);
-            const mask = files.find(f=>f.name.toLowerCase() === (angle.key+'.mask.png').toLowerCase());
-            if(mask)this.setPartMask(angle.key,CatalogStorageHelper.getPublicUrl(client,`${folder}/${mask.name}`)+'?t='+now);
+            const layer = files.find(
+              (f) => f.name.toLowerCase() === (angle.key + '.layer.png').toLowerCase(),
+            );
+            if (layer)
+              this.setPartLayer(
+                angle.key,
+                CatalogStorageHelper.getPublicUrl(client, `${folder}/${layer.name}`) + '?t=' + now,
+              );
+            const mask = files.find(
+              (f) => f.name.toLowerCase() === (angle.key + '.mask.png').toLowerCase(),
+            );
+            if (mask)
+              this.setPartMask(
+                angle.key,
+                CatalogStorageHelper.getPublicUrl(client, `${folder}/${mask.name}`) + '?t=' + now,
+              );
             const match = files.find((f) => regex.test(f.name));
             if (match) {
               const url = CatalogStorageHelper.getPublicUrl(client, `${folder}/${match.name}`);
@@ -1748,7 +1797,7 @@ export class AdminEditData implements OnInit {
       return;
     }
 
-    const brandName = brand?.name || 'Universal';
+    const brandName = this.brandFolder(brand) || 'Universal';
     const carName = car?.name || 'Universal';
     const isBodyKit = this.isBodyKitCategory(part.category);
     const tuningBrand = part.manufacturer || this.selectedTuningBrand() || 'Custom';
@@ -1774,8 +1823,23 @@ export class AdminEditData implements OnInit {
             if (client) {
               await CatalogStorageHelper.removeSiblingFiles(client, folderPath, angleKey, ext);
               const path = isBodyKit
-                ? CatalogStorageHelper.getBodyKitAnglePath(brandName, carName, tuningBrand, newName, angleKey, ext)
-                : CatalogStorageHelper.getPartAnglePath(brandName, carName, category, tuningBrand, newName, angleKey, ext);
+                ? CatalogStorageHelper.getBodyKitAnglePath(
+                    brandName,
+                    carName,
+                    tuningBrand,
+                    newName,
+                    angleKey,
+                    ext,
+                  )
+                : CatalogStorageHelper.getPartAnglePath(
+                    brandName,
+                    carName,
+                    category,
+                    tuningBrand,
+                    newName,
+                    angleKey,
+                    ext,
+                  );
 
               const res = await CatalogStorageHelper.uploadFile(client, path, file);
               if (res.ok && res.url) {

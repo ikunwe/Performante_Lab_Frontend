@@ -451,32 +451,28 @@ describe('AdminService', () => {
       expect(service.catalogParts()[0].carId).toBe('c-200');
     });
 
-    it('inserts brand into car_brand_reference and updates catalogBrands signal', async () => {
-      const insertedRow = {
-        id: 'mclaren',
-        name: 'McLaren',
-        slug: 'mclaren',
-        details: {
-          logoReferenceUrl: 'https://test.supabase.co/mclaren.png',
-        },
-      };
+    it('updates an existing reference brand without duplicate-key errors or erasing its model catalog', async () => {
+      const existing={id:'honda',name:'Honda',slug:'honda',collected_at:'2026-10-01T00:00:00Z',details:{source:'reference-dataset',modelCatalog:{models:[{id:'civic',name:'Civic'}]}}};
+      const upsert=vi.fn((payload:any)=>({select:()=>({single:async()=>({data:payload,error:null})})}));
+      const insert=vi.fn(()=>{throw new Error('plain insert must not run');});
+      mockSupabaseClient.from=vi.fn(()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:existing,error:null})})}),upsert,insert}));
+      (service as any).client=mockSupabaseClient;
+      await service.insertBrand({name:'Honda',logo_url:'https://test.supabase.co/storage/v1/object/public/catalog/Honda/logo.png'});
+      const result=await service.insertBrand({name:'Honda',logo_url:'https://test.supabase.co/storage/v1/object/public/catalog/Honda/logo.png'});
+      expect(result.ok).toBe(true);
+      expect(insert).not.toHaveBeenCalled();
+      expect(upsert).toHaveBeenCalledWith(expect.objectContaining({id:'honda',collected_at:existing.collected_at,details:expect.objectContaining({source:'reference-dataset',modelCatalog:existing.details.modelCatalog,logoReferenceUrl:expect.stringContaining('/Honda/logo.png')})}),{onConflict:'id'});
+      expect(service.catalogBrands().filter(b=>b.name==='Honda')).toHaveLength(1);
+    });
 
-      mockSupabaseClient.from = vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: insertedRow, error: null }),
-          }),
-        }),
-      });
-      (service as any).client = mockSupabaseClient;
-
-      const res = await service.insertBrand({
-        name: 'McLaren',
-        logo_url: 'https://test.supabase.co/mclaren.png',
-      });
-
-      expect(res.ok).toBe(true);
-      expect(service.catalogBrands().some((b) => b.name === 'McLaren')).toBe(true);
+    it('creates a reference for a new brand and surfaces write failures', async () => {
+      const upsert=vi.fn().mockImplementationOnce((payload:any)=>({select:()=>({single:async()=>({data:payload,error:null})})})).mockImplementationOnce(()=>({select:()=>({single:async()=>({data:null,error:{message:'Write denied'}})})}));
+      mockSupabaseClient.from=vi.fn(()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:null,error:null})})}),upsert}));
+      (service as any).client=mockSupabaseClient;
+      expect((await service.insertBrand({name:'McLaren',logo_url:'https://test/mclaren.png'})).ok).toBe(true);
+      expect(service.catalogBrands().some(b=>b.name==='McLaren')).toBe(true);
+      expect(await service.insertBrand({name:'Denied',logo_url:'https://test/denied.png'})).toEqual({ok:false,error:'Write denied'});
+      expect(service.catalogBrands().some(b=>b.name==='Denied')).toBe(false);
     });
 
     it('inserts car model into car_brand_reference and updates catalogModels signal', async () => {
@@ -805,7 +801,7 @@ describe('AdminService', () => {
       expect(service.catalogParts()[0].price).toBe(75000);
     });
 
-    it('deletes car brand from catalogBrands and storage/database', async () => {
+    it('deletes car brand only from Storage and leaves reference tables untouched', async () => {
       service.catalogBrands.set([
         { id: 'b-1', name: 'Ferrari', slug: 'ferrari', logo_url: '', is_custom_bg: false },
         { id: 'b-2', name: 'Honda', slug: 'honda', logo_url: '', is_custom_bg: false },
@@ -828,8 +824,25 @@ describe('AdminService', () => {
 
       const res = await service.deleteCarBrand('b-1', 'Ferrari');
       expect(res.ok).toBe(true);
+      expect(mockClient.from).not.toHaveBeenCalled();
       expect(service.catalogBrands().length).toBe(1);
       expect(service.catalogBrands()[0].name).toBe('Honda');
+    });
+
+    it('keeps the brand on screen when Storage deletion fails', async () => {
+      service.catalogBrands.set([{id:'Haval',storagePath:'Haval',name:'Haval Thailand',slug:'haval',logo_url:'',is_custom_bg:false}]);
+      const client={storage:{from:()=>({list:async()=>({data:null,error:{message:'Storage denied'}})})},from:vi.fn()};
+      (service as any).client=client;
+      expect(await service.deleteCarBrand('Haval','Haval Thailand')).toEqual({ok:false,error:'Storage denied'});
+      expect(service.catalogBrands()).toHaveLength(1);expect(client.from).not.toHaveBeenCalled();
+    });
+
+    it('does not resurrect reference brands after the last Storage brand is deleted', async () => {
+      const client={storage:{from:()=>({list:async()=>({data:[],error:null})})},from:vi.fn(()=>{throw new Error('reference table must not be read');})};
+      (service as any).client=client;
+      service.catalogBrands.set([{id:'Haval',name:'Haval',slug:'haval',logo_url:'',is_custom_bg:false}]);
+      await service.fetchCatalogBrands();
+      expect(service.catalogBrands()).toEqual([]);expect(client.from).not.toHaveBeenCalled();
     });
 
     it('deletes car model from catalogModels and storage/database', async () => {

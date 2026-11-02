@@ -1,23 +1,24 @@
 <div class="space-y-7">
   <!-- Page Header -->
-  <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+  <div class="flex flex-wrap items-end justify-between gap-5">
     <!-- Title & Subtitle -->
     <div>
+      <p class="mb-2 text-[8px] tracking-[.24em] text-red-400/80">ADMIN WORKSPACE</p>
       <h1
-        class="font-[family-name:var(--font-display)] text-3xl font-extrabold text-white tracking-tight"
+        class="font-[family-name:var(--font-display)] text-[25px] font-normal text-stone-100 tracking-[-.06em] md:text-[29px]"
       >
         Requests
       </h1>
-      <p class="text-xs text-stone-400 mt-1.5">คำขอเพิ่มแบรนด์ รุ่นรถ และชุดแต่งจากผู้ใช้</p>
+      <p class="mt-2 text-[12px] text-stone-500">คำขอเพิ่มแบรนด์ รุ่นรถ และชุดแต่งจากผู้ใช้</p>
     </div>
 
     <!-- Search & Filter Controls -->
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <button
         type="button"
         (click)="admin.fetchRequests()"
         [disabled]="admin.requestsLoading() || !!admin.requestBusyId()"
-        class="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-xs text-stone-400 disabled:cursor-not-allowed disabled:opacity-40"
+        class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 text-[10px] text-stone-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <app-icon
           name="rotate"
@@ -26,7 +27,7 @@
         />รีเฟรช
       </button>
       <!-- Search Box with Icon (h-9, w-56 sm:w-64) -->
-      <div class="relative flex items-center">
+      <div class="relative flex min-w-0 flex-1 items-center sm:flex-none">
         <app-icon
           name="search"
           class="!size-3.5 text-stone-400 absolute left-3 pointer-events-none"
@@ -36,7 +37,7 @@
           [ngModel]="admin.requestsSearch()"
           (ngModelChange)="admin.requestsSearch.set($event)"
           placeholder="ค้นหาคำขอ, พาร์ต, ผู้ใช้..."
-          class="h-9 w-56 sm:w-64 border border-white/10 bg-[#181818] rounded-lg pl-9 pr-3 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
+          class="min-h-10 w-full sm:w-[210px] border border-white/10 bg-[#141414] rounded-lg pl-9 pr-3 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#ce281a] transition-colors"
         />
         @if (admin.requestsSearch()) {
           <button
@@ -54,7 +55,7 @@
         <button
           type="button"
           (click)="toggleFilters()"
-          class="h-9 px-3.5 rounded-lg border border-white/10 bg-[#181818] text-xs font-medium text-white hover:border-white/25 transition-colors flex items-center gap-2 cursor-pointer"
+          class="min-h-10 px-3 rounded-lg border border-white/10 bg-[#141414] text-xs font-medium text-white hover:border-white/25 transition-colors flex items-center gap-2 cursor-pointer"
         >
           <app-icon name="filter" class="!size-3.5 text-stone-400" />
           <span>Filters</span>
@@ -65,7 +66,7 @@
 
         @if (filtersOpen()) {
           <div
-            class="absolute right-0 mt-2 w-48 rounded-lg bg-[#181818] border border-white/10 shadow-2xl p-2 z-30 animate-in fade-in duration-100"
+            class="absolute right-0 mt-2 w-48 rounded-lg bg-[#141414] border border-white/10 shadow-2xl p-2 z-30 animate-in fade-in duration-100"
           >
             <p
               class="text-[10px] font-semibold text-stone-400 px-3 py-1.5 uppercase tracking-wider"
@@ -104,7 +105,11 @@
         <app-icon name="check" class="!size-3.5" />
         <span>{{ toastMessage() }}</span>
       </div>
-      <button type="button" (click)="toastMessage.set('')" class="text-stone-400 hover:text-white">
+      <button
+        type="button"
+        (click)="toastMessage.set('')"
+        class="text-stone-400 hover:text-white cursor-pointer disabled:cursor-not-allowed"
+      >
         <app-icon name="close" class="!size-3" />
       </button>
     </div>
@@ -131,16 +136,13 @@
 
   <!-- Loading State -->
   @if (admin.requestsLoading()) {
-    <div class="flex flex-col items-center justify-center py-24 text-stone-500 space-y-3">
-      <app-icon name="spinner" class="!size-7 animate-spin text-[#ce281a]" />
-      <span class="animate-pulse text-sm">กำลังโหลดข้อมูลจากฐานข้อมูล...</span>
-    </div>
+    <app-loading-skeleton [count]="8" variant="build" label="กำลังโหลดข้อมูลจากฐานข้อมูล..." />
   } @else {
     <!-- 4-Column Grid of Part Requests (Matching Discover 1:1) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       @for (req of admin.filteredRequests(); track req.id) {
         <div
-          class="group flex h-full flex-col overflow-hidden rounded-lg border border-white/10 bg-[#171717] transition-all hover:border-white/20 relative"
+          class="group flex h-full flex-col overflow-hidden rounded-lg border border-white/10 bg-[#171717] transition-colors hover:border-white/20 relative"
         >
           <!-- Status Pill Badge -->
           <div class="absolute top-2.5 right-2.5 z-10">
@@ -157,7 +159,10 @@
                 Rejected
               </span>
             } @else if (req.status === 'Cancelled') {
-              <span class="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-stone-400">Cancelled</span>
+              <span
+                class="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-stone-400"
+                >Cancelled</span
+              >
             } @else {
               <span
                 class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30"
@@ -168,12 +173,14 @@
           </div>
 
           <!-- Car / Part Image Banner (aspect-[16/10]) -->
-          <div class="relative aspect-[16/10] w-full overflow-hidden bg-[#1f1f1f]">
+          <div
+            class="relative aspect-[1.8] w-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_35%,#535353,#121212_75%)]"
+          >
             @if (req.image) {
               <img
                 [src]="req.image"
                 [alt]="req.title"
-                class="h-full w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                class="h-full w-full object-contain transition-transform duration-300"
                 loading="lazy"
               />
             } @else {
@@ -239,16 +246,20 @@
                 <button
                   type="button"
                   (click)="handleAccept(req, $event)"
-                  [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
-                  class="h-7 flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                  [disabled]="
+                    req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()
+                  "
+                  class="h-7 flex-1 border border-emerald-500/20 bg-emerald-500/10 enabled:hover:bg-emerald-600 enabled:hover:border-emerald-500 enabled:hover:text-white text-emerald-300 text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Accept
                 </button>
                 <button
                   type="button"
                   (click)="handleReject(req, $event)"
-                  [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
-                  class="h-7 flex-1 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                  [disabled]="
+                    req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()
+                  "
+                  class="h-7 flex-1 border border-red-400/20 bg-red-500/5 enabled:hover:bg-red-600 enabled:hover:border-red-500 enabled:hover:text-white text-red-300 text-[11px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Reject
                 </button>
@@ -269,11 +280,11 @@
   <!-- Request Details Modal -->
   @if (detailsModalRequest(); as req) {
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
       (click)="closeDetails()"
     >
       <div
-        class="max-h-[90dvh] overflow-auto w-full max-w-lg rounded-lg bg-[#161616] border border-white/10 shadow-2xl p-6 text-white space-y-5"
+        class="max-h-[90dvh] overflow-auto w-full max-w-lg rounded-lg bg-[#151515] border border-white/10 shadow-2xl p-6 text-white space-y-5"
         (click)="$event.stopPropagation()"
       >
         <!-- Modal Header -->
@@ -281,12 +292,12 @@
           <div>
             <div class="flex items-center gap-2">
               <span
-                class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-stone-300 uppercase tracking-wider"
+                class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white/10 text-stone-300 uppercase tracking-wider"
               >
                 {{ req.category }}
               </span>
               <span
-                class="text-[10px] font-bold px-2 py-0.5 rounded"
+                class="text-[10px] font-bold px-2 py-0.5 rounded-lg"
                 [class]="
                   req.status === 'Accepted'
                     ? 'bg-emerald-500/20 text-emerald-400'
@@ -383,16 +394,20 @@
             <button
               type="button"
               (click)="handleAccept(req)"
-              [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
-              class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="
+                req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()
+              "
+              class="px-4 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 enabled:hover:bg-emerald-600 enabled:hover:border-emerald-500 enabled:hover:text-white text-emerald-300 text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
               Accept คำขอ
             </button>
             <button
               type="button"
               (click)="handleReject(req)"
-              [disabled]="req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()"
-              class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="
+                req.status === 'Cancelled' || !!admin.requestBusyId() || admin.requestsLoading()
+              "
+              class="px-4 py-2 rounded-lg border border-red-400/20 bg-red-500/5 enabled:hover:bg-red-600 enabled:hover:border-red-500 enabled:hover:text-white text-red-300 text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
               Reject คำขอ
             </button>

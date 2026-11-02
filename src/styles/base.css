@@ -6,7 +6,8 @@ html {
   color-scheme: dark;
 }
 /* Keep workspace content aligned when a modal locks document scrolling. */
-html:has(app-discover) {
+html:has(app-discover),
+html:has(app-admin-layout) {
   scrollbar-gutter: stable;
 }
 html:has(dialog:modal) {

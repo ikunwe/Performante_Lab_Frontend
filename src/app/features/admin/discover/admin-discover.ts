@@ -1,12 +1,13 @@
 import { Component, afterNextRender, inject, signal } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { LoadingSkeleton } from '../../../shared/ui/loading-skeleton/loading-skeleton';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { AdminBuildItem, AdminService } from '../services/admin.service';
 
 @Component({
   selector: 'app-admin-discover',
-  imports: [CommonModule, FormsModule, Icon, DecimalPipe],
+  imports: [CommonModule, FormsModule, Icon, LoadingSkeleton, DecimalPipe],
   templateUrl: './admin-discover.html',
 })
 export class AdminDiscover {

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AccountAvatar } from '../../../shared/ui/account-avatar/account-avatar';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { AdsBanner } from '../../../shared/ui/ads-banner/ads-banner';
 import { AuthService, UserRole } from '../../../core/auth/auth.service';
@@ -7,7 +8,7 @@ import { AdminService } from '../services/admin.service';
 
 @Component({
   selector: 'app-admin-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon, AdsBanner],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon, AdsBanner, AccountAvatar],
   templateUrl: './admin-layout.html',
   styleUrl: './admin-layout.css',
 })

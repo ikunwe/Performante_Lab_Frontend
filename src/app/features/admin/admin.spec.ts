@@ -27,6 +27,7 @@ describe('Admin Portal Features', () => {
     mockAuth = {
       user: signal({ id:'admin-test', email: 'admin@performante.lab' }),
       displayName: signal('Admin User'),
+      avatarUrl: signal('https://example.test/avatar.png'),
       userRole: signal('SuperAdmin'),
       isAdmin: signal(true),
       isSuperAdmin: signal(true),
@@ -67,6 +68,34 @@ describe('Admin Portal Features', () => {
     expect(compiled.textContent).toContain('Users');
     expect(compiled.textContent).toContain('Web Ads Space');
     expect(compiled.textContent).toContain('300x400');
+  });
+
+  it('uses the signed-in avatar in the header and expanded menu', () => {
+    const fixture = TestBed.createComponent(AdminLayout);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-account-avatar img')?.getAttribute('src')).toBe('https://example.test/avatar.png');
+    fixture.componentInstance.toggleUserMenu(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('app-account-avatar img')).toHaveLength(2);
+  });
+
+  it('shows only real brand/model tiles with the add control last and keeps the car inside its photo frame', () => {
+    const service = TestBed.inject(AdminService);
+    const brand = mapBrand({id:'honda', name:'Honda', slug:'honda', logo_url:'', is_custom_bg:false});
+    service.catalogBrands.set([brand]);
+    service.catalogModels.set([mapCarModel({id:'civic',brand_id:'honda',name:'Civic',image_url:'https://example.test/civic.png'})]);
+    const fixture = TestBed.createComponent(AdminEditData);
+    fixture.detectChanges();
+    const addBrand = fixture.nativeElement.querySelector('button[title="เพิ่ม Brand รถใหม่"]');
+    expect(addBrand.parentElement.children).toHaveLength(2);
+    expect(addBrand.parentElement.lastElementChild).toBe(addBrand);
+    fixture.componentInstance.selectedBrand.set(brand);
+    fixture.componentInstance.level.set('models'); fixture.detectChanges();
+    const addCar = fixture.nativeElement.querySelector('button[title="เพิ่มรุ่นรถใหม่"]');
+    expect(addCar.parentElement.children).toHaveLength(3);
+    expect(addCar.parentElement.lastElementChild).toBe(addCar);
+    const photo = fixture.nativeElement.querySelector('img[alt="Civic"]');
+    expect(photo.classList.contains('object-contain')).toBe(true);
+    expect(photo.classList.contains('object-cover')).toBe(false);
   });
 
   it('renders loading state when loading is true', () => {
@@ -577,7 +606,11 @@ describe('Admin Portal Features', () => {
       expect(component.editBrandModalOpen()).toBe(true);
       expect(component.editingBrandName()).toBe('Ferrari');
       component.editingBrandName.set('Ferrari S.p.A.');
+      const clientSpy = vi.spyOn(adminService, 'getClient').mockResolvedValueOnce({} as any);
+      const profileSpy = vi.spyOn(CatalogStorageHelper, 'saveBrandProfile').mockResolvedValueOnce({ok:true,url:'https://test/catalog/Ferrari/logo.png'});
       await component.saveEditBrand();
+      expect(profileSpy).toHaveBeenCalledWith(expect.anything(),'Ferrari','Ferrari S.p.A.',null);
+      profileSpy.mockRestore(); clientSpy.mockRestore();
       expect(component.editBrandModalOpen()).toBe(false);
       expect(component.selectedBrand()?.name).toBe('Ferrari S.p.A.');
 
@@ -629,6 +662,9 @@ describe('Admin Portal Features', () => {
       const mockClient = {
         storage: {
           from: vi.fn().mockReturnValue({
+            list: vi.fn(async (path:string)=>({data:path ? [{name:'logo.png',id:'logo'}] : [{name:'Aston-Martin',id:null,metadata:null}],error:null})),
+            info: vi.fn(async()=>({data:{metadata:{brandDisplayName:'Aston Martin'}},error:null})),
+            remove: vi.fn(async()=>({error:null})),
             upload: vi.fn().mockResolvedValue({ data: { path: 'Aston-Martin/logo.png' }, error: null }),
             getPublicUrl: vi.fn().mockReturnValue({
               data: { publicUrl: 'https://test.supabase.co/storage/v1/object/public/catalog/Aston-Martin/logo.png' },
@@ -636,7 +672,8 @@ describe('Admin Portal Features', () => {
           }),
         },
         from: vi.fn().mockReturnValue({
-          insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({eq:()=>({maybeSingle:async()=>({data:null,error:null})})}),
+          upsert: vi.fn().mockReturnValue({
             select: vi.fn().mockReturnValue({
               single: vi.fn().mockResolvedValue({
                 data: {
@@ -730,10 +767,15 @@ describe('Admin Portal Features', () => {
       expect(component.originalTuningBrandName()).toBe('Novitec');
 
       component.editingTuningBrandName.set('Novitec Rosso');
+      const getClientSpy=vi.spyOn(adminService,'getClient').mockResolvedValueOnce({} as any);
+      const saveSpy=vi.spyOn(CatalogStorageHelper,'saveWorkshopProfile').mockResolvedValueOnce({ok:true,url:'https://test/logo.png'});
+      const readSpy=vi.spyOn(CatalogStorageHelper,'readWorkshopProfile').mockResolvedValueOnce({displayName:component.editingTuningBrandName(),logoUrl:'https://test/logo.png'});
       await component.saveEditTuningBrand();
+      expect(saveSpy.mock.calls[0][1]).not.toContain(component.editingTuningBrandName());
+      getClientSpy.mockRestore();saveSpy.mockRestore();readSpy.mockRestore();
 
       expect(component.editTuningBrandModalOpen()).toBe(false);
-      expect(component.workshopBrands().bodykit.some((w) => w.name === 'Novitec Rosso')).toBe(true);
+      expect(component.workshopBrands().bodykit.some((w) => w.name === 'Novitec' && w.displayName === 'Novitec Rosso')).toBe(true);
       expect(component.toastMessage()).toContain('แก้ไขข้อมูลแบรนด์ "Novitec Rosso" เรียบร้อยแล้ว');
     });
 
@@ -887,9 +929,15 @@ describe('Admin Portal Features', () => {
 
       // Rename tuning brand
       component.editingTuningBrandName.set('Akrapovic Racing');
+      const getClientSpy=vi.spyOn(adminService,'getClient').mockResolvedValueOnce({} as any);
+      const saveSpy=vi.spyOn(CatalogStorageHelper,'saveWorkshopProfile').mockResolvedValueOnce({ok:true,url:'https://test/logo.png'});
+      const readSpy=vi.spyOn(CatalogStorageHelper,'readWorkshopProfile').mockResolvedValueOnce({displayName:component.editingTuningBrandName(),logoUrl:'https://test/logo.png'});
       await component.saveEditTuningBrand();
+      expect(saveSpy.mock.calls[0][1]).not.toContain(component.editingTuningBrandName());
+      getClientSpy.mockRestore();saveSpy.mockRestore();readSpy.mockRestore();
       expect(component.editTuningBrandModalOpen()).toBe(false);
-      expect(component.selectedTuningBrand()).toBe('Akrapovic Racing');
+      expect(component.selectedTuningBrand()).toBe('Akrapovic');
+      expect(component.tuningBrandLabel('Akrapovic')).toBe('Akrapovic Racing');
 
       // Test that Spoilers or category names are not treated as brands
       component.workshopBrands.set({
