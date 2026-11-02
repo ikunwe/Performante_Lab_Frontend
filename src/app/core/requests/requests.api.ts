@@ -15,6 +15,7 @@ export interface RequestRecord {
   status: 'Pending' | 'Accepted' | 'Rejected' | 'Cancelled';
   images: string[];
   author: string;
+  authorAvatar?: string;
   createdAt: string;
   updatedAt: string;
 }

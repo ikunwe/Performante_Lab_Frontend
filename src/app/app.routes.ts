@@ -9,6 +9,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/layout/admin-layout').then((m) => m.AdminLayout),
     children: [
       {
+        path: 'profile',
+        title: 'Admin Profile | Performante Lab',
+        loadComponent: () => import('./features/admin/profile/admin-profile').then((m) => m.AdminProfile),
+      },
+      {
         path: '',
         pathMatch: 'full',
         redirectTo: 'discover',

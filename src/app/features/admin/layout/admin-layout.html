@@ -141,53 +141,16 @@
               </div>
             </div>
 
-            <!-- Role Simulator / Switcher (for RBAC testing) -->
-            <div class="py-3 border-b border-white/10">
-              <label class="block text-[11px] font-medium text-stone-400 mb-1.5">
-                สลับ Role เพื่อทดสอบ RBAC:
-              </label>
-              <div class="grid grid-cols-3 gap-1.5 text-[10px]">
-                <button
-                  type="button"
-                  (click)="changeRole('SuperAdmin')"
-                  class="py-1 px-2 rounded-lg text-center font-medium transition-colors cursor-pointer"
-                  [class]="
-                    auth.userRole() === 'SuperAdmin'
-                      ? 'bg-[#ce281a] text-white font-bold'
-                      : 'bg-white/5 text-stone-300 hover:bg-white/10'
-                  "
-                >
-                  SuperAdmin
-                </button>
-                <button
-                  type="button"
-                  (click)="changeRole('Admin')"
-                  class="py-1 px-2 rounded-lg text-center font-medium transition-colors cursor-pointer"
-                  [class]="
-                    auth.userRole() === 'Admin'
-                      ? 'bg-[#ce281a] text-white font-bold'
-                      : 'bg-white/5 text-stone-300 hover:bg-white/10'
-                  "
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  (click)="changeRole('User')"
-                  class="py-1 px-2 rounded-lg text-center font-medium transition-colors cursor-pointer"
-                  [class]="
-                    auth.userRole() === 'User'
-                      ? 'bg-[#ce281a] text-white font-bold'
-                      : 'bg-white/5 text-stone-300 hover:bg-white/10'
-                  "
-                >
-                  User
-                </button>
-              </div>
-            </div>
-
             <!-- Navigation Links -->
             <div class="py-2 space-y-1">
+              <a
+                routerLink="/admin/profile"
+                (click)="closeMenus()"
+                class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-stone-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <app-icon name="user" class="!size-4 text-stone-400" />
+                <span>Profile</span>
+              </a>
               <a
                 routerLink="/discover"
                 (click)="closeMenus()"

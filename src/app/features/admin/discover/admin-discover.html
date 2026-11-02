@@ -144,12 +144,7 @@
           <div
             class="relative aspect-[1.8] w-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_35%,#535353,#121212_75%)]"
           >
-            <img
-              [src]="build.image"
-              [alt]="build.title"
-              class="h-full w-full object-contain p-2"
-              loading="lazy"
-            />
+            <app-showcase-image [build]="build" />
             <div
               class="absolute inset-0 bg-gradient-to-t from-[#171717] via-transparent to-transparent"
             ></div>
@@ -160,12 +155,7 @@
             <!-- Author Info & Meta -->
             <div class="flex items-center justify-between gap-2 mb-3">
               <div class="flex items-center gap-2 min-w-0">
-                <!-- Author Red Avatar -->
-                <div
-                  class="size-6 rounded-full bg-[#ce281a] flex items-center justify-center text-white shrink-0"
-                >
-                  <app-icon name="user" class="!size-3.5" />
-                </div>
+                <app-account-avatar [url]="build.authorAvatar || ''" [name]="build.author" [showStatus]="false" class="!size-6" />
                 <span class="text-xs text-stone-300 truncate font-medium">{{ build.author }}</span>
               </div>
 
@@ -257,14 +247,14 @@
 
         <!-- Car Image -->
         <div class="aspect-video w-full rounded-lg overflow-hidden bg-[#222]">
-          <img [src]="build.image" [alt]="build.title" class="w-full h-full object-contain p-3" />
+          <app-showcase-image [build]="build" />
         </div>
 
         <!-- Specifications & Parts List -->
         <div class="space-y-3">
           <div class="flex items-center justify-between text-xs border-b border-white/10 pb-2">
             <span class="text-stone-400">ผู้สร้าง</span>
-            <span class="font-semibold text-white">{{ build.author }}</span>
+            <span class="flex items-center gap-2 font-semibold text-white"><app-account-avatar [url]="build.authorAvatar || ''" [name]="build.author" [showStatus]="false" class="!size-6" />{{ build.author }}</span>
           </div>
           <div class="flex items-center justify-between text-xs border-b border-white/10 pb-2">
             <span class="text-stone-400">งบประมาณโดยประมาณ</span>

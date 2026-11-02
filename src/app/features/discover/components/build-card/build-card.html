@@ -12,8 +12,7 @@
   </button>
   <div class="flex flex-1 flex-col px-3.5 pb-3.5">
     <div class="mb-3 flex items-center gap-2">
-      <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#eb3926]"><app-icon name="user"
-          class="!size-3.5" /></span>
+      <app-account-avatar [url]="build().authorAvatar || ''" [name]="build().author" [showStatus]="false" class="!size-6" />
       <span class="min-w-0 flex-1 truncate text-[10px] text-stone-400">{{ build().author }}</span>
       @if (build().isOwn) {
       <span class="shrink-0 rounded-lg bg-blue-500/10 px-1.5 py-1 text-[8px] text-blue-300">ของคุณ</span>

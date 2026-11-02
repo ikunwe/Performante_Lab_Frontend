@@ -2,12 +2,13 @@ import { Component, afterNextRender, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LoadingSkeleton } from '../../../shared/ui/loading-skeleton/loading-skeleton';
+import { AccountAvatar } from '../../../shared/ui/account-avatar/account-avatar';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { AdminRequestItem, AdminService } from '../services/admin.service';
 
 @Component({
   selector: 'app-admin-requests',
-  imports: [CommonModule, FormsModule, Icon, LoadingSkeleton],
+  imports: [CommonModule, FormsModule, Icon, LoadingSkeleton, AccountAvatar],
   templateUrl: './admin-requests.html',
 })
 export class AdminRequests {

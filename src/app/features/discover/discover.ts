@@ -24,6 +24,7 @@ import { ShowcaseImage } from './components/showcase-image/showcase-image';
 import { BuildCard } from './components/build-card/build-card';
 import { ShowcaseBuild } from './discover.data';
 import { AuthService } from '../../core/auth/auth.service';
+import { AccountAvatar } from '../../shared/ui/account-avatar/account-avatar';
 import { AccountMenu } from '../../shared/ui/account-menu/account-menu';
 import { Profile } from '../profile/profile';
 import { BuildsStore } from '../my-builds/builds.store';
@@ -44,6 +45,7 @@ type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Reque
     Compare,
     MyBuilds,
     AccountMenu,
+    AccountAvatar,
     Profile, UserRequests, LoadingSkeleton,
   ],
   templateUrl: './discover.html',

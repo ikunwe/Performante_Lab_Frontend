@@ -3,7 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AccountAvatar } from '../../../shared/ui/account-avatar/account-avatar';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { AdsBanner } from '../../../shared/ui/ads-banner/ads-banner';
-import { AuthService, UserRole } from '../../../core/auth/auth.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { AdminService } from '../services/admin.service';
 
 @Component({
@@ -33,14 +33,6 @@ export class AdminLayout {
   closeMenus(): void {
     this.userMenuOpen.set(false);
     this.notificationsOpen.set(false);
-  }
-
-  changeRole(newRole: UserRole): void {
-    this.auth.setRole(newRole);
-    this.userMenuOpen.set(false);
-    if (newRole === 'User') {
-      void this.router.navigate(['/discover']);
-    }
   }
 
   async logout(): Promise<void> {
