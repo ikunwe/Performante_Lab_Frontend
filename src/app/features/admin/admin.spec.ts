@@ -41,8 +41,8 @@ describe('Admin Portal Features', () => {
       imports: [AdminLayout, AdminDiscover, AdminRequests, AdminUsers, AdminEditData],
       providers: [
         provideRouter([]),
-        {provide:AdminBuildsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'database-build',title:'Real Build',author:'Driver',car:'Honda Civic',carId:'storage-car:test',parts:[],budget:0,category:'Street',image:'https://test/storage/car.png',likes:5,isPublic:true,isOwn:false}]),remove:vi.fn().mockResolvedValue(undefined)}},
-        {provide:RequestsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'request-1',title:'Mugen kit',kind:'bodykit',description:'Please add',brandName:'Honda',modelName:'Civic',manufacturer:'Mugen',source:'',images:['https://test/image.png'],author:'Driver',status:'Pending',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}]),review:vi.fn()}},
+        {provide:AdminBuildsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'database-build',title:'Real Build',author:'Driver',car:'Honda Civic',carId:'storage-car:test',partIds:['storage-part:front','storage-part:wheels'],authorAvatar:'https://example.test/driver.png',parts:[],budget:0,category:'Street',image:'https://test/storage/car.png',likes:5,isPublic:true,isOwn:false}]),remove:vi.fn().mockResolvedValue(undefined)}},
+        {provide:RequestsApi,useValue:{list:vi.fn().mockResolvedValue([{id:'request-1',title:'Mugen kit',kind:'bodykit',description:'Please add',brandName:'Honda',modelName:'Civic',manufacturer:'Mugen',source:'',images:['https://test/image.png'],author:'Driver',authorAvatar:'https://test/sender.png',status:'Pending',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}]),review:vi.fn()}},
         { provide: AuthService, useValue: mockAuth },
         { provide: AUTH_CLIENT, useValue: vi.fn().mockResolvedValue(null) },
         {
@@ -123,6 +123,29 @@ describe('Admin Portal Features', () => {
     expect(compiled.textContent).toContain('Delete');
   });
 
+  it('preserves saved parts and author profile in the card and details preview', async () => {
+    const fixture = TestBed.createComponent(AdminDiscover);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const service = TestBed.inject(AdminService);
+    const build = service.builds()[0];
+    expect(build.carId).toBe('storage-car:test');
+    expect(build.partIds).toEqual(['storage-part:front', 'storage-part:wheels']);
+    const { By } = await import('@angular/platform-browser');
+    const { ShowcaseImage } = await import('../discover/components/showcase-image/showcase-image');
+    let previews = fixture.debugElement.queryAll(By.directive(ShowcaseImage));
+    expect(previews).toHaveLength(1);
+    expect(previews[0].componentInstance.build()).toBe(build);
+    expect(fixture.nativeElement.querySelector('app-account-avatar img')?.getAttribute('src')).toBe('https://example.test/driver.png');
+    fixture.componentInstance.openDetails(build);
+    fixture.detectChanges();
+    previews = fixture.debugElement.queryAll(By.directive(ShowcaseImage));
+    expect(previews).toHaveLength(2);
+    expect(previews[1].componentInstance.build()).toBe(build);
+    expect(fixture.nativeElement.querySelectorAll('app-account-avatar img')).toHaveLength(2);
+  });
+
   it('renders AdminRequests with request cards and Accept / Reject buttons', async () => {
     const adminService = TestBed.inject(AdminService);
     adminService.loading.set(false);
@@ -137,6 +160,11 @@ describe('Admin Portal Features', () => {
     expect(compiled.querySelector('img')?.getAttribute('src')).toBe('https://test/image.png');
     expect(compiled.textContent).toContain('Accept');
     expect(compiled.textContent).toContain('Reject');
+    expect(compiled.querySelector('app-account-avatar img')?.getAttribute('src')).toBe('https://test/sender.png');
+    fixture.componentInstance.openDetails(adminService.requests()[0]);
+    fixture.detectChanges();
+    expect(compiled.querySelectorAll('app-account-avatar img')).toHaveLength(2);
+
   });
 
   it('renders AdminUsers with user rows, role badges, and Suspend buttons', () => {

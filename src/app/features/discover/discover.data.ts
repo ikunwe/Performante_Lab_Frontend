@@ -2,6 +2,7 @@ export interface ShowcaseBuild {
   id: string;
   title: string;
   author: string;
+  authorAvatar?: string;
   car: string;
   carId?: string;
   category: string;

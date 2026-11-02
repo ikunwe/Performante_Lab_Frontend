@@ -13,6 +13,10 @@ export interface AdminBuildItem {
   title: string;
   author: string;
   authorAvatar?: string;
+  carId?: string;
+  partIds?: string[];
+  isOwn: boolean;
+  isPublic: boolean;
   car: string;
   tag: string;
   likes: string;
@@ -1286,14 +1290,14 @@ export class AdminService {
     try{
       const data=await this.buildsApi.list();
       if(version!==this.buildsVersion||this.auth.user()?.id!==owner)return;
-      this.builds.set(data.map(item=>({id:item.id,title:item.title,author:item.author,car:item.car,tag:item.carId||'',likes:String(item.likes??0),image:item.image,parts:item.parts,budget:item.budget,category:item.category,createdAt:item.createdAt||''})));
+      this.builds.set(data.map(item=>({...item,tag:item.carId||'',likes:String(item.likes??0),createdAt:item.createdAt||''})));
       this.buildsExpires=Date.now()+5*60*1000;
     }catch(error){if(version===this.buildsVersion){this.buildsExpires=0;this.buildsError.set(error instanceof Error?error.message:'โหลด Build ไม่สำเร็จ');}}
     finally{if(version===this.buildsVersion)this.buildsLoading.set(false);}
   }
 
   private mapRequest(item:RequestRecord):AdminRequestItem {
-    return {id:item.id,title:item.title,author:item.author,car:[item.brandName,item.modelName].filter(Boolean).join(' ') || 'ไม่ระบุรุ่น',
+    return {id:item.id,title:item.title,author:item.author,authorAvatar:item.authorAvatar,car:[item.brandName,item.modelName].filter(Boolean).join(' ') || 'ไม่ระบุรุ่น',
       tag:item.kind,likes:'0',image:item.images[0] || '',images:item.images,status:item.status,category:item.kind,
       description:item.description,requestedAt:item.createdAt,source:item.source,manufacturer:item.manufacturer};
   }

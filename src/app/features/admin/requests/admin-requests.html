@@ -198,12 +198,7 @@
             <!-- Author Info & Meta -->
             <div class="flex items-center justify-between gap-2 mb-3">
               <div class="flex items-center gap-2 min-w-0">
-                <!-- Author Red Avatar -->
-                <div
-                  class="size-6 rounded-full bg-[#ce281a] flex items-center justify-center text-white shrink-0"
-                >
-                  <app-icon name="user" class="!size-3.5" />
-                </div>
+                <app-account-avatar [url]="req.authorAvatar || ''" [name]="req.author" [showStatus]="false" class="!size-6" />
                 <span class="text-xs text-stone-300 truncate font-medium">{{ req.author }}</span>
               </div>
             </div>
@@ -356,7 +351,7 @@
         <div class="space-y-2 text-xs border-t border-white/10 pt-3">
           <div class="flex items-center justify-between">
             <span class="text-stone-400">ผู้ส่งคำขอ</span>
-            <span class="font-semibold text-white">{{ req.author }}</span>
+            <span class="flex items-center gap-2 font-semibold text-white"><app-account-avatar [url]="req.authorAvatar || ''" [name]="req.author" [showStatus]="false" class="!size-6" />{{ req.author }}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-stone-400">วันที่ส่งคำขอ</span>

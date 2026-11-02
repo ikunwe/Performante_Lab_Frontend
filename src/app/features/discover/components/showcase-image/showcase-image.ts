@@ -36,7 +36,7 @@ import { Icon } from '../../../../shared/ui/icon/icon';
   `,
 })
 export class ShowcaseImage {
-  readonly build = input.required<ShowcaseBuild>();
+  readonly build = input.required<Pick<ShowcaseBuild, 'car' | 'carId' | 'partIds' | 'image'>>();
   readonly failedImage = signal('');
   private readonly catalog = inject(StorageCatalogStore);
   readonly plan = computed(() => {
