@@ -24,6 +24,7 @@
 
     <!-- Right Controls: Notification Bell + User Avatar & Info -->
     <div class="flex items-center gap-4 md:gap-5 relative">
+      @if (uiVisibility.notifications) {
       <!-- Notification Bell with Sky Alert Dot -->
       <div class="relative">
         <button
@@ -83,6 +84,8 @@
           </div>
         }
       </div>
+
+      }
 
       <!-- User Avatar & Username Info -->
       <div class="relative">

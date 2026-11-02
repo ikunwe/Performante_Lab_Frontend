@@ -13,10 +13,12 @@
         <app-icon [name]="preparingBuild() ? 'spinner' : 'plus'" [class.animate-spin]="preparingBuild()" class="!size-3.5" />{{ preparingBuild() ? 'กำลังเตรียม…' : 'Create Build' }}
       </button>
       }
+      @if (uiVisibility.notifications) {
       <button type="button" aria-label="การแจ้งเตือน" (click)="notifications()"
         class="flex size-9 items-center justify-center rounded-full text-stone-400 hover:bg-white/5 hover:text-white cursor-pointer disabled:cursor-not-allowed">
         <app-icon name="bell" />
       </button>
+      }
       @if (auth.user()) {
       <app-account-menu [name]="auth.displayName()" [email]="auth.user()?.email ?? ''" [busy]="auth.busy()"
         [avatarUrl]="auth.avatarUrl()" [complete]="auth.accountComplete()" [showStatus]="true" (profile)="showProfile()"

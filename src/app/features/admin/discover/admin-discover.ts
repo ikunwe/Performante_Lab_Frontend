@@ -1,3 +1,4 @@
+import { workspaceVisibility } from '../../../shared/ui/workspace-visibility';
 import { Component, afterNextRender, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +14,7 @@ import { AccountAvatar } from '../../../shared/ui/account-avatar/account-avatar'
   templateUrl: './admin-discover.html',
 })
 export class AdminDiscover {
+  readonly uiVisibility = workspaceVisibility;
   readonly admin = inject(AdminService);
   constructor() {
     afterNextRender(() => {

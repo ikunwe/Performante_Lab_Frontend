@@ -165,7 +165,9 @@
                   <app-icon name="like" class="!size-3 text-stone-400" />
                   <span>{{ build.likes }}</span>
                 </div>
-                <app-icon name="bookmark" class="!size-3.5 text-stone-400" />
+                @if (uiVisibility.adminBookmarks) {
+                  <app-icon name="bookmark" class="!size-3.5 text-stone-400" />
+                }
               </div>
             </div>
 

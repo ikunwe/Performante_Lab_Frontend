@@ -1,3 +1,4 @@
+import { workspaceVisibility } from '../../../shared/ui/workspace-visibility';
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AccountAvatar } from '../../../shared/ui/account-avatar/account-avatar';
@@ -13,6 +14,7 @@ import { AdminService } from '../services/admin.service';
   styleUrl: './admin-layout.css',
 })
 export class AdminLayout {
+  readonly uiVisibility = workspaceVisibility;
   readonly auth = inject(AuthService);
   readonly admin = inject(AdminService);
   private readonly router = inject(Router);

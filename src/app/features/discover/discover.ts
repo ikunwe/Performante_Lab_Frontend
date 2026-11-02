@@ -1,3 +1,4 @@
+import { workspaceVisibility } from '../../shared/ui/workspace-visibility';
 import { LikesStore } from '../liked/likes.store';
 import { DiscoverFeedStore, discoverRevision } from './discover-feed.store';
 import { StorageCatalogStore } from '../../core/catalog/storage-catalog';
@@ -50,6 +51,7 @@ type Tab = 'Discover' | 'Catalog' | 'Compare' | 'My Builds' | 'Profile' | 'Reque
   styleUrl: './discover.css',
 })
 export class Discover {
+  readonly uiVisibility = workspaceVisibility;
   readonly auth = inject(AuthService);
   readonly feed = inject(DiscoverFeedStore);
   readonly likes = inject(LikesStore);
